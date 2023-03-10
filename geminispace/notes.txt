@@ -1,0 +1,51 @@
+# Diamond project notes
+
+## Design
+
+* Content as flat as possible
+* Follow three-level header pattern with only a single level of bullet points
+* Use links appropriately depending on whether they are meant to be "footnote
+  references" or inline with the content
+* Plaintext is first class
+* Use email for all notification, communication, discussion, assignment
+  submission, etc.
+* Separate static content (like public info) and dynamic user-specific content
+  (like assignments, courses, grading, etc.)
+* Try to achieve an optimum of human readability and usability with machine
+  parseability (leaning more towards better UX).
+
+## Thoughts
+
+This protocol seems to encourage users to browse the Gemini world in a certain
+way:
+* Use bookmarks for everything, save page links as much as possible and use
+  them to access content
+* Use inline page links to jump around a site quickly and deeply rather than
+  having everything constantly available in a fixed location like a header menu
+  or a footer link section (although this one might change)
+
+Therefore, this site should be designed in a way that every PLACE has exactly
+one easily identifiable purpose. If designed in this way, users will be able to
+discover content more quickly AND remember where to find the information if
+required. Furthermore, custom website search engines should really help more
+if each page is restricted to one purpose (kind of a unix philosophy in a way!).
+
+## Implementation
+
+### Ideas:
+
+* Main Idea: fork Haskell Servant and aggresively simplify into something that
+  will be perfectly usable to generate type-safe Gemini applications in
+  Haskell. This will be an enormous effort but might be worth it
+* Use a static gemini server implementation with CGI scripts for every dynamic
+  endpoint
+* Use a popular gemini framework server like Jetforce
+* Write your own Server in plain old boring haskell (since it's so easy to do so)
+  and directly implement business logic inside
+* TODO SQLite seems to be a good database format since amount of content
+  SHOULD be relatively small and should be mostly textual. Other storage
+  mechanisms optimized for media can be used if necessary
+* Use mustache templates for text/gemini construction
+* Use current uwaterloo website as baseline; crawl each section of the website
+  and turn them into `/site/example-pages` which can then be used to design
+  `/site/templates`

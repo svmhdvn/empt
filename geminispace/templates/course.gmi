@@ -13,6 +13,9 @@ Introduction to Computing through Applications
 Using personal computers as effective problem solving tools for the present and the future. Effective use of spreadsheets to process, manipulate, and visualize numeric and textual information. Introduction to the Internet, World Wide Web, HTML, and XML. Algorithms underlying the functional components of web search engines and their influence on data access. Using wikis to publish, reshape, and organize data collaboratively.
 
 * Offered: F, W, S
-* Prereq: Not open to Mathematics students
-* Antireq
-* Note: 
+* Prereqs:
+** Not open to Mathematics students
+* Antireqs:
+**
+* Notes: 
+**

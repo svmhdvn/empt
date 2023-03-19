@@ -1,0 +1,241 @@
+body {
+   color: #333;
+   line-height: 1.4;
+   margin: 2em auto;
+   max-width: 38em;
+   padding: 0 1em;
+}
+
+h1,h2,h3,h4,h5 {
+   line-height: 1.2;
+}
+
+header {
+  margin-bottom: 2em;
+}
+
+header p {
+  margin-top: -1em;
+}
+
+nav {
+  display: inline;
+}
+
+nav a:before {
+  content: "‹ ";
+}
+
+footer {
+  padding: .5em 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+hr {
+   background: #333;
+   border: 0;
+   height: 1px;
+}
+
+a {
+   text-decoration: none;
+}
+
+a:hover {
+   text-decoration: underline;
+}
+
+ul {
+   list-style-type: square;
+}
+
+pre {
+  background-color: #f5f5f5;
+  border: 1px solid #ccc;
+  border-radius: 2px;
+  color: #333;
+  font-family: monospace;
+  line-height: 1.2;
+  margin: 0 0 10px;
+  overflow-x: auto;
+  padding: 8px;
+  white-space: pre;
+  word-wrap: normal;
+}
+
+footer .author {
+  font-style: italic;
+}
+
+.photo-panel {
+   margin: 2em 0;
+   overflow: auto;
+}
+
+.photo-panel ul {
+  display: inline-block;
+  list-style-position: inside;
+  margin: 0;
+  padding-left: 0;
+}
+
+.photo-panel img {
+  float: left;
+  height: 150px;
+  margin-right: 1.5em;
+  width: 150px;
+}
+
+.post-list {
+  margin-bottom: 10px;
+}
+
+.post-list .date {
+  width: 6em;
+}
+
+.paragraph-list li {
+  margin: 1em 0;
+}
+
+.disabled {
+  color: #ccc;
+}
+.disabled a:hover {
+   text-decoration: none;
+}
+
+.posted-on {
+  float: right;
+}
+
+.code-title {
+  border-bottom: 1px solid #333;
+  font-family: sans-serif;
+  font-size: 80%;
+  font-weight: bold;
+  margin-bottom: .8em;
+}
+
+.monospace {
+  font-family: monospace;
+}
+
+.blog img {
+  width: 100%;
+  margin: 1em 0 0 0;
+}
+
+.code-comment {
+  font-style: italic;
+  color: #888;
+}
+
+.license {
+  font-size: 80%;
+}
+
+.license img {
+  vertical-align: middle;
+}
+
+/* * resume * */
+.resume .section-heading {
+  border-bottom: solid 1px;
+}
+
+.resume .header {
+  margin-bottom: 2em;
+}
+
+.resume .name {
+  margin-bottom: 0;
+  text-align: center;
+}
+
+.resume .profession {
+  margin: .5em 0;
+  text-align: center;
+}
+
+.resume .homepage, .resume .date, .resume .university, .resume .location {
+  float: right;
+}
+
+.resume .education .date {
+  font-style: italic;
+}
+
+.resume .degree, .resume .university, .resume .employer, .resume .title {
+  font-weight: bold;
+}
+
+.resume .location {
+  font-style: italic;
+}
+
+.resume .description > ul {
+  padding-left:1.2em;
+  margin-top: 0;
+}
+
+.resume .summary .description {
+  font-size: 95%;
+}
+
+.resume .experience .description {
+  font-size: 95%;
+  margin: .25em 0 1em 0;
+}
+
+.resume .education .description {
+  font-size: 95%;
+  margin: .25em 0 1em 0;
+}
+
+.resume .projects .description {
+  font-size: 95%;
+  margin: .25em 0 1em 1em;
+}
+
+.resume .venue {
+  font-size: 95%;
+  font-style: italic;
+}
+
+.resume .skills ul {
+  -moz-column-count: 2;
+  -moz-column-gap: 2em;
+  -ms-column-count: 2;
+  -ms-column-gap: 2em;
+  -webkit-column-count: 2;
+  -webkit-column-gap: 2em;
+  column-count: 2;
+  column-gap: 2em;
+}
+
+.break-word {
+  word-wrap: break-word;
+}
+
+@media only screen and (max-device-width : 667px) {
+  body {
+    margin: 1em auto 2em auto;
+  }
+
+  .photo-panel {
+    margin: 0;
+  }
+
+  .photo-panel > img {
+    margin-left: auto;
+    margin-right: auto;
+    margin-bottom: 20px;
+    display: block;
+    float: none;
+  }
+  .resume .university { float: none; }
+  .resume .location { display: none; }
+}

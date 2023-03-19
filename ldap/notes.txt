@@ -1,0 +1,8 @@
+examples and guides:
+* https://www.zytrax.com/books/ldap/
+    * https://www.zytrax.com/books/ldap/ch5/
+* https://www.digitalocean.com/community/tutorials/how-to-use-ldif-files-to-make-changes-to-an-openldap-system
+
+useful commands:
+* (freebsd) to manually edit (hack) an ldif in /usr/local/etc/openldap/slapd.d/:
+  tail -n +3 <file.ldif> | cksum -o 3 | cut -d ' ' -f1 | xargs printf '# CRC32 %x\n'

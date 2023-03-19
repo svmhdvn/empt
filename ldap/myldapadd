@@ -1,0 +1,4 @@
+#!/bin/sh
+
+ldapadd -H ldap://beastie.lan -D 'cn=Manager,dc=beastie,dc=lan' -x -w password 
+-f "$1"

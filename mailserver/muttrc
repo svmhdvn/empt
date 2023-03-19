@@ -1,0 +1,5 @@
+set imap_user=shwetha
+set imap_pass=shwethapass
+set folder=imaps://beastie.lan
+set spoolfile=+INBOX
+mailboxes = +INBOX

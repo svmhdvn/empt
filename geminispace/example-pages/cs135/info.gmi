@@ -1,0 +1,34 @@
+# CS135: Designing Functional Programs
+
+## Course Info
+
+### Description
+
+CS135 is one of several introductory CS courses at University of Waterloo. It is aimed at CS majors and other motivated learners. Previous computing background is not required nor assumed.
+
+=> ../course_calendar.gmi CS course calendar
+
+CS135 uses a functional programming approach. Functional programming has a lot in common with math you already know: functions. It differs from procedural programming (the approach most often taught in high schools). For example, variables are a common starting point in procedural programming but won’t appear at all in CS135.
+
+The functional approach, simple syntax of the Racket language, and other factors allow CS135 to cover more concepts in depth than is typical of a first CS course while still remaining accessible to students who have not previously programmed a computer.
+
+You may also want to refer to the calendar description and extended course description.
+
+### Course Structure
+
+CS135 has a number of components that reinforce each other:
+
+* Lectures are held twice per week by the instructor(s). This material is also available in the Study Modules for those who prefer independent study.
+* Tutorials are held once per week, generally by an Instructional Apprentice. These are optional but highly recommended for everyone averaging less than 80% on their assignments.
+* Assignments are due (usually) weekly and are to be done individually.
+* There is a midterm exam (two in the Fall) and a final exam.
+
+In addition, there are help resources available throughout the term, including discussion forums and consulting hours.
+
+### Coursework and Assessment
+
+Marks for the course fall into three broad areas:
+
+* Assignments: due weekly. More details are in the Assessments section.
+* Exams: In Fall terms, there are two midterm exams and one final exam in CS135. The first midterm is scheduled before the CS135 to CS115 drop deadline, to help you decide whether you should stay in CS135 or drop to CS115. In Winter terms there is only one midterm and the CS135 -> CS115 dropdown provision is not available.
+* Participation: Self-check exercises in class to give quick feedback on your understanding. More details here.

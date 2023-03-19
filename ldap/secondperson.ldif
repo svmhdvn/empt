@@ -1,0 +1,9 @@
+dn: cn=Shwetha Suresh,ou=people,dc=beastie,dc=lan
+objectClass: inetOrgPerson
+objectClass: inetLocalMailRecipient
+cn: Shwetha Suresh
+uid: shwetha
+mail: shwetha@beastie.lan
+description: bffl
+sn: Suresh
+userPassword: {SSHA}rLiV+5AqjpELIXicWwjFuahMHqNigU9Z

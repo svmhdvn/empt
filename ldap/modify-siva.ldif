@@ -1,0 +1,16 @@
+dn: cn=Siva Mahadevan,ou=people,dc=beastie,dc=lan
+changetype: modify
+add: objectclass
+objectclass: inetlocalmailrecipient
+-
+replace: sn
+sn: Mahadevan
+-
+add: maillocaladdress
+maillocaladdress: administrator@beastie.lan
+-
+add: maillocaladdress
+maillocaladdress: postmaster@beastie.lan
+-
+add: userpassword
+userpassword: {SSHA}jSV0ZrEdhuChmVDQXhp3CisHUeU+lTCO

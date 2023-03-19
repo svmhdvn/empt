@@ -1,0 +1,26 @@
+HN user Annatar writes:
+
+We use SmartCards which contain our private certificates. The certificate on
+the SmartCard is encrypted by a passphrase. The OS has been modified to
+support the SmartCard reader and use our individual certificates to
+authenticate and authorize us. All our applications have been modified to
+authenticate and authorize us based on the decrypted SmartCard certificate and
+the roles we are in. We can order roles through a centralized self-service web
+application. When a request is created, we get an automated e-mail with the
+request identifier, which acts as a file handle in the C programming language.
+The request then goes into the local security officer's queue, where it is
+either rejected or approved; if approved, it then moves into the role owner's
+approval queue. The outcome of the decision process is e-mailed to us
+automatically by the system. If approved, the access to the system or
+application in question is instantaneous. Even SSH has been modified to use
+the SmartCards or soft token certificates for technical user accounts. It took
+us years working with Oracle to get their PKI fixed, since their in-house
+experts never saw a SmartCard reader, but eventually we got to the point where
+even the Oracle database uses the certificate on the SmartCard for
+authentication and authorization. Authorization from the web self-service
+application is translated into Oracle roles inside of the databases. Even our
+source code management system uses SmartCards. We run our own certificate
+authority. All of our relevant software is preloaded with the certificate
+authority's certificate by the respective engineering teams (component
+owners), so that the entire chain of trust can be verified. Our certificates
+use 4096-bit keys. We do not use logins or passwords anywhere. 

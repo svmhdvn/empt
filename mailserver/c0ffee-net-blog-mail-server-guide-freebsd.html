@@ -1,0 +1,1707 @@
+<!DOCTYPE html>
+<html lang="en-US"><head>
+<meta http-equiv="content-type" content="text/html; charset=UTF-8">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="A guide to self-hosting your email on FreeBSD using Postfix, Dovecot, Rspamd, and LDAP.">
+  <meta name="date" content="2017-08-20">
+  <link rel="stylesheet" type="text/css" href="c0ffee-net-blog-mail-server-guide-freebsd_files/style.css">
+  <link rel="alternate" type="application/rss+xml" href="https://www.c0ffee.net/rss/">
+  <link rel="icon" href="https://www.c0ffee.net/favicon.png">
+  <title>How To Run Your Own Mail Server</title>
+</head>
+
+<body>
+
+<nav>
+  <a href="https://www.c0ffee.net/">Home</a>
+  <a href="https://www.c0ffee.net/blog/">Blog</a>
+</nav>
+
+<span class="posted-on">20 Aug 2017</span>
+
+<main class="blog">
+
+<header>
+  <h1 class="title">How To Run Your Own Mail Server</h1>
+  <p class="subtitle">A guide to self-hosting your email on FreeBSD using Postfix, Dovecot, Rspamd, and LDAP.
+</p></header>
+
+<p>Getting off GMail is one of the best ways to <a href="https://www.c0ffee.net/blog/self-hosting-guide/">take back your data</a>
+in the face of dragnet surveillance. Unfortunately, it's also one of the most difficult. If
+you search for "how to run your own mail server," many of the results will tell you it's
+simply too difficult to reliably do it yourself.
+
+</p><p>Luckily, running your own mail server is not as daunting as many would have you believe.
+After all, that is how email is <em>designed to work</em>. Email is perhaps the most successful
+federated, decentralized protocol to ever exist. It's a shame we've allowed a centralized,
+monolithic advertising company to obtain a near monopoly on such a great technology. Luckily,
+I've spent the last few years tweaking my mail server setup, and I'm willing to enable your
+laziness in the spirit of a more free and open internet.
+
+</p><p>Before we dive in, an important caveat: You will become a sysadmin of your own mail server.
+<em>If you screw something up, you might not be able to send or receive email.</em> Sure, if
+all else fails, you can admit defeat and point your MX records at a Google Apps account and
+carry on. However, you run the risk of losing emails in the interim. I'm going to try to make
+this guide as foolproof as possible, but if you're not comfortable assuming this responsibility,
+it might be best to leave it to the experts.
+
+</p><p>With that out of the way, here's what this guide will get you:
+
+</p><ul>
+  <li>Opportunistic TLS for sending/receiving email with <a href="http://www.postfix.org/">Postfix</a></li>
+  <li>Access to your email anywhere using IMAP with <a href="https://dovecot.org/">Dovecot</a></li>
+  <li>Fast, modern spam filtering with <a href="https://rspamd.com/">Rspamd</a></li>
+  <li>Full-text search of your mailbox with <a href="https://lucene.apache.org/solr/">Apache Solr</a></li>
+  <li>DKIM, SPF, and DMARC records to ensure your outgoing mail is not spam-filtered</li>
+  <li>Statistical training of your spam filter based on what you move in/out of the Junk folder</li>
+  <li>Custom email sorting/filtering using <a href="http://sieve.info/">sieve</a></li>
+</ul>
+
+<p>After running this setup for year or so, I have found many aspects to be <em>better</em>
+than GMail. I think the spam filtering works better, and being able to write a sieve script
+to sort your inbox is a godsend compared to GMail's convoluted filter system. And as Google
+occasionally seems to <a href="http://www.washingtontimes.com/news/2017/aug/1/jordan-b-petersons-youtube-account-locked-during-b/">suspend the accounts of those with opinions they don't like</a>,
+you'll have peace of mind with all your mail on a system <em>you</em> control.
+
+</p><p>A final note: I run everything on <a href="https://www.freebsd.org/">FreeBSD</a>, so you
+may have to massage some of the commands to work on your Linux flavor of choice, if that's
+your thing. All the software used is open source, and should run equally well on any Unix-like
+OS.
+
+</p><hr>
+
+<ol>
+  <li><a href="#overview">Overview</a>
+  </li><li><a href="#dns">DNS Records</a>
+  </li><li><a href="#postfix">Postfix: The Mail Transfer Agent</a>
+  </li><li><a href="#dovecot">Dovecot: The Mail Delivery Agent</a>
+  </li><li><a href="#solr">Solr: Full-Text Search</a>
+  </li><li><a href="#rspamd">Rspamd: Spam Filtering</a>
+  </li><li><a href="#dkim">DKIM: Validation for Your Outgoing Mail</a>
+  </li><li><a href="#sieve">Sieve: Scripting Your Mailbox</a>
+  </li><li><a href="#conclusion">Conclusion</a>
+</li></ol>
+
+<hr>
+<section>
+  <h2 id="overview">Overview</h2>
+
+  <p>Now, take a deep breath, and feast your eyes on this convoluted Rube Goldberg machine of
+  an email system which you will soon bring lumbering to life:
+  <img alt="architecture diagram" src="c0ffee-net-blog-mail-server-guide-freebsd_files/mail_server_diagram.svg">
+
+  </p><p>Let's walk through the architecture. All email (whether sent or received) first goes
+  through <a href="http://www.postfix.org/">Postfix</a> - the Mail Transfer Agent (MTA).
+  Postfix is responsible for transferring email to wherever it's supposed to go. If the
+  recipient domain's mailbox is on our own server, Postfix will accept the message for
+  delivery. Otherwise, Postfix will relay the message to the recipient's mail server.
+
+  </p><p>If you are <em>sending</em> an email to someone, you connect to Postfix over SMTP with
+  mandatory STARTTLS encryption on port 587. After successfully validating your username and
+  password, Postfix will accept your message to relay to the recipient's mail server over SMTP
+  using opportunistic TLS. ("Opportunistic" means that we will use encryption if the other
+  side supports it, and fall back to plaintext if they don't.)
+
+  </p><p>If you are <em>receiving</em> an email from someone, the sender's mail server will
+  connect to Postfix over SMTP with opportunistic TLS on port 25. After doing some basic
+  security and spam checks (like prohibiting unauthorized relaying and ensuring the other side
+  has valid DNS records in place), Postfix will accept the message for delivery.
+
+  </p><p>Whether a message is relayed (you sent an email to someone) or accepted for delivery
+  (someone sent an email to you), it is first filtered through the <a href="https://rspamd.com/">rspamd</a>
+  milter. (<em><a href="http://www.postfix.org/MILTER_README.html">milter</a></em> is just a
+  term for a Postfix mail filter.) For incoming mail, rspamd does some spam checking and may
+  flag the message as spam or reject it altogether. For outgoing mail, rspamd just takes care
+  of the <a href="http://www.dkim.org/">DKIM</a> signing (discussed in the <a href="#dkim">DKIM section</a>).
+
+  </p><p>If an accepted email makes it through the rspamd milter, it is delivered to <a href="https://www.dovecot.org/">Dovecot</a>
+  - the Mail Delivery Agent (MDA) - using a local unix domain socket. Dovecot takes the emails
+  from Postfix and stores them in the user's mailbox. The mailbox can be stored on the
+  filesystem in a few different formats - with Maildir and mbox being commonly used.
+  Dovecot provides remote access to your mailbox using the POP3 and IMAP protocols. In
+  addition, it supports automatic mail filtering using custom <a href="http://sieve.info/">sieve</a>
+  scripts.
+
+  </p><p>When Dovecot receives a message, it first passes it to the <a href="http://lucene.apache.org/solr/">Solr</a>
+  server, which indexes it for future full-text searches. Then, a sieve script will run which
+  automatically places mail with the <span class="monospace">X-SPAM</span> header into the
+  user's Junk folder. In addition, when a user moves a message in or out of their Junk folder,
+  Dovecot will inform rspamd to re-train a message as spam or ham.  POP3 is ancient history,
+  so in our setup we'll only expose our emails over SSL-secured IMAP.
+
+  </p><p>I run a local <a href="https://www.ldap.com/getting-started-with-ldap">LDAP server</a>,
+  which allows me to use a single username and password for all my self-hosted apps. In this
+  guide, I'll describe how to store your mail credentials and email aliases in LDAP. However,
+  it's just as easy to store this information in a relational database or flat files.
+
+  </p><p>A quick note: Dovecot supports <a href="https://tools.ietf.org/html/rfc2177">IMAP IDLE</a>,
+  which provides a pseudo-push functionality to get notified of new mail "instantly." While
+  this works for most desktop mail clients, such as <span class="monospace"><a href="http://www.mutt.org/">mutt</a></span>
+  and OS X's Mail.app, it isn't supported by mobile clients (with Android's <a href="https://k9mail.github.io/">K-9 Mail</a>
+  being a notable exception). There is an open-source implementation of the Exchange
+  ActiveSync protocol called <a href="http://z-push.org/">Z-Push</a>, which integrates with
+  your IMAP server to provide push notifications to iOS and Android devices.
+
+  </p><p>I ran Z-Push for a few months, but there were enough small bugs (along with the hassle
+  of running PHP in production) to make me uninstall it. Setting my iPhone to check for new
+  mail every 15 minutes is plenty fast for me, and I still have about 40% battery left at the
+  end of the day. However, if you are dead set on having <em>instant</em> email notifications,
+  it might be something to look into. It works well enough, I just didn't find it worth the
+  trouble.
+
+  </p><p><em><strong>EDIT (20 Sep 2017): I've got native push notifications working on iOS.</strong> See
+  <a href="https://www.c0ffee.net/blog/dovecot-push-notifications/">this blog post</a> for a step-by-step guide.</em>
+
+  </p><p>Finally, all the examples in this guide will use the <span class="monospace">example.com</span>
+  domain and non-routable IP addresses. Obviously, you'll need to acquire your own domain
+  name and public IP address for your mail server, and modify my examples accordingly. All
+  commands in this guide should be run as root unless otherwise specified.
+
+</p></section>
+
+<section>
+  <h2 id="dns">DNS Records</h2>
+
+  <p>First, you will need to set some DNS records so that other mail servers know where to send
+  your email. If you use a <a href="https://www.c0ffee.net/blog/dns-hidden-master/">hidden master server to host your DNS</a>
+  like I do, you can just edit your zone file and reload
+  BIND.  Otherwise, you can set these records in your DNS provider's management portal.
+
+  </p><p>You probably want to set a low TTL (around 60 seconds) until you've verified everything
+  is working correctly. It's very annoying to realize you typed the wrong IP address and then
+  have to wait 3 hours for the TTL to expire in order to test again.
+
+  </p><p>The first thing you'll need is an MX record. MX records tell other mail servers which
+  hosts are running mail servers for a given domain. You can specify multiple MX records, each
+  with their own priority, to use as fallback mail servers when your primary one is down. For
+  my <span class="monospace">example.com</span> domain, I only have a single mail server,
+  <span class="monospace">mail.example.com</span>, so in my zone file I have a single MX
+  record. Of course, you will need to substitute your own IP address and domain name.
+
+</p><pre><div class="code-title">/usr/local/etc/named/master/example.com.db</div>$TTL    10800
+$ORIGIN example.com.
+@  1D  IN  SOA ns1.example.com.  root.example.com. (
+      2017080802 <span class="code-comment">; serial</span>
+      1d <span class="code-comment">; refresh</span>
+      3m <span class="code-comment">; retry</span>
+      1w <span class="code-comment">; expire</span>
+      3h <span class="code-comment">; minimum</span>
+     )
+ IN  MX  10 mail.example.com.
+<span class="code-comment">; host definitions</span>
+@      IN  A      203.0.113.41
+@      IN  AAAA   2001:db8::2
+mail   IN  A      203.0.113.42
+mail   IN  AAAA   2001:db8::3
+</pre>
+
+  <p>It is <strong>critically important</strong> that you have <strong>reverse</strong> DNS
+  records for your mail server host. If your reverse DNS records do not point back to your
+  mail server, other mail servers may reject your email as spam. Normally, you can set reverse
+  DNS records in your hosting provider's web portal. Make sure to set reverse DNS for both the
+  IPv4 and IPv6 address of your mail server.
+
+  </p><p>Your mail server's reverse DNS and fully qualified domain name don't have to match
+  exactly, but your hostname in reverse DNS should probably resolve to the same IP as your
+  MX record. Your best bet is to have it point straight back to your mail server's hostname.
+  You can verify your reverse DNS record using the <span class="monospace">dig</span> command:
+
+</p><pre>dig +short -x 203.0.113.42
+<span class="code-comment"># mail.example.com.</span></pre>
+
+  <p>However, just having any reverse DNS record in place is enough for most mail
+  servers to accept your mail.
+
+  </p><p>You will also need to set an <a href="http://www.openspf.org/">SPF record</a> for your
+  mail server. While an SPF record is not technically required for your mail server to work,
+  having one in place significantly reduces the likelihood of your mail being rejected as
+  spam. An SPF record tells other mail servers which hosts are allowed to send mail on behalf
+  of your domain. In my case, I have a single mail server, and I want others to accept
+  mail from that server only. So my SPF record looks like this:
+
+</p><pre><div class="code-title">/usr/local/etc/named/master/example.com.db</div>@  IN  TXT  "v=spf1 mx -all"</pre>
+
+  <p>This indicates that only my MX records (<span class="monospace">mail.example.com</span>)
+  are allowed to send mail for <span class="monospace">example.com</span>, and mail coming
+  from anywhere else should be assumed to be spam and rejected. You can add your SPF definition as a
+  TXT record in your DNS provider's web portal (without the quotes).
+
+</p></section>
+
+
+<section>
+  <h2 id="postfix">Postfix: The Mail Transfer Agent</h2>
+
+  <p>Now we're ready to install and configure some software. I install my packages from FreeBSD
+  ports, so substitute the appropriate commands for your package manager of choice. First,
+  bring everything up to date:
+
+</p><pre>portsnap fetch &amp;&amp; portsnap update
+portmaster -aBd</pre>
+
+  <p>Postfix will be responsible for sending and receiving mail for our domain over SMTP.
+  Install it from ports:
+
+</p><pre>cd /usr/ports/mail/postfix
+make install clean</pre>
+
+  <p>For my setup, I use the following build options: <span class="monospace">LDAP PCRE PGSQL TLS</span>.
+
+  </p><p>Once you've watched the magic text scroll for a few minutes, postfix should be installed.
+  Navigate to it's configuration directory and edit the config file. (On FreeBSD, software
+  packages from ports are always installed under the <span class="monospace">/usr/local</span>
+  prefix. It should be under <span class="monospace">/etc/postfix</span> if you're on Linux.)
+
+</p><pre>cd /usr/local/etc/postfix
+vim main.cf</pre>
+
+  <p>Below is what I have in my <span class="monospace">main.cf</span>. I've given you some
+  brief commentary on what all the config options do, but you can always check
+  <a href="http://www.postfix.org/postconf.5.html">the man page</a> if you need more details
+  on something. This is a pretty standard <em>virtual users</em> setup. Rather than host mail
+  for actual unix accounts on the server, postfix will use an external database (LDAP, in my
+  case) to determine which email addresses it should accept mail for.
+
+  </p><p>When a message is accepted for delivery, postfix hands it off to Dovecot. Postfix will
+  also use Dovecot's <span class="monospace">auth</span> mechanism to authenticate SMTP
+  users. We'll configure the LDAP authentication in the <a href="#dovecot">Dovecot section</a>
+  and let postfix just re-use it.
+
+  </p><p>We'll set some standard spam-proofing and security options here as well, but we'll be
+  coming back to this file when we set up rspamd in the <a href="#rspamd">section below</a>.
+
+</p><pre><div class="code-title">/usr/local/etc/postfix/main.cf</div><span class="code-comment"># "2" is current for postfix 3.2 configs</span>
+compatibility_level = 2
+
+<span class="code-comment"># disable "new mail" notifications for local unix users</span>
+biff = no
+
+<span class="code-comment"># directory to store mail for local unix users</span>
+mail_spool_directory = /var/mail/local
+
+<span class="code-comment"># Name of this mail server, used in the SMTP HELO for outgoing mail. Make</span>
+<span class="code-comment"># sure this resolves to the same IP as your reverse DNS hostname.</span>
+myhostname = mail.example.com
+
+<span class="code-comment"># Domains for which postfix will deliver local mail. Does not apply to</span>
+<span class="code-comment"># virtual domains, which are configured below. Make sure to specify the FQDN</span>
+<span class="code-comment"># of your sever, as well as localhost.</span>
+<span class="code-comment"># Note: NEVER specify any virtual domains here!!! Those come later.</span>
+mydestination = awesomebox.example.com, localhost.example.com, localhost
+
+<span class="code-comment"># Domain appended to mail sent locally from this machine - such as mail sent</span>
+<span class="code-comment"># via the `sendmail` command.</span>
+myorigin = awesomebox.example.com
+
+<span class="code-comment"># prevent spammers from searching for valid users</span>
+disable_vrfy_command = yes
+
+<span class="code-comment"># require properly formatted email addresses - prevents a lot of spam</span>
+strict_rfc821_envelopes = yes
+
+<span class="code-comment"># don't give any helpful info when a mailbox doesn't exist</span>
+show_user_unknown_table_name = no
+
+<span class="code-comment"># limit maximum e-mail size to 50MB. mailbox size must be at least as big as</span>
+<span class="code-comment"># the message size for the mail to be accepted, but has no meaning after</span>
+<span class="code-comment"># that since we are using Dovecot for delivery.</span>
+message_size_limit = 51200000
+mailbox_size_limit = 51200000
+
+<span class="code-comment"># require addresses of the form "user@domain.tld"</span>
+allow_percent_hack = no
+swap_bangpath = no
+
+<span class="code-comment"># allow plus-aliasing: "user+tag@domain.tld" delivers to "user" mailbox</span>
+recipient_delimiter = +
+
+<span class="code-comment"># path to the SSL certificate for the mail server</span>
+smtpd_tls_cert_file = /usr/local/etc/ssl/certs/mail.example.com.rsa.crt
+smtpd_tls_key_file = /usr/local/etc/ssl/certs/mail.example.com.rsa.key
+
+<span class="code-comment"># I have two certificates - one is RSA, the other uses the newer ECC. ECC is</span>
+<span class="code-comment"># faster and arguably more secure, but many mail servers don't yet support</span>
+<span class="code-comment"># it. I enable both types in postfix, but you most likely only have a single</span>
+<span class="code-comment"># RSA cert, and don't need to include these three lines.</span>
+smtpd_tls_eccert_file = /usr/local/etc/ssl/certs/mail.example.com.ecc.crt
+smtpd_tls_eckey_file = /usr/local/etc/ssl/certs/mail.example.com.ecc.key
+smtpd_tls_eecdh_grade = ultra
+
+<span class="code-comment"># Path to your trusted certificates file. Usually provided by a</span>
+<span class="code-comment"># ca-certificates package or similar.</span>
+smtp_tls_CAfile=/etc/ssl/cert.pem
+
+<span class="code-comment"># These two lines define how postfix will connect to other mail servers.</span>
+<span class="code-comment"># DANE is a stronger form of opportunistic TLS. You can read about it here:</span>
+<span class="code-comment"># <a href="http://www.postfix.org/TLS_README.html#client_tls_dane">http://www.postfix.org/TLS_README.html#client_tls_dane</a></span>
+smtp_tls_security_level = dane
+smtp_dns_support_level = dnssec
+<span class="code-comment"># DANE requires a DNSSEC capable resolver. If your DNS resolver doesn't</span>
+<span class="code-comment"># support DNSSEC, remove the above two lines and uncomment the below:</span>
+<span class="code-comment">#   smtp_tls_security_level = may</span>
+
+<span class="code-comment"># IP address used by postfix to send outgoing mail. You only need this if</span>
+<span class="code-comment"># your machine has multiple IP addresses - set it to your MX address to</span>
+<span class="code-comment"># satisfy your SPF record.</span>
+smtp_bind_address = 203.0.113.42
+smtp_bind_address6 = 2001:db8::3
+
+<span class="code-comment"># Here we define the options for "mandatory" TLS. In our setup, TLS is only</span>
+<span class="code-comment"># "mandatory" for authenticating users. I got these settings from Mozilla's</span>
+<span class="code-comment"># SSL reccomentations page.</span>
+<span class="code-comment">#</span>
+<span class="code-comment"># NOTE: do not attempt to make TLS mandatory for all incoming/outgoing</span>
+<span class="code-comment"># connections. Do not attempt to change the default cipherlist for non-</span>
+<span class="code-comment"># mandatory connections either. There are still a lot of mail servers out</span>
+<span class="code-comment"># there that do not use TLS, and many that do only support old ciphers.</span>
+<span class="code-comment"># Forcing TLS for everyone *will* cause you to lose mail.</span>
+smtpd_tls_mandatory_protocols = !SSLv2, !SSLv3, !TLSv1, !TLSv1.1, TLSv1.2
+smtpd_tls_mandatory_ciphers = high
+tls_high_cipherlist = ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-SHA384:ECDHE-RSA-AES256-SHA384:ECDHE-ECDSA-AES128-SHA256:ECDHE-RSA-AES128-SHA256
+
+<span class="code-comment"># allow other mail servers to connect using TLS, but don't require it</span>
+smtpd_tls_security_level = may
+
+<span class="code-comment"># tickets and compression have known vulnerabilities</span>
+tls_ssl_options = no_ticket, no_compression
+
+<span class="code-comment"># it's more secure to generate your own DH params</span>
+smtpd_tls_dh512_param_file  = /usr/local/etc/ssl/dh512.pem
+smtpd_tls_dh1024_param_file = /usr/local/etc/ssl/dh2048.pem
+
+<span class="code-comment"># cache incoming and outgoing TLS sessions</span>
+smtpd_tls_session_cache_database = btree:${data_directory}/smtpd_tlscache
+smtp_tls_session_cache_database  = btree:${data_directory}/smtp_tlscache
+
+<span class="code-comment"># enable SMTPD auth. Dovecot will place an `auth` socket in postfix's</span>
+<span class="code-comment"># runtime directory that we will use for authentication.</span>
+smtpd_sasl_auth_enable = yes
+smtpd_sasl_path = private/auth
+smtpd_sasl_type = dovecot
+
+<span class="code-comment"># only allow authentication over TLS</span>
+smtpd_tls_auth_only = yes
+
+<span class="code-comment"># don't allow plaintext auth methods on unencrypted connections</span>
+smtpd_sasl_security_options = noanonymous, noplaintext
+<span class="code-comment"># but plaintext auth is fine when using TLS</span>
+smtpd_sasl_tls_security_options = noanonymous
+
+<span class="code-comment"># add a message header when email was recieved over TLS</span>
+smtpd_tls_received_header = yes
+
+<span class="code-comment"># require that connecting mail servers identify themselves - this greatly</span>
+<span class="code-comment"># reduces spam</span>
+smtpd_helo_required = yes
+
+<span class="code-comment"># The following block specifies some security restrictions for incoming</span>
+<span class="code-comment"># mail. The gist of it is, authenticated users and connections from</span>
+<span class="code-comment"># localhost can do anything they want. Random people connecting over the</span>
+<span class="code-comment"># internet are treated with more suspicion: they must have a reverse DNS</span>
+<span class="code-comment"># entry and present a valid, FQDN HELO hostname. In addition, they can only</span>
+<span class="code-comment"># send mail to valid mailboxes on the server, and the sender's domain must</span>
+<span class="code-comment"># actually exist.</span>
+smtpd_client_restrictions =
+permit_mynetworks,
+permit_sasl_authenticated,
+reject_unknown_reverse_client_hostname,
+<span class="code-comment"># you might want to consider:</span>
+<span class="code-comment">#  reject_unknown_client_hostname,</span>
+<span class="code-comment"># here. This will reject all incoming connections without a reverse DNS</span>
+<span class="code-comment"># entry that resolves back to the client's IP address. This is a very</span>
+<span class="code-comment"># restrictive check and may reject legitimate mail.</span>
+reject_unauth_pipelining
+smtpd_helo_restrictions =
+permit_mynetworks,
+permit_sasl_authenticated,
+reject_invalid_helo_hostname,
+reject_non_fqdn_helo_hostname,
+<span class="code-comment"># you might want to consider:</span>
+<span class="code-comment">#  reject_unknown_helo_hostname,</span>
+<span class="code-comment"># here. This will reject all incoming mail without a HELO hostname that</span>
+<span class="code-comment"># properly resolves in DNS. This is a somewhat restrictive check and may</span>
+<span class="code-comment"># reject legitimate mail.</span>
+reject_unauth_pipelining
+smtpd_sender_restrictions =
+permit_mynetworks,
+permit_sasl_authenticated,
+reject_non_fqdn_sender,
+reject_unknown_sender_domain,
+reject_unauth_pipelining
+smtpd_relay_restrictions =
+permit_mynetworks,
+permit_sasl_authenticated,
+<span class="code-comment"># !!! THIS SETTING PREVENTS YOU FROM BEING AN OPEN RELAY !!!</span>
+reject_unauth_destination
+<span class="code-comment"># !!!      DO NOT REMOVE IT UNDER ANY CIRCUMSTANCES      !!!</span>
+smtpd_recipient_restrictions =
+permit_mynetworks,
+permit_sasl_authenticated,
+reject_non_fqdn_recipient,
+reject_unknown_recipient_domain,
+reject_unauth_pipelining,
+reject_unverified_recipient
+smtpd_data_restrictions =
+permit_mynetworks,
+permit_sasl_authenticated,
+reject_multi_recipient_bounce,
+reject_unauth_pipelining
+
+<span class="code-comment"># deliver mail for virtual users to Dovecot's LMTP socket</span>
+virtual_transport = lmtp:unix:private/dovecot-lmtp
+
+<span class="code-comment"># LDAP query to find which domains we accept mail for</span>
+virtual_mailbox_domains = ldap:/usr/local/etc/postfix/ldap-virtual-mailbox-domains.cf
+<span class="code-comment"># LDAP query to find which email addresses we accept mail for</span>
+virtual_mailbox_maps = ldap:/usr/local/etc/postfix/ldap-virtual-mailbox-maps.cf, hash:/usr/local/etc/postfix/system-virtual-mailboxes
+<span class="code-comment"># LDAP query to find a user's email aliases</span>
+virtual_alias_maps = ldap:/usr/local/etc/postfix/ldap-virtual-alias-maps.cf
+
+<span class="code-comment"># We'll uncomment these when we set up rspamd later:</span>
+<span class="code-comment"># milter_protocol = 6</span>
+<span class="code-comment"># milter_default_action = accept</span>
+<span class="code-comment"># smtpd_milters = unix:/var/run/rspamd/milter.sock</span>
+<span class="code-comment"># milter_mail_macros = i {mail_addr} {client_addr} {client_name} {auth_authen}</span>
+</pre>
+
+<p>We'll need to create some of the files and directories we specified in this file:
+
+</p><pre><span class="code-comment"># create the local mail spool</span>
+mkdir /var/mail/local
+chown root:mail /var/mail/local
+chmod 775 /var/mail/local
+
+<span class="code-comment"># create the dhparams</span>
+openssl dhparam -out /usr/local/etc/ssl/dh512.pem 512
+openssl dhparam -out /usr/local/etc/ssl/dh2048.pem 2048
+chmod 644 /usr/local/etc/ssl/dh{512,2048}.pem
+</pre>
+
+<p>In <span class="monospace">master.cf</span>, you can set service-specific overrides for the
+options you set in <span class="monospace">main.cf</span>. We'll use this file to make
+encryption mandatory on the submission port (587). You can just change the lines below the
+<span class="monospace">smtp</span> and <span class="monospace">submission</span> declarations
+- no need to change anything else in this file.
+
+</p><pre><div class="code-title">/usr/local/etc/postfix/master.cf</div><span class="code-comment"># disable authentication on port 25. This port should only be used by other</span>
+<span class="code-comment"># mail servers</span>
+smtp      inet  n       -       n       -       -       smtpd
+-o smtpd_sasl_auth_enable=no
+
+<span class="code-comment"># on the authenticated submission port, force TLS and use our more secure</span>
+<span class="code-comment"># cipher list</span>
+submission inet n       -       n       -       -       smtpd
+-o smtpd_tls_security_level=encrypt
+-o tls_preempt_cipherlist=yes
+</pre>
+
+  <p>Now we need to tell postfix which users and domains we want to accept mail for.
+  I use LDAP, so the files below just tell postfix which queries to run to get the neccessary
+  information. You can check out how I setup OpenLDAP <a class="disabled">here</a> (another blog post I
+  need to write). If you want to use flat files instead, you can use <span class="monospace">hash:</span>
+  instead of <span class="monospace">ldap:</span> in the last three lines of <span class="monospace">main.cf</span>
+  shown above. You can then enter your users, domains, and aliases in plain text directly in
+  those files, and "compile" them with the <span class="monospace">postmap</span> command. Or
+  you could put the information in a PostgreSQL database - there's plenty of online tutorials
+  for that as well. You can read more details on the <a href="http://www.postfix.org/VIRTUAL_README.html">postfix virtual readme</a>.
+
+  </p><p>Anyway, if you're using LDAP, read on. I haven't spent much time perfecting my LDAP
+  schema—I got a personal "single sign on" system working with it, and left it at that. If
+  you have a more robust LDAP setup, you'll probably need to tweak these queries. The first
+  file specifies which domains this server will accept mail for:
+
+</p><pre><div class="code-title">/usr/local/etc/postfix/ldap-virtual-mailbox-domains.cf</div>server_host = ldapi://%2fvar%2frun%2fopenldap%2fldapi/
+search_base = ou=domains,dc=example,dc=com
+version = 3
+bind = no
+query_filter = (&amp;(ObjectClass=dNSDomain)(dc=%s))
+result_attribute = dc
+</pre>
+
+  <p>The next file specifies the mailboxes (email addresses) this server will accept mail for:
+
+</p><pre><div class="code-title">/usr/local/etc/postfix/ldap-virtual-mailbox-maps.cf</div>server_host = ldapi://%2fvar%2frun%2fopenldap%2fldapi/
+search_base = ou=users,dc=example,dc=com
+version = 3
+bind = no
+query_filter = (&amp;(objectclass=inetLocalMailRecipient)(mail=%s))
+result_attribute = mail
+</pre>
+  <p>The last file specifies the aliases for those email addresses:
+
+</p><pre><div class="code-title">/usr/local/etc/postfix/ldap-virtual-mailbox-alias-maps.cf</div>server_host = ldapi://%2fvar%2frun%2fopenldap%2fldapi/
+search_base = ou=users,dc=example,dc=com
+version = 3
+bind = no
+query_filter = (&amp;(objectclass=inetLocalMailRecipient)(mailLocalAddress=%s))
+result_attribute = mail
+</pre>
+
+  <p>The easiest way to set up your users and domains in LDAP is to set up an SSH tunnel to
+  your server and run <a href="http://directory.apache.org/studio/">Apache Directory Studio</a>.
+  You can see how I have my domains set up in the query below:
+
+</p><pre><strong>$ ldapsearch -b dc=example.com,ou=domains,dc=example,dc=com</strong>
+# extended LDIF
+#
+# LDAPv3
+# base &lt;dc=example.com,ou=domains,dc=example,dc=com&gt; with scope subtree
+# filter: (objectclass=*)
+# requesting: ALL
+#
+
+# example.com, domains, example.com
+dn: dc=example.com,ou=domains,dc=example,dc=com
+dc: example.com
+objectClass: dNSDomain
+objectClass: top
+
+# search result
+search: 2
+result: 0 Success
+
+# numResponses: 2
+# numEntries: 1</pre>
+
+  <p>The next query shows how I have users configured. The username is specified by the
+  <span class="monospace">uid</span> parameter. <span class="monospace">mail</span> contains
+  the user's primary mailbox, and each <span class="monospace">mailLocalAddress</span> entry
+  specifies an email alias for the user.
+
+</p><pre><strong>$ ldapsearch -b uid=alphonsus,ou=users,dc=example,dc=com</strong>
+# extended LDIF
+#
+# LDAPv3
+# base &lt;uid=alphonsus,ou=users,dc=example,dc=com&gt; with scope subtree
+# filter: (objectclass=*)
+# requesting: ALL
+#
+
+# alphonsus, users, example.com
+dn: uid=alphonsus,ou=users,dc=example,dc=com
+cn: Alphonsus Liguori
+givenName: Alphonsus
+mail: alphonsus@example.com
+mailLocalAddress: administrator@example.com
+mailLocalAddress: root@example.com
+mailLocalAddress: postmaster@example.com
+o: The Church Triumphant
+objectClass: person
+objectClass: organizationalPerson
+objectClass: inetOrgPerson
+objectClass: inetLocalMailRecipient
+sn: Liguori
+uid: alphonsus
+displayName: Alphonsus Liguori
+userPassword: e0HEfj4uiQyYSQxMCRTbHVTYXJshYf4aS4udX...
+
+# search result
+search: 2
+result: 0 Success
+
+# numResponses: 2
+# numEntries: 1</pre>
+
+  <p>With those files in place, you can now start postfix! On FreeBSD, you will need to
+  disable the <span class="monospace">sendmail</span> daemon included by default in base and
+  enable postfix to start on boot:
+
+</p><pre><div class="code-title">/etc/rc.conf</div>sendmail_enable="NONE"
+postfix_enable="YES"</pre>
+
+  <p>Now, you can kill sendmail and start postfix:
+
+</p><pre>service sendmail onestop
+service postfix start</pre>
+
+  <p>Check the output of <span class="monospace">/var/log/maillog</span> for any errors. Also,
+  be sure to enable TCP traffic to ports 25 and 587 in your firewall.
+
+  </p><p>You should now have almost everything you need you need for a working postfix
+  installation. We just need to get Dovecot running so postfix has somewhere to deliver the
+  mail. Luckily, Dovecot is a little less arcane to set up.
+
+</p></section>
+
+<section>
+  <h2 id="dovecot">Dovecot: The Mail Delivery Agent</h2>
+
+  <p>Dovecot will provide IMAP access to your mailbox, so you can access your email remotely
+  from multiple devices. It can be easily installed from ports on FreeBSD:
+
+</p><pre>cd /usr/ports/mail/dovecot
+make install clean</pre>
+
+  <p>I use the following build options on my server: <span class="monospace">KQUEUE LZ4 LDAP PGSQL ICU SOLR</span>
+
+  </p><p>Be sure to install <span class="monospace">dovecot-piegeonhole</span> as well in order to
+  get sieve filtering.
+
+</p><pre>cd /usr/ports/mail/dovecot-pigeonhole
+make install clean</pre>
+
+  <p>I use the <span class="monospace">LDAP</span> and <span class="monospace">MANAGESIEVE</span>
+  options on my server. The <span class="monospace">managesieve</span> protocol allows you to
+  edit your sieve scripts from your email client. Unfortunately, the only client I know of
+  that supports this functionality is <a href="https://www.kde.org/applications/internet/kmail/">KMail</a>,
+  so I haven't messed with it yet.
+
+  </p><p>After Dovecot is installed, you will need to create a <span class="monospace">vmail</span>
+  user to handle mail for the virtual users. You will also need to create the directories
+  to store the virtual mail. We will use a separate attachments directory, so Dovecot will
+  never waste disk space by storing the same attachment twice. Pretty neat!
+
+</p><pre>pw useradd -u 145 -n vmail -c "Virtual Mail Handler" -d /var/mail/vhosts -s /usr/sbin/nologin
+mkdir /var/mail/{vhosts,attachments}
+chown vmail:vmail /var/mail/{vhosts,attachments}
+chmod 770 /var/mail/{vhosts,attachments}</pre>
+
+  <p>Then, you can navigate to Dovecot's configuration directory.
+
+</p><pre>cd /usr/local/etc/dovecot</pre>
+
+  <p>Here you should find a <span class="monospace">README</span> and an <span class="monospace">example-config</span>
+  directory. Feel free to read over them, or you can just dive into my configs. First,
+  create some additional directories:
+
+</p><pre>mkdir /usr/local/etc/dovecot/{conf.d,sieve,sieve-before.d,sieve-after.d}
+chown root:dovecot /usr/local/etc/dovecot/{sieve,sieve-before.d,sieve-after.d}</pre>
+
+  <p>Open <span class="monospace">dovecot.conf</span> first. Here, we will set some generic
+  options and include the rest of the config files.
+
+</p><pre><div class="code-title">/usr/local/etc/dovecot/dovecot.conf</div><span class="code-comment"># IMAP for remote access, LMTP for local delivery</span>
+protocols = imap lmtp
+
+<span class="code-comment"># set these to the uid of your `vmail` user</span>
+first_valid_uid = 145
+last_valid_uid = 145
+
+!include conf.d/*.conf
+!include_try local.conf</pre>
+
+  <p>The remaining config files live in the <span class="monospace">conf.d</span> directory.
+  Each file from my configuration is reproduced in its entirety below, with some helpful
+  comments where appropriate.
+
+</p><pre><div class="code-title">/usr/local/etc/dovecot/conf.d/10-auth.conf</div><span class="code-comment"># cache all authentication results for one hour</span>
+auth_cache_size = 10M
+auth_cache_ttl = 1 hour
+auth_cache_negative_ttl = 1 hour
+
+<span class="code-comment"># only use plain username/password auth - OK since everything is over TLS</span>
+auth_mechanisms = plain
+
+<span class="code-comment"># passdb specifies how users are authenticated - LDAP in my case</span>
+passdb {
+  driver = ldap
+  args = /usr/local/etc/dovecot/ldap.conf.ext
+}
+
+<span class="code-comment"># userdb specifies the location of users' "home" directories - where their</span>
+<span class="code-comment"># mail is stored. e.g. /var/mail/vhosts/exmaple.com/user</span>
+<span class="code-comment"># %d = domain, %n = user</span>
+userdb {
+  driver = static
+  args = uid=vmail gid=vmail home=/var/mail/vhosts/%d/%n
+}
+</pre>
+
+<p>The file specified by <span class="monospace">passdb</span> provides the LDAP query
+information necessary to authenticate usernames and passwords. Note that in my setup,
+I authenticate with the <em>user</em> part only. Some other mail providers like to use
+the entire email address as the username—not so in this case.
+
+</p><pre><div class="code-title">/usr/local/etc/dovecot/ldap.conf.ext</div>hosts = localhost
+auth_bind = no
+ldap_version = 3
+base = ou=users,dc=example,dc=com
+deref = never
+scope = subtree
+user_attrs =
+user_filter = (&amp;(objectclass=inetOrgPerson)(uid=%n)
+pass_attrs = mail=user,userPassword=password
+pass_filter = (&amp;(objectclass=inetOrgPerson)(uid=%n))
+default_pass_scheme = CRYPT
+</pre>
+
+<p>
+
+</p><pre><div class="code-title">/usr/local/etc/dovecot/conf.d/10-mail.conf</div><span class="code-comment"># default home directory location for all users</span>
+mail_home = /var/mail/vhosts/%d/%n
+
+<span class="code-comment"># directory to store mail. The tilda makes it relative to the *dovecot*</span>
+<span class="code-comment"># virtual home directory.</span>
+<span class="code-comment">#</span>
+<span class="code-comment"># I use mdbox - this is Dovecot's own high-performance mail store format.</span>
+<span class="code-comment"># There are other slower, more "traditional" formats you can choose from.</span>
+<span class="code-comment"># Read about them here: <a href="https://wiki2.dovecot.org/MailboxFormat">https://wiki2.dovecot.org/MailboxFormat</a></span>
+mail_location = mdbox:~/mdbox
+
+<span class="code-comment"># nothing fancy - just a standard default namespace with '/' as the</span>
+<span class="code-comment"># hierarchy separator</span>
+namespace inbox {
+  separator = /
+  inbox = yes
+}
+
+<span class="code-comment"># set this to the group that owns your vmail directory.</span>
+mail_privileged_group = vmail
+
+<span class="code-comment"># these lines enable attachment deduplication. Attachments must be somewhat</span>
+<span class="code-comment"># large (64k) to store them separately from the mail store.</span>
+mail_attachment_dir = /var/mail/attachments
+mail_attachment_min_size = 64k
+
+<span class="code-comment"># we'll uncomment this after we set up Solr in the following section:</span>
+<span class="code-comment"># mail_plugins = $mail_plugins fts fts_solr</span>
+</pre>
+
+<p>
+
+</p><pre><div class="code-title">/usr/local/etc/dovecot/conf.d/10-master.conf</div><span class="code-comment"># to improve performance, disable fsync globally - we will enable it for</span>
+<span class="code-comment"># some specific services later on</span>
+mail_fsync = never
+
+service imap-login {
+  <span class="code-comment"># plain-text IMAP should only be accessible from localhost</span>
+  inet_listener imap {
+    address = 127.0.0.1, ::1
+  }
+
+  <span class="code-comment"># enable high-performance mode, described here:</span>
+  <span class="code-comment"># <a href="https://wiki.dovecot.org/LoginProcess">https://wiki.dovecot.org/LoginProcess</a></span>
+  service_count = 0
+  <span class="code-comment"># set to the number of CPU cores on your server</span>
+  process_min_avail = 3
+  vsz_limit = 1G
+}
+
+<span class="code-comment"># disable POP3 altogether</span>
+service pop3-login {
+  inet_listener pop3 {
+    port = 0
+  }
+  inet_listener pop3s {
+    port = 0
+  }
+}
+
+<span class="code-comment"># enable semi-long-lived IMAP processes to improve performance</span>
+service imap {
+  service_count = 256
+  <span class="code-comment"># set to the number of CPU cores on your server</span>
+  process_min_avail = 3
+}
+
+<span class="code-comment"># expose an LMTP socket for postfix to deliver mail</span>
+service lmtp {
+  unix_listener /var/spool/postfix/private/dovecot-lmtp {
+    group = postfix
+    mode = 0600
+    user = postfix
+  }
+}
+
+<span class="code-comment"># expose an auth socket for postfix to authenticate users</span>
+service auth {
+  unix_listener /var/spool/postfix/private/auth {
+    mode = 0660
+    user = postfix
+    group = postfix
+  }
+}
+
+<span class="code-comment"># no need to run this as root</span>
+service auth-worker {
+  user = vmail
+}
+</pre>
+
+<p>
+
+</p><pre><div class="code-title">/usr/local/etc/dovecot/conf.d/10-ssl.conf</div><span class="code-comment"># require SSL for all non-localhost connections</span>
+ssl = required
+
+ssl_cert = &lt;/usr/local/etc/ssl/certs/mail.example.com.ecc.crt
+ssl_key = &lt;/usr/local/etc/ssl/certs/mail.example.com.ecc.key
+
+<span class="code-comment"># require modern crypto - taken from Mozilla's SSL recommendations page</span>
+ssl_dh_parameters_length = 2048
+ssl_protocols = !SSLv2 !SSLv3 !TLSv1 !TLSv1.1 TLSv1.2
+ssl_cipher_list = ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-SHA384:ECDHE-RSA-AES256-SHA384:ECDHE-ECDSA-AES128-SHA256:ECDHE-RSA-AES128-SHA256
+ssl_prefer_server_ciphers = yes
+</pre>
+
+<p>
+
+</p><pre><div class="code-title">/usr/local/etc/dovecot/conf.d/15-lda.conf</div><span class="code-comment"># configuration for mail delivered by the `dovecot-lda` command. Shouldn't</span>
+<span class="code-comment"># be needed since we are using LMTP, but kept for backwards compatibility.</span>
+protocol lda {
+  <span class="code-comment"># use fsync for write-safety - this deals with delivering actual mail</span>
+  mail_fsync = optimized
+  mail_plugins = $mail_plugins sieve
+}
+</pre>
+
+<p>
+
+</p><pre><div class="code-title">/usr/local/etc/dovecot/conf.d/15-mailboxes.conf</div><span class="code-comment"># define any special IMAP folders here. You can force them to be created or</span>
+<span class="code-comment"># created+subscribed automatically used the `auto` option.</span>
+namespace inbox {
+  mailbox Drafts {
+    auto = subscribe
+    special_use = \Drafts
+  }
+  mailbox Junk {
+    auto = create
+    special_use = \Junk
+  }
+  mailbox Trash {
+    auto = create
+    special_use = \Trash
+  }
+  mailbox Archive {
+    auto = subscribe
+    special_use = \Archive
+  }
+  mailbox Sent {
+    auto = subscribe
+    special_use = \Sent
+  }
+}
+</pre>
+
+<p>
+
+</p><pre><div class="code-title">/usr/local/etc/dovecot/conf.d/20-imap.conf</div><span class="code-comment"># Use a longer IDLE interval to reduce network chatter and save battery</span>
+<span class="code-comment"># life. Max is 30 minutes.</span>
+imap_idle_notify_interval = 29 mins
+
+protocol imap {
+  <span class="code-comment"># max IMAP connections per IP address</span>
+  mail_max_userip_connections = 50
+  <span class="code-comment"># imap_sieve will be used for spam training by rspamd</span>
+  mail_plugins = $mail_plugins imap_sieve
+}
+</pre>
+
+<p>
+
+</p><pre><div class="code-title">/usr/local/etc/dovecot/conf.d/20-lmtp.conf</div>protocol lmtp {
+  <span class="code-comment"># use fsync for write-safety - this deals with delivering actual mail</span>
+  mail_fsync = optimized
+  mail_plugins = $mail_plugins sieve
+}
+</pre>
+
+<p>
+
+</p><pre><div class="code-title">/usr/local/etc/dovecot/conf.d/20-managesieve.conf</div>protocols = $protocols sieve
+
+<span class="code-comment"># uncomment if you want remote managesieve functionality - unfortunately</span>
+<span class="code-comment"># almost no mail clients support it :(</span>
+<span class="code-comment">#</span>
+<span class="code-comment"># service managesieve-login {</span>
+<span class="code-comment">#   inet_listener sieve_deprecated {</span>
+<span class="code-comment">#     port = 0</span>
+<span class="code-comment">#   }</span>
+<span class="code-comment"># </span>
+<span class="code-comment">#   service_count = 0</span>
+<span class="code-comment">#   process_min_avail = 3</span>
+<span class="code-comment">#   vsz_limit = 1G</span>
+<span class="code-comment"># }</span>
+</pre>
+
+<p>
+
+</p><pre><div class="code-title">/usr/local/etc/dovecot/conf.d/90-fts.conf</div><span class="code-comment"># We'll uncomment these when we set up Solr in the next section:</span>
+<span class="code-comment"># plugin {</span>
+<span class="code-comment">#   fts_autoindex = yes</span>
+<span class="code-comment">#   fts = solr</span>
+<span class="code-comment">#   fts_solr = url=http://127.0.0.1:8983/solr/dovecot/</span>
+<span class="code-comment"># }</span>
+</pre>
+
+<p>
+
+</p><pre><div class="code-title">/usr/local/etc/dovecot/conf.d/90-sieve.conf</div>plugin {
+  <span class="code-comment"># location of users' sieve directory and their "active" sieve script</span>
+  sieve = file:~/sieve;active=~/.dovecot.sieve
+
+  <span class="code-comment"># directory of global sieve scripts to run before and after processing ALL</span>
+  <span class="code-comment"># incoming mail</span>
+  sieve_before = /usr/local/etc/dovecot/sieve-before.d
+  sieve_after  = /usr/local/etc/dovecot/sieve-after.d
+
+  <span class="code-comment"># make sieve aware of user+tag@domain.tld aliases</span>
+  recipient_delimiter = +
+
+  <span class="code-comment"># maximum size of all user's sieve scripts</span>
+  sieve_quota_max_storage = 50M
+}
+</pre>
+
+  <p>You should now have a fully functional IMAP server. Enable Dovecot to start on boot:
+
+</p><pre><div class="code-title">/etc/rc.conf</div>dovecot_enable="YES"</pre>
+
+  <p>Then you can start Dovecot:
+
+</p><pre>service dovecot start</pre>
+
+  <p>Make sure to check <span class="monospace">/var/log/maillog</span> for any errors.
+  Congratulations! You should now have a fully functional mail server! Make sure TCP traffic
+  to port 993 is enabled in your firewall.
+
+  </p><p>The remaining sections—full-text search, spam filtering, etc—are just extras. Now is a
+  good time to stop and make sure everything works before you go any further.
+
+  </p><section>
+    <h3 id="mail-test">Testing Your Mail Server</h3>
+
+    <p>First, get a separate terminal open and tail your mail log while you are testing
+    everything:
+
+</p><pre>tail -f /var/log/maillog</pre>
+
+    <p>Start by checking your MX records in DNS using the <span class="monospace">dig</span>
+    command. If your DNS is configured correctly, you should see results like the following:
+
+</p><pre>dig example.com MX +short
+<span class="code-comment"># 10 mail.example.com.</span>
+dig mail.example.com +short
+<span class="code-comment"># 203.0.113.42</span>
+</pre>
+
+    <p>Now we can test your ability to send and receive mail. Don't worry if you can't connect
+    to your server over port 25—almost all residential ISPs block all traffic on this port to
+    deter spammers. From your local machine, you can use an email client to connect to your
+    mail server. Your connectivity details will be the following:
+
+    </p><ul>
+      <li>Incoming Mail: IMAP</li>
+      <ul>
+        <li><strong>username:</strong> ldap username</li>
+        <li><strong>password:</strong> ldap password</li>
+        <li><strong>server:</strong> <span class="monospace">mail.example.com</span></li>
+        <li><strong>port:</strong> 993</li>
+        <li><strong>SSL:</strong> yes</li>
+      </ul>
+      <li>Outgoing Mail: SMTP</li>
+      <ul>
+        <li><strong>username:</strong> ldap username</li>
+        <li><strong>password:</strong> ldap password</li>
+        <li><strong>email address:</strong> <span class="monospace">username@example.com</span></li>
+        <li><strong>server:</strong> <span class="monospace">mail.example.com</span></li>
+        <li><strong>port:</strong> 587</li>
+        <li><strong>SSL:</strong> STARTTLS</li>
+      </ul>
+    </ul>
+
+    <p>If you can log in, you should see an empty mailbox with default folders (Inbox, Drafts,
+    Junk, etc). If not, you'll need to check your mail log and troubleshoot Dovecot.
+
+    </p><p>Next, you'll need to test outgoing mail. Hopefully you have a spare GMail account or
+    another working email address you can test with. When you send an email through your mail
+    client, you should see something like this in your mail log:
+
+</p><pre>postfix/smtpd[39231]: connect from SOME-IP-ADDRESS
+postfix/smtpd[39231]: AA752DDA7D8: client=SOME-IP_ADDRESS, sasl_method=PLAIN, sasl_username=user@example.com
+postfix/cleanup[39248]: AA752DDA7D8: message-id=&lt;EE3CDE5B-9A46-405D-A74A-E409769F791D@example.com&gt;
+postfix/qmgr[39210]: AA752DDA7D8: from=&lt;user@example.com&gt;, size=762, nrcpt=1 (queue active)
+postfix/smtp[39251]: AA752DDA7D8: to=&lt;YOUR-OTHER-EMAIL@gmail.com&gt;, relay=gmail-smtp-in.l.google.com[74.125.130.27]:25, delay=8.9, delays=4.9/0.03/3/1, dsn=2.0.0, status=sent (250 2.0.0 OK 1502808287 y15si6196590pli.453 - gsmtp)
+postfix/qmgr[39210]: AA752DDA7D8: removed
+postfix/smtpd[39231]: disconnect from SOME-IP-ADDRESS ehlo=2 starttls=1 auth=1 mail=1 rcpt=1 data=1 quit=1 commands=8</pre>
+
+    <p>If you don't see any errors in the log, you should find the email you just sent in your
+    other email account's inbox. If it's not there, be sure to check your spam folder. (If it
+    got flagged as spam, the testing steps in the <a href="#dkim">DKIM section</a> should help
+    determine why.)
+
+    </p><p>Now, you can test incoming mail. In your other email account, reply to the message you
+    just sent yourself. This should be the first email ever sent to your new, personal email
+    server. Fingers crossed! If the other side successfully finds your mail server and
+    delivers the message, you should see something like this in your mail log:
+
+</p><pre>postfix/smtpd[39448]: connect from mail-yw0-x22b.google.com[2607:f8b0:4002:c05::22b]
+postfix/verify[39459]: cache btree:/var/db/postfix/verify_cache full cleanup: retained=9 dropped=0 entries
+postfix/smtpd[39448]: 98DA9DDA7D8: client=mail-yw0-x22b.google.com[2607:f8b0:4002:c05::22b]
+postfix/cleanup[39460]: 98DA9DDA7D8: message-id=&lt;CALM7EhMmCkzpex5pKu0TXh0z3+iYeLCGpw5VO9Sv_RanqgohYQ@mail.gmail.com&gt;
+postfix/qmgr[39210]: 98DA9DDA7D8: from=&lt;YOUR-OTHER-EMAIL@gmail.com&gt;, size=3449, nrcpt=1 (queue active)
+dovecot: lmtp(39462): Connect from local
+dovecot: lmtp(user@example.com): MMb/MfoPk1kmmgAA/gk8FQ: sieve: msgid=&lt;CALM7EhMmCkzpex5pKu0TXh0z3+iYeLCGpw5VO9Sv_RanqgohYQ@mail.gmail.com&gt;: stored mail into mailbox 'INBOX'
+postfix/lmtp[39461]: 98DA9DDA7D8: to=&lt;user@example.com&gt;, relay=mail.example.com[private/dovecot-lmtp], delay=0.26, delays=0.21/0.01/0.01/0.03, dsn=2.0.0, status=sent (250 2.0.0 &lt;user@example.com&gt; MMb/MfoPk1kmmgAA/gk8FQ Saved)
+dovecot: lmtp(39462): Disconnect from local: Successful quit
+postfix/qmgr[39210]: 98DA9DDA7D8: removed
+postfix/smtpd[39448]: disconnect from mail-yw0-x22b.google.com[2607:f8b0:4002:c05::22b] ehlo=2 starttls=1 mail=1 rcpt=1 data=1 quit=1 commands=7
+postfix/smtpd[39471]: connect from unknown[181.49.241.194]
+postfix/smtpd[39471]: disconnect from unknown[181.49.241.194] helo=1 auth=0/1 quit=1 commands=2/3</pre>
+
+    <p>If there were no errors, you should see the very first message in your new IMAP inbox!
+    If there was a failure logged, you'll have to investigate postfix. Most likely there was
+    problem finding your virtual mailbox, or postfix had some issue handing the mail off to
+    Dovecot.
+
+    </p><p>If you didn't receive the email, and you don't see anything logged <em>at all</em>,
+    then you probably have a firewall issue or some problem with your MX records in DNS. Also,
+    make sure your hosting provider allows traffic on port 25–some of them are paranoid.
+
+    </p><p>Once you're able to send and receive emails from your new mail server, you're ready to
+    get the rest of the goodies like full-text searching and spam filtering. Read on.
+
+  </p></section>
+
+</section>
+
+<section>
+  <h2 id="solr">Solr: Full-Text Search</h2>
+
+  <p>Solr is a standalone full-text search platform from Apache the Apache Foundation. It's
+  heavyweight and based on Java, but currently it's your best bet if you want open source
+  full-text search with Dovecot. It's easily installed from ports on FreeBSD:
+
+</p><pre>cd /usr/ports/textproc/apache-solr
+make install clean</pre>
+
+  <p>This will pull in Java as a dependency, so you may want to grab a coffee or something
+  while the JVM compiles. The defaults in <span class="monospace">/usr/local/etc/solr.in.sh</span>
+  are fine. Enable solr to start on boot:
+
+</p><pre><div class="code-title">/etc/rc.conf</div>solr_enable="YES"</pre>
+
+  <p>Finally, start the solr server:
+
+</p><pre>service solr start</pre>
+
+  <p>Now we need to create a collection for Dovecot to use.
+
+</p><pre>su -m solr -c "/usr/local/solr/bin/solr create -c dovecot -n dovecot"</pre>
+
+  <p>This will create a Solr collection for Dovecot in <span class="monospace">/var/db/solr/dovecot</span>.
+  Navigate to the configuration directory—we'll need to include some magic incantations I
+  found on <a href="http://mor-pah.net/2016/08/15/dovecot-2-2-with-solr-6-or-5/">this guy's blog</a>
+  to get Solr working with Dovecot.
+
+</p><pre>cd /var/db/solr/dovecot/conf</pre>
+
+  <p>Delete the <span class="monospace">managed-schema</span> file:
+
+</p><pre>rm /var/db/solr/dovecot/conf/managed-schema</pre>
+
+  <p>Create a file called <span class="monospace">schema.xml</span> with the contents <a href="https://www.c0ffee.net/files/schema.xml">here</a>:
+
+</p><pre>curl -o /var/db/solr/dovecot/conf/schema.xml https://www.c0ffee.net/files/schema.xml</pre>
+
+  <p>Then, replace the entire contents of <span class="monospace">solrconfig.xml</span>
+  with the version <a href="https://www.c0ffee.net/files/solrconfig.xml">here</a>:
+
+</p><pre>curl -o /var/db/solr/dovecot/conf/solrconfig.xml https://www.c0ffee.net/files/solrconfig.xml</pre>
+
+  <p>Finally, make sure the <span class="monospace">solr</span> user still owns those files:
+
+</p><pre>chown solr:solr /var/db/solr/dovecot/conf/{schema,solrconfig}.xml</pre>
+
+  <p>Solr should now be ready to index email for Dovecot. Restart the server for your changes
+  to take effect.
+
+</p><pre>service solr restart</pre>
+
+  <p>Now you just need to configure Dovecot to use the Solr server. All you have to do is
+  uncomment some lines in the files from <a href="#dovecot">the previous section</a>.
+
+</p><pre><div class="code-title">/usr/local/etc/dovecot/conf.d/10-mail.conf</div>mail_plugins = $mail_plugins fts fts_solr</pre>
+
+<p>
+
+</p><pre><div class="code-title">/usr/local/etc/dovecot/conf.d/90-fts.conf</div>plugin {
+  fts_autoindex = yes
+  fts = solr
+  fts_solr = url=http://127.0.0.1:8983/solr/dovecot/
+}</pre>
+
+  <p>Reload Dovecot for your changes to take effect:
+
+</p><pre>service dovecot reload</pre>
+
+  <p>Now, whenever you receive an email or move a message from one IMAP folder to another,
+  you should see something like this in your mail log:
+
+</p><pre>dovecot: indexer-worker(user@example.com): Indexed 1 messages in INBOX</pre>
+
+  <p>Indexing only occurs when a new message arrives in a folder. To index the entire inbox
+  of all your mail users, run the following command:
+
+</p><pre>doveadm index -A inbox</pre>
+
+  <p>Finally, according to <a href="https://wiki.dovecot.org/Plugins/FTS/Solr">the Dovecot documentation</a>,
+  the Solr database needs to be issued a <span class="monospace">commit</span> and <span class="monospace">optimize</span>
+  command every so often. This is easily accomplished by adding the following cron jobs (make
+  sure you get the path to <span class="monospace">curl</span> correct if you're using Linux):
+
+</p><pre><div class="code-title">/etc/crontab</div>15 2 * * *  solr /usr/local/bin/curl -s 'http://localhost:8983/solr/dovecot/update?optimize=true' &gt; /dev/null
+*/5 * * * * solr /usr/local/bin/curl -s 'http://localhost:8983/solr/dovecot/update?commit=true' &gt; /dev/null</pre>
+
+  <p>You should now have full-text search of your mailbox over IMAP. You can test it out by
+  searching for some text on your mobile IMAP client (often desktop mail clients will perform
+  searches using local cached data). Or, you can test it yourself from your server using
+  <span class="monospace">telnet</span>. Type the following lines (including the preceding
+  numbers) into the prompt:
+
+</p><pre>telnet localhost imap
+* OK [CAPABILITY IMAP4rev1 LITERAL+ SASL-IR...] I am ready.
+1 login your_username your_password
+2 select Inbox
+3 SEARCH text "test"</pre>
+
+  <p>If you encounter any issues, Solr provides a web interface on localhost port 8983. You
+  can set up an SSH tunnel to your server and forward the port to your local machine to check
+  its status. You can also view the logs in <span class="monospace">/var/log/solr</span>.
+
+</p></section>
+
+<section>
+  <h2 id="rspamd">Rspamd: Spam Filtering</h2>
+
+  <p><a href="https://rspamd.com/">Rspamd</a> is a fast, open source spam filtering system
+  which utilizes multiple techniques to prevent spam from reaching your mailbox. I was a happy
+  user of <a href="https://sourceforge.net/projects/dspam/">dspam</a> for years, but it has
+  been <a href="https://sourceforge.net/p/dspam/mailman/message/32585111/">offically abandoned since 2014</a>.
+
+  </p><p>Rspamd is actively developed and appears to be a much more modern project.
+  Written in C, it is quite fast and integrates directly into postfix as a milter. Like dspam,
+  it uses bayesian filtering to learn what users consider to be spam and ham. However, it also
+  incorporates many other anti-spam measures: <a href="https://rspamd.com/doc/modules/rbl.html">RBL checks</a>,
+  <a href="https://rspamd.com/doc/modules/spf.html">SPF</a>/<a href="https://rspamd.com/doc/modules/dkim.html">DKIM</a>/<a href="https://dmarc.org/">DMARC</a>
+  validation, <a href="https://www.rhyolite.com/dcc/">DCC bulk mail checks</a>, and <a href="https://rspamd.com/doc/modules/greylisting.html">greylisting</a>,
+  to name a few. In addition, it has some other useful features like <a href="https://rspamd.com/doc/modules/dkim_signing.html">DKIM signing of outgoing mail</a>,
+  <a href="https://rspamd.com/doc/modules/replies.html">automatic whitelisting when you reply to someone</a>,
+  and a <a href="https://www.rspamd.com/webui/">web interface</a> where you can see spam
+  checking results in real time.
+
+  </p><p>Sold yet? Let's get rspamd installed. It's available in FreeBSD ports:
+
+</p><pre>cd /usr/ports/mail/rspamd
+make install clean</pre>
+
+  <p>I use the following build options: <span class="monospace">GD HYPERSCAN</span>. The
+  <a href="https://01.org/hyperscan">hyperscan</a> option is especially cool—it enables high
+  performance regex matching.
+
+  </p><p>Enable rspamd to start at boot:
+
+</p><pre><div class="code-title">/etc/rc.conf</div>rspamd_enable="YES"</pre>
+
+  <p>Finally, start rspamd:
+
+</p><pre>service rspamd start</pre>
+
+  <p>Many rspamd modules require a <a href="https://redis.io/">redis</a>
+  instance to work, so install that as well. The default build options are fine.
+
+</p><pre>cd /usr/ports/databases/redis
+make install clean</pre>
+
+  <p>You'll want to set some redis options recommended by the
+  <a href="https://rspamd.com/doc/quickstart.html#caching-setup">official rspamd tutorial</a>:
+
+</p><pre><div class="code-title">/usr/local/etc/redis.conf</div><span class="code-comment"># listen only on localhost</span>
+bind 127.0.0.1 ::1
+
+<span class="code-comment"># limit the max amount of memory used - appropriate value will depend on</span>
+<span class="code-comment"># your email volume</span>
+maxmemory 512mb
+maxmemory-policy volatile-lru</pre>
+
+  <p>Enable redis to start at boot:
+
+</p><pre><div class="code-title">/etc/rc.conf</div>redis_enable="YES"</pre>
+
+  <p>Finally, start the redis daemon:
+
+</p><pre>service redis start</pre>
+
+  <p>One of the rspamd modules we will use depends on the <a href="https://www.dcc-servers.net/dcc/">DCC daemon</a>
+  to check mails for bulkiness. You can install it from ports as well. The default build
+  options are fine.
+
+</p><pre>cd /usr/ports/mail/dcc-dccd
+make install clean</pre>
+
+  <p>Uncomment the following options in <span class="monospace">/usr/local/dcc/dcc_conf</span>.
+  We'll be using the DCC service to detect spam, but won't be actively reporting anything.
+
+</p><pre><div class="code-title">/usr/local/dcc/dcc_conf</div>DCCM_LOG_AT=NEVER
+DCCM_REJECT_AT=MANY
+DCCIFD_ENABLE=on</pre>
+
+  <p>DCC is rather arcane and doesn't seem to log to syslog like modern software. I haven't
+  figured out a nice way of rotating its logs with <span class="monospace">newsyslogd</span>
+  yet, so for now I just have a cronjob to delete them every day:
+
+  </p><pre><div class="code-title">/etc/crontab</div>0 2 * * * /usr/bin/find /usr/local/dcc/log/ -not -newermt '1 days ago' -delete</pre>
+
+  <p>Enable DCC to start at boot:
+
+</p><pre><div class="code-title">/etc/rc.conf</div>dccifd_enable="YES"</pre>
+
+  <p>Finally, start the DCC daemon:
+
+</p><pre>service dccifd start</pre>
+
+  <p>Now, your're ready to configure rspamd itself. Rspamd's default configuration files live
+  in <span class="monospace">/usr/local/etc/rspamd</span>. Don't edit these files directly,
+  as they will be overwritten when the rspamd package is updated. Instead, create a local
+  configuration directory. All your custom configuration will go here:
+
+</p><pre>mkdir /usr/local/etc/rspamd/local.d</pre>
+
+    <p>On the rspamd website, you'll find the <a href="https://www.rspamd.com/doc/quickstart.html">rspamd quick start guide</a>,
+    along with the <a href="https://www.rspamd.com/doc/modules/">documentation for all the modules</a>.
+    Feel free design your own setup, or you can just copy what I've done in the files below.
+    I've enabled most of the useful modules and provided some commentary where appropriate.
+
+</p><p>
+
+</p><pre><div class="code-title">/usr/local/etc/rspamd/local.d/worker-controller.inc</div><span class="code-comment"># generate a password hash using the `rspamadm pw` command and put it here</span>
+<span class="code-comment"># this one is the hash for 'hunter2'</span>
+password = "$2$or9n9ffj4qsogh7i8d9qi5u1hxt53q6o$ntp4kj...";
+
+<span class="code-comment"># dovecot will use this socket to communicate with rspamd</span>
+<span class="code-comment"># note to self - tighten up these permissions</span>
+bind_socket = "/var/run/rspamd/rspamd.sock mode=0666 owner=nobody";
+
+<span class="code-comment"># you can comment this out if you don't need the web interface</span>
+bind_socket = "127.0.0.1:11334";</pre>
+
+<p>
+
+</p><pre><div class="code-title">/usr/local/etc/rspamd/local.d/worker-normal.inc</div><span class="code-comment"># we're not running rspamd in a distributed setup, so this can be disabled</span>
+<span class="code-comment"># the proxy worker will handle all the spam filtering</span>
+enabled = false;
+</pre>
+
+<p>
+
+</p><pre><div class="code-title">/usr/local/etc/rspamd/local.d/worker-proxy.inc</div><span class="code-comment"># this worker will be used as postfix milter</span>
+milter = yes;
+
+<span class="code-comment"># note to self - tighten up these permissions</span>
+bind_socket = "/var/run/rspamd/milter.sock mode=0666 owner=nobody";
+
+<span class="code-comment"># the following specifies self-scan mode, for when rspamd is on the same</span>
+<span class="code-comment"># machine as postfix</span>
+timeout = 120s;
+upstream "local" {
+  default = yes;
+  self_scan = yes;
+}</pre>
+
+<p>
+
+</p><pre><div class="code-title">/usr/local/etc/rspamd/local.d/redis.conf</div><span class="code-comment"># just specifying a server enables redis for all modules that can use it</span>
+servers = "127.0.0.1";</pre>
+
+<p>
+
+</p><pre><div class="code-title">/usr/local/etc/rspamd/local.d/classifier-bayes.conf</div>autolearn = true;
+backend = "redis";</pre>
+
+<p>
+
+</p><pre><div class="code-title">/usr/local/etc/rspamd/local.d/dcc.conf</div><span class="code-comment"># path to dcc socket</span>
+host = "/usr/local/dcc/dccifd";
+timeout = 5.0;</pre>
+
+<p>
+
+</p><pre><div class="code-title">/usr/local/etc/rspamd/local.d/dkim_signing.conf</div><span class="code-comment"># enable dkim signing - we will set this up in the DKIM section later</span>
+path = "/var/db/rspamd/dkim/$domain.$selector.key";
+selector = "dkim";</pre>
+
+<p>
+
+</p><pre><div class="code-title">/usr/local/etc/rspamd/local.d/mx_check.conf</div><span class="code-comment"># checks if sender's domain has at least one connectable MX record</span>
+enabled = true;</pre>
+
+<p>
+
+</p><pre><div class="code-title">/usr/local/etc/rspamd/local.d/phishing.conf</div><span class="code-comment"># check messages against some anti-phishing databases</span>
+openphish_enabled = true;
+phishtank_enabled = true;</pre>
+
+<p>
+
+</p><pre><div class="code-title">/usr/local/etc/rspamd/local.d/replies.conf</div><span class="code-comment"># whitelist messages from threads that have been replied to</span>
+action = "no action";</pre>
+
+<p>
+
+</p><pre><div class="code-title">/usr/local/etc/rspamd/local.d/surbl.conf</div><span class="code-comment"># follow redirects when checking URLs in emails for spaminess</span>
+redirector_hosts_map = "/usr/local/etc/rspamd/redirectors.inc";</pre>
+
+<p>
+
+</p><pre><div class="code-title">/usr/local/etc/rspamd/local.d/url_reputation.conf</div><span class="code-comment"># check URLs within messages for spaminess</span>
+enabled = true;</pre>
+
+<p>
+
+</p><pre><div class="code-title">/usr/local/etc/rspamd/local.d/url_tags.conf</div><span class="code-comment"># cache some URL tags in redis</span>
+enabled = true;</pre>
+
+  <p>Restart rspamd for all these changes to take effect:
+
+</p><pre>service rspamd restart</pre>
+
+  <p>Now, you'll need to configure postfix to use rspamd as a milter. Open <span class="monospace">/usr/local/etc/postfix/main.cf</span>
+  and uncomment the lines you added in <a href="#postfix">the postfix section</a>.
+
+</p><pre><div class="code-title">/usr/local/etc/postfix/main.cf</div>milter_protocol = 6
+<span class="code-comment"># if rspamd is down, don't reject mail</span>
+milter_default_action = accept
+smtpd_milters = unix:/var/run/rspamd/milter.sock
+milter_mail_macros = i {mail_addr} {client_addr} {client_name} {auth_authen}</pre>
+
+  <p>Reload postfix for your changes to take effect:
+
+</p><pre>service postfix reload</pre>
+
+  <p>At this point, rspamd should be filtering your incoming email as it arrives through
+  postfix. To verify, send yourself a test email and check the output of your mail log, along
+  with <span class="monospace">/var/log/rspamd/rspamd.log</span>.  You also can view real-time
+  filtering stats in the rspamd web interface. Just set up an SSH tunnel to your server,
+  forward port 11334 to localhost, and point your web browser there.
+
+  </p><p>Once you've verified rspamd and postfix are working together, all that's left is to
+  configure Dovecot to train rspamd when you move messages in and out of your Junk folder.
+  The steps for achieving this were derived from <a href="https://wiki2.dovecot.org/HowTo/AntispamWithSieve">this Dovecot guide</a>.
+  Add a new file, <span class="monospace">90-imapsieve.conf</span>, under Dovecot's <span class="monospace">conf.d</span>
+  directory with the following contents:
+
+</p><pre><div class="code-title">/usr/local/etc/dovecot/conf.d/90-imapsieve.conf</div>plugin {
+  sieve_plugins = sieve_imapsieve sieve_extprograms
+
+  <span class="code-comment"># From elsewhere to Junk folder</span>
+  imapsieve_mailbox1_name = Junk
+  imapsieve_mailbox1_causes = COPY
+  imapsieve_mailbox1_before = file:/usr/local/etc/dovecot/sieve/report-spam.sieve
+
+  <span class="code-comment"># From Junk folder to elsewhere</span>
+  imapsieve_mailbox2_name = *
+  imapsieve_mailbox2_from = Junk
+  imapsieve_mailbox2_causes = COPY
+  imapsieve_mailbox2_before = file:/usr/local/etc/dovecot/sieve/report-ham.sieve
+
+  sieve_pipe_bin_dir = /usr/local/etc/dovecot/sieve
+
+  sieve_global_extensions = +vnd.dovecot.pipe
+}</pre>
+
+  <p>Restart Dovecot to load the necessary sieve plugins:
+
+</p><pre>service dovecot restart</pre>
+
+  <p>Create the following sieve scripts in the <span class="monospace">/usr/local/etc/dovecot/sieve</span>
+  directory:
+
+</p><pre><div class="code-title">/usr/local/etc/dovecot/sieve/report-spam.sieve</div>require ["vnd.dovecot.pipe", "copy", "imapsieve", "environment", "variables"];
+
+if environment :matches "imap.email" "*" {
+  set "email" "${1}";
+}
+
+pipe :copy "train-spam.sh" [ "${email}" ];</pre>
+
+<p>
+
+</p><pre><div class="code-title">/usr/local/etc/dovecot/sieve/report-ham.sieve</div>require ["vnd.dovecot.pipe", "copy", "imapsieve", "environment", "variables"];
+
+if environment :matches "imap.mailbox" "*" {
+  set "mailbox" "${1}";
+}
+
+if string "${mailbox}" "Trash" {
+  stop;
+}
+
+if environment :matches "imap.email" "*" {
+  set "email" "${1}";
+}
+
+pipe :copy "train-ham.sh" [ "${email}" ];</pre>
+
+  <p>These sieve scripts will be triggered whenever email gets moved in or out of your Junk
+  folder. You will need to manually compile them, since Dovecot doesn't have write permission
+  to this directory.
+
+</p><pre>cd /usr/local/etc/dovecot/sieve
+sievec report-spam.sieve
+sievec report-ham.sieve</pre>
+
+  <p>Now you need to create the shell scripts that the sieve scripts will execute. Create
+  <span class="monospace">train-spam.sh</span> and <span class="monospace">train-ham.sh</span>
+  in the same directory:
+
+</p><pre><div class="code-title">/usr/local/etc/dovecot/sieve/train-spam.sh</div>exec /usr/local/bin/rspamc -h /var/run/rspamd/rspamd.sock learn_spam</pre>
+
+<p>
+
+</p><pre><div class="code-title">/usr/local/etc/dovecot/sieve/train-ham.sh</div>exec /usr/local/bin/rspamc -h /var/run/rspamd/rspamd.sock learn_ham</pre>
+
+  <p>Make sure they are executable.
+
+</p><pre>chmod +x /usr/local/etc/dovecot/sieve/train-{spam,ham}.sh</pre>
+
+  <p>Finally, we need to tell Dovecot to automatically move emails that rspamd tagged as spam to
+  your Junk folder. We do this using a global filter on the <span class="monospace">X-SPAM</span> header.
+
+</p><pre><div class="code-title">/usr/local/etc/dovecot/sieve-before.d/10-rspamd.sieve</div>require ["fileinto"];
+
+if header :is "X-Spam" "Yes" {
+  fileinto "Junk";
+}</pre>
+
+  <p>You'll need to pre-compile this script:
+
+</p><pre>cd /usr/local/etc/dovecot/sieve-before.d
+sievec 10-rspamd.sieve</pre>
+
+
+  <p>Reload Dovecot for your changes to take effect.
+
+</p><pre>service dovecot reload</pre>
+
+  <p>Dovecot should now inform the rspamd daemon to retrain a messages as spam or ham when
+  you move it in or out of your Junk folder. To test, move a message in and out of Junk from
+  mail client, and check your mail and rspamd logs. You should a message in <span class="monospace">/var/log/rspamd/rspamd.log</span>
+  whenever a message is retrained.
+
+</p></section>
+
+<section>
+  <h2 id="dkim">DKIM: Validation for Your Outgoing Mail</h2>
+
+  <a href="http://www.dkim.org/">DKIM</a>, or DomainKeys Identified Mail, is a standard by
+  which mail servers can cryptographically verify that an email claiming to originate from
+  a given domain did indeed originate from a server within that domain's control. The general
+  idea is that the sender's mail server signs outgoing messages with a private key, and the
+  recipient's mail server retrieves the public key from a TXT record hosted in the sender's
+  DNS zone to verify the authenticity of the message. Using DKIM, a recipient can be certain
+  that a message really did come from the sender's authorized mail server, and that it wasn't
+  tampered with in transit.
+
+  <p>Luckily, rspamd provides <a href="https://rspamd.com/doc/modules/dkim_signing.html">built-in support for DKIM signing</a>
+  using the postfix milter we already configured in the <a href="#rspamd">previous section</a>.
+  That means there's no additional software to configure! All you need to do is generate your
+  private key, and create a DKIM record containing your public key in DNS.
+
+  </p><p>Recall the following file we created in the <a href="#rspamd">rspamd section</a>:
+
+</p><pre><div class="code-title">/usr/local/etc/rspamd/local.d/dkim_signing.conf</div>path = "/var/db/rspamd/dkim/$domain.$selector.key";
+selector = "dkim";</pre>
+
+  <p>The <span class="monospace">$domain</span> variable does what you'd expect: an outgoing
+  email from an <span class="monospace">@example.com</span> email address will be signed using
+  the corresponding <span class="monospace">example.com</span> private key file. The <span class="monospace">$selector</span>
+  variable bears further explanation: The DKIM specification allows you to use multiple keys
+  for a single domain, and distinguish between them using a <em>selector</em> value in the
+  DKIM header of the message. In our case, we'll keep it simple and just use a single selector
+  called "dkim" for everything.
+
+  </p><p>You can generate a DKIM keypair using the <span class="monospace">rspamadm</span>
+  command:
+
+</p><pre>rspamadm dkim_keygen -k /var/db/rspamd/dkim/example.com.dkim.key -b 2048 -s dkim -d example.com</pre>
+
+  <p>This will save a private key file for <span class="monospace">example.com</span> in
+  rspamd's DKIM directory, and print a DNS record for the DKIM public key to standard output.
+  You should see something like this:
+
+</p><pre>dkim._domainkey IN TXT ( "v=DKIM1; k=rsa; "
+  "p=MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAzGdxkFW0tIDYdNrGyj/J2Hff7N/9BEWE2qxMw6PBW5FhJRullZT9WNZOVrrXk1TsiBHRq8YQrSS1TfLbNV9PE7sE0vGx0eLgkiqnqLMwTy5Y9+jEbiNrddNR6v+TGHuMckYJO3JMjiROhMi/86Lv6P/rv2R/lxFldCeYQxa41/8LH+b3ZXWTLYRM6y2/2UpGz/wtknvA+DtO0rn+Y"
+  "uLuPrh+ftzmJb6i3g01XFgAO8ZzMLMdO/k7UJDX/Q6himKxVv2t3vSvS1MGqiWThXiU3WxhQED0zZUlkC5Lfx4BCo1h0v7fwZeMdu2NPOzlDBMDq5HRYgbwuFXTAmxSM7WRqQIDAQAB"
+) ;</pre>
+
+  <p>If you are running your own DNS server, you can just paste that directly into your zone
+  file. If you are using a DNS provider's web interface, there's a small caveat: the 2048-bit
+  public key is too large to fit in a single DNS record. In a zone file, the parenthetical
+  syntax above causes your DNS server to split the key into separate records. When you add it
+  to your provder's web interface, you'll need to create a TXT record at
+  <span class="monospace">dkim._domainkey.example.com</span> and generate the value by contatenating all
+  three lines together (removing the quotes).
+
+  </p><p>At this point, you should have both SPF and DKIM properly configured. However, you
+  haven't informed other mail servers what to <em>do</em> if either of those safeguards should
+  fail. That's where <a href="https://dmarc.org/">DMARC</a> comes in. DMARC uses a special DNS
+  record to declare how other mail servers should treat mail from your domain when validations
+  fail.
+
+  </p><p>Create a TXT record at <span class="monospace">_dmarc.example.com</span> like the
+  following:
+
+</p><pre><div class="code-title">/usr/local/etc/named/master/example.com.db</div>_dmarc  IN  TXT  "v=DMARC1; p=reject; adkim=r; aspf=r; sp=reject"</pre>
+
+  <p>The <span class="monospace">p=reject</span> field indicates that any emails from our
+  domain which do not pass SPF and DKIM checks should be assumed to be spam and rejected.
+  The <span class="monospace">adkim=r</span> and <span class="monospace">aspf=r</span> fields
+  indicate that we are using <span class="monospace">relaxed</span> validation, which is the
+  default. Finally, the <span class="monospace">sp=reject</span> field indicates that this
+  policy should apply to all subdomains of <span class="monospace">example.com</span>.
+
+  </p><section>
+    <h3 id="testing-dkim">Testing DKIM, DMARC, and SPF</h3>
+    <p>Once your public key and DMARC records are in DNS, you're ready to test DKIM signing. You
+    can check whether your records have propagated using <span class="monospace">dig</span>:
+
+</p><pre>dig +short TXT dkim._domainkey.example.com
+<span class="code-comment"># "v=DKIM1\; k=rsa\; " "p=MIIBIjANBgkqhkiG9w0BAQEFAAOC...</span>
+dig +short TXT _dmarc.example.com
+<span class="code-comment"># "v=DMARC1\; p=reject\; adkim=r\; aspf=r\; sp=reject"</span>
+</pre>
+
+    <p>There are lots of online tools you can use to test whether or not DKIM signing is
+    working for your domain. My favorite is <a href="http://dkimvalidator.com/">DKIMValidator.com</a>.
+    The site provides you a randomized email address. Simply send a test email from your mail
+    server to the provided email address, wait a few seconds, and hit "View Results." You will
+    be presented with a report describing whether or not DKIM and SPF validation passed for your
+    domain.
+
+    </p><p>You can also test DKIM, DMARC, and SPF by sending a test email to a GMail account. In
+    your GMail inbox, click the arrow next to the reply button and choose "Show Original."
+    You will be presented with a table containing pass/fail results for SPF, DKIM, and DMARC.
+
+    </p><p>If any of the validations fail, check the message headers for clues, as well as your rspamd
+    and mail logs for errors. If they all passed, then congratulations—your mail server is
+    more professionally configured than half the mail I get from "real" companies.
+
+  </p></section>
+
+</section>
+
+<section>
+  <h2 id="sieve">Sieve: Scripting Your Mailbox</h2>
+
+  <p>Once of the best things about running your own mail server is being able to script your
+  inbox. Instead of creating filters using a kludgy synax through a web interface, you can
+  literally write programs to determine how to sort your mail. With sieve, regular
+  expressions, if/else control structures, and full message metadata (including headers) are
+  at your disposal.
+
+  </p><p>Recall in <a href="#dovecot">the Dovecot section</a> that sieve scripts live in the
+  <em>virtual home directory</em> of each IMAP user. Dovecot's sieve functionality allows
+  a user to have multiple sieve scripts stored on the server, but only one of them can be
+  "active" at any given time. In our configuration, the active sieve script for the user
+  <span class="monospace">alphonsus</span> would be located at <span class="monospace break-word">/var/mail/vhosts/example.com/alphonsus/.dovecot.sieve</span>.
+  The <span class="monospace">.dovecot.sieve</span> file should be a symlink to a script in the
+  <span class="monospace">sieve</span> directory:
+
+</p><pre><strong>root@awesomebox:/var/mail/vhosts/example.com/alphonsus # ls -l</strong>
+total 12
+lrwxr-xr-x  1 vmail  vmail   18 Mar  4 07:35 .dovecot.sieve@ -&gt; sieve/my_cool_script.sieve
+-rw-rw-r--  1 vmail  vmail  472 Mar  4 07:38 .dovecot.svbin
+drwx------  4 vmail  vmail  512 Aug 15 04:45 mdbox/
+drwxrwxr-x  2 vmail  vmail  512 Mar  4 07:35 sieve/</pre>
+
+  <p>If you use a mail client with ManageSieve support (like KMail), these details are handled
+  for you automatically. You can also use <a href="https://github.com/philpennock/sieve-connect">sieve-connect</a>,
+  a command-line ManageSieve client. I rarely modify my sieve script, so when I need to make a
+  change I just SSH to my server and edit it in <span class="monospace">vim</span>.
+
+  </p><p>Let's make a basic sieve script. Open up a root shell and navigate to your IMAP user's
+  virtual home directory under <span class="monospace">/var/mail/vhosts</span>.
+
+</p><pre>cd /var/mail/vhosts/example.com/user</pre>
+
+  <p>Create the <span class="monospace">sieve</span> directory if it doesn't already exist:
+
+</p><pre>mkdir sieve</pre>
+
+  <p>Then, create a sieve script. You can name this file whatever you like:
+
+</p><pre>vim sieve/my_awesome_script.sieve</pre>
+
+  <p>Now you're ready to write your script. You can check out some example sieve scripts on
+  the Dovecot wiki <a href="https://wiki2.dovecot.org/Pigeonhole/Sieve/Examples">here</a>.
+  We'll keep it simple for now.
+
+</p><pre><div class="code-title">/var/mail/vhosts/example.com/user/sieve/my_awesome_script.sieve</div>require ["regex", "fileinto", "imap4flags"];
+
+<span class="code-comment">/* put all of FreeBSD's `periodic` output into Logs folder */</span>
+if allof (address :is "from" "root@awesomebox.example.com", header :contains "subject" "run output") {
+  fileinto "Logs";
+  stop;
+}
+
+<span class="code-comment">/* put online shopping/advertising into Shopping folder */</span>
+if anyof (address :is         "from" "auto-confirm@amazon.com",
+    address :is :domain "from" "earthfare.com") {
+  fileinto "Shopping";
+  stop;
+}</pre>
+
+  <p>I don't believe the sieve script will create any new IMAP folders for you, so be sure to
+  create any folders you need in your mail client first. Now you need to create a symlink so
+  Dovecot knows that this is your "active" script:
+
+</p><pre>ln -s sieve/my_awesome_script.sieve .dovecot.sieve</pre>
+
+  <p>Make sure your script actually compiles:
+
+</p><pre>sievec .dovecot.sieve</pre>
+
+  <p>Finally, make sure everything is still owned by the <span class="monospace">vmail</span>
+  user:
+
+</p><pre>chown -R vmail:vmail .dovecot.sieve .dovecot.svbin sieve</pre>
+
+  <p>Check your mail log the next time you receive an email to verify that Dovecot didn't have
+  any trouble executing your script. You can get as convoluted as you want with sieve—I've
+  seen some cool setups where people call external shell scripts when certain emails are
+  receieved.
+
+</p></section>
+
+<section>
+  <h2 id="conclusion">Conclusion</h2>
+
+  <p>If you made it this far, you should have a pretty decent personal email server. I've been
+  hosting my family's email on a VPS with this setup for a year or so with great results. I've
+  yet to have a spammer make it past rspamd, and sync and search work great with all of our
+  iDevices. Also, despite the warnings of various online naysayers, I've never had an issue
+  with others not receieving my mail, and tech recruiters, for better or worse, seem to have
+  no trouble reaching my inbox.
+
+  </p><p>One thing I didn't cover in this guide was a webmail setup—mostly because I've never felt
+  the need for one. Mutt, Mail.app, and the iOS mail client have served me quite well, and I
+  honestly hate dealing with the additional attack vector of some PHP/Ruby-off-the-Rails
+  web application. However, if that's something you need, I have heard good things about
+  <a href="https://roundcube.net/">Roundcube</a>.
+
+  </p><p>Also, and I can't stress this enough, <strong>back up your mail directory regularly!!</strong>
+
+  </p><p>No doubt, it's a lot of work to get a mail server up and running. But once you get it
+  working, it's very set-and-forget. Just keep your system updated, rotate your SSL
+  certificates before they expire, and use good DevOps practices, and it will serve you well
+  as long as you keep paying your hosting provider.
+
+  </p><p>I'm sure many will argue that this is too much work for too little gain, because the NSA can probably crack all our
+  encryption, most mail goes through GMail anyway, tons of email is still plain text, etc.
+  However, my <a href="https://www.c0ffee.net/blog/self-hosting-guide">reasons for self-hosting things</a>
+  are more philosophical than technical. The net neutrality debate is moot if all of our
+  online communication is controlled by a handful of monolothic advertising companies. The
+  internet's greatest strength has always been in the free exchange of ideas and information.
+  Let's make sure it stays that way.
+
+</p></section>
+
+</main>
+
+<footer class="footer">
+  <span>[<a href="https://www.c0ffee.net/rss/">RSS</a>]</span>
+</footer>
+
+
+
+</body></html>

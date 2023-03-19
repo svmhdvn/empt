@@ -1,0 +1,19 @@
+## FIRST Level hierarchy - people 
+## uses mixed upper and lower case for objectclass
+# this is an ENTRY sequence and is preceded by a BLANK line
+
+dn: ou=domains,dc=beastie,dc=lan
+ou: domains
+description: All domains for which this host accepts email
+objectclass: organizationalUnit
+
+## SECOND Level hierarchy
+## ADD a single entry under FIRST (people) level
+# this is an ENTRY sequence and is preceded by a BLANK line
+# the ou: Human Resources is the department name
+
+
+dn: dc=beastie.lan,ou=domains,dc=beastie,dc=lan
+objectclass: dnsdomain
+objectclass: top
+dc: beastie.lan

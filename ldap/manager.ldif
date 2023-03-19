@@ -1,0 +1,9 @@
+dn: dc=beastie,dc=lan
+objectclass: dcObject
+objectclass: organization
+o: Siva Home FreeBSD
+dc: beastie
+
+dn: cn=Manager,dc=beastie,dc=lan
+objectclass: organizationalRole
+cn: Manager

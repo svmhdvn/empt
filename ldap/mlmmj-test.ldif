@@ -1,0 +1,11 @@
+#dn: ou=mailinglists,dc=beastie,dc=lan
+#ou: mailinglists
+#description: All mailing lists
+#objectclass: organizationalUnit
+
+dn: cn=mlmmj-test,ou=mailinglists,dc=beastie,dc=lan
+objectClass: nisMailAlias
+objectClass: inetLocalMailRecipient
+cn: mlmmj-test
+mail: mlmmj-test@beastie.lan
+mailLocalAddress: |/usr/local/bin/mlmmj-recieve -L /var/spool/mlmmj/mlmmj-test

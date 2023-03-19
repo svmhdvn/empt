@@ -1,0 +1,22 @@
+## FIRST Level hierarchy - people 
+## uses mixed upper and lower case for objectclass
+# this is an ENTRY sequence and is preceded by a BLANK line
+
+#dn: ou=people,dc=beastie,dc=lan
+#ou: people
+#description: All people in organisation
+#objectclass: organizationalUnit
+
+## SECOND Level hierarchy
+## ADD a single entry under FIRST (people) level
+# this is an ENTRY sequence and is preceded by a BLANK line
+# the ou: Human Resources is the department name
+
+
+dn: cn=Siva Mahadevan,ou=people,dc=beastie,dc=lan
+objectclass: inetorgperson
+cn: Siva Mahadevan
+sn: Siva
+uid: siva
+mail: siva@beastie.lan
+description: swell guy

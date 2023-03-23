@@ -1,0 +1,6 @@
+server_host = ldap://ldap.empt.siva
+search_base = ou=maildomains,dc=empt,dc=siva
+version = 3
+bind = no
+query_filter = (&(objectClass=dNSDomain)(dc=%s))
+result_attribute = dc

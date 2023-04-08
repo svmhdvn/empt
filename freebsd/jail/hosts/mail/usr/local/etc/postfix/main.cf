@@ -626,8 +626,7 @@ sample_directory = /usr/local/etc/postfix
 #
 readme_directory = /usr/local/share/doc/postfix
 
-# TODO change once ipv6 is supported
-inet_protocols = ipv4
+inet_protocols = ipv6
 
 # smtp CA path (default to system-wide location)
 smtp_tls_CApath = /etc/ssl/certs

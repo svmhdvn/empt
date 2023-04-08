@@ -679,4 +679,4 @@ smtpd_sasl_tls_security_options = noanonymous
 mlmmj_destination_recipient_limit = 1
 
 # A map to forward local mail to mlmmj transport
-transport_maps = hash:/var/spool/mlmmj/transport
+transport_maps = ldap:/usr/local/etc/postfix/ldap-virtual-transport-maps.cf

@@ -17,9 +17,12 @@ mkdir -p \
     jail/hosts/ns1/usr/local/etc/namedb
 
 cp \
+    /usr/jail/hosts/ns1/etc/crontab \
+    /usr/jail/hosts/ns1/etc/hosts \
+    /usr/jail/hosts/ns1/etc/newsyslog.conf \
     /usr/jail/hosts/ns1/etc/rc.conf \
     /usr/jail/hosts/ns1/etc/resolv.conf \
-    /usr/jail/hosts/ns1/etc/hosts \
+    /usr/jail/hosts/ns1/etc/syslog.conf \
     jail/hosts/ns1/etc/
 
 cp -r \
@@ -36,9 +39,12 @@ mkdir -p \
     jail/hosts/ldap/usr/local/etc/openldap
 
 cp \
+    /usr/jail/hosts/ldap/etc/crontab \
+    /usr/jail/hosts/ldap/etc/hosts \
+    /usr/jail/hosts/ldap/etc/newsyslog.conf \
     /usr/jail/hosts/ldap/etc/rc.conf \
     /usr/jail/hosts/ldap/etc/resolv.conf \
-    /usr/jail/hosts/ldap/etc/hosts \
+    /usr/jail/hosts/ldap/etc/syslog.conf \
     jail/hosts/ldap/etc/
 
 cp -r \
@@ -60,9 +66,12 @@ mkdir -p \
     jail/hosts/mail/usr/local/etc
 
 cp \
+    /usr/jail/hosts/mail/etc/crontab \
+    /usr/jail/hosts/mail/etc/hosts \
+    /usr/jail/hosts/mail/etc/newsyslog.conf \
     /usr/jail/hosts/mail/etc/rc.conf \
     /usr/jail/hosts/mail/etc/resolv.conf \
-    /usr/jail/hosts/mail/etc/hosts \
+    /usr/jail/hosts/mail/etc/syslog.conf \
     jail/hosts/mail/etc/
 
 cp -r \
@@ -76,9 +85,12 @@ mkdir -p \
     jail/hosts/ssh/etc/ssh
 
 cp -r \
+    /usr/jail/hosts/ssh/etc/crontab \
+    /usr/jail/hosts/ssh/etc/hosts \
+    /usr/jail/hosts/ssh/etc/newsyslog.conf \
     /usr/jail/hosts/ssh/etc/rc.conf \
     /usr/jail/hosts/ssh/etc/resolv.conf \
-    /usr/jail/hosts/ssh/etc/hosts \
+    /usr/jail/hosts/ssh/etc/syslog.conf \
     jail/hosts/ssh/etc/
 
 cp \
@@ -92,10 +104,12 @@ mkdir -p \
     jail/hosts/kerberos/usr/local/var/krb5kdc
 
 cp \
+    /usr/jail/hosts/kerberos/etc/crontab \
+    /usr/jail/hosts/kerberos/etc/hosts \
+    /usr/jail/hosts/kerberos/etc/newsyslog.conf \
     /usr/jail/hosts/kerberos/etc/rc.conf \
     /usr/jail/hosts/kerberos/etc/resolv.conf \
-    /usr/jail/hosts/kerberos/etc/hosts \
-    /usr/jail/hosts/kerberos/etc/krb5.conf \
+    /usr/jail/hosts/kerberos/etc/syslog.conf \
     jail/hosts/kerberos/etc/
 
 cp \
@@ -110,9 +124,12 @@ mkdir -p \
     jail/hosts/certauth/usr/local/etc/ssl
 
 cp \
+    /usr/jail/hosts/certauth/etc/crontab \
+    /usr/jail/hosts/certauth/etc/hosts \
+    /usr/jail/hosts/certauth/etc/newsyslog.conf \
     /usr/jail/hosts/certauth/etc/rc.conf \
     /usr/jail/hosts/certauth/etc/resolv.conf \
-    /usr/jail/hosts/certauth/etc/hosts \
+    /usr/jail/hosts/certauth/etc/syslog.conf \
     jail/hosts/certauth/etc/
 
 cp \
@@ -120,8 +137,22 @@ cp \
     /usr/jail/hosts/certauth/usr/local/etc/ssl/extensions.client \
     jail/hosts/certauth/usr/local/etc/ssl/
 
+##### logs #####
+
+mkdir -p \
+    jail/hosts/logs/etc \
+
+cp \
+    /usr/jail/hosts/logs/etc/crontab \
+    /usr/jail/hosts/logs/etc/hosts \
+    /usr/jail/hosts/logs/etc/newsyslog.conf \
+    /usr/jail/hosts/logs/etc/rc.conf \
+    /usr/jail/hosts/logs/etc/resolv.conf \
+    /usr/jail/hosts/logs/etc/syslog.conf \
+    jail/hosts/logs/etc/
+
 ################
 
-#git add jail && \
-#    git commit -m "(automated) empt freebsd jail backup" && \
-#    git push
+git add backup-jails.sh jail && \
+    git commit -m "(automated) empt freebsd jail backup" && \
+    git push

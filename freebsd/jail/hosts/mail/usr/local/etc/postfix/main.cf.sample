@@ -685,5 +685,5 @@ inet_protocols = all
 
 # smtp CA path (default to system-wide location)
 smtp_tls_CApath = /etc/ssl/certs
-meta_directory = /usr/local/libexec/postfix
 shlib_directory = /usr/local/lib/postfix
+meta_directory = /usr/local/libexec/postfix

@@ -1,0 +1,19 @@
+$TTL    1m
+
+@	IN	SOA	ns1.empt.siva.	postmaster.empt.siva. (
+				3	; serial
+				4h	; refresh
+				15m	; retry
+				8h	; expire
+				4m )	; negative caching TTL
+
+		IN	NS	ns1.empt.siva.
+
+201             IN      PTR     nfs.empt.siva.
+202             IN      PTR     ns1.empt.siva.
+203             IN      PTR     ldap.empt.siva.
+204             IN      PTR     mail.empt.siva.
+205             IN      PTR     ssh.empt.siva.
+206             IN      PTR     kerberos.empt.siva.
+207             IN      PTR     certauth.empt.siva.
+208             IN      PTR     logs.empt.siva.

@@ -1,0 +1,33 @@
+- name: Download FreeBSD base system archive to local filesystem
+  ansible.builtin.copy:
+    src: 'https://download.freebsd.org/ftp/releases/amd64/{{ freebsd_version }}/base.txz'
+    dest: /tmp
+    owner: root
+    group: wheel
+    mode: '0600'
+
+- name: Create directory structure for jails
+  ansible.builtin.file:
+    path: '/usr/jail/guests/{{ item }}'
+    state: directory
+    mode: '0755'
+  loop: jail_list
+
+- name: Install (thick) base jails
+  ansible.builtin.unarchive:
+    src: /tmp/base.txz
+    dest: '/usr/jail/guests/{{ item }}'
+  loop: jail_list
+
+- name: Populate jail.conf
+  ansible.builtin.template:
+    src: jail.conf.j2
+    dest: /etc/jail.conf
+    owner: root
+    group: wheel
+    mode: '0644'
+
+- name: Prepare individual jails
+  ansible.builtin.include_role:
+    name: 'setup_jail_{{ item }}'
+  loop: jail_list

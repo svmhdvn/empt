@@ -1,0 +1,27 @@
+- name: Ensure python and doas are installed
+  ansible.builtin.raw: pkg install -y python doas
+  # TODO fix changed_when to properly detect change
+  changed_when: false
+
+# TODO deal with properly setting password
+- name: Create ansible bootstrapping setup user
+  ansible.builtin.user:
+    name: ansible
+    append: true
+    groups: wheel
+
+# local key just for testing
+# TODO use newly generated key through variable
+- name: Add control host's ssh key to setup user's authorized keys
+  ansible.posix.authorized_key:
+    user: ansible
+    key: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINqa5qTRGfyJckSBOXWyqdSC4tortF5Nc0O6kQFkORFi siva@think"
+    exclusive: true
+
+- name: Add setup user to doas configuration
+  ansible.builtin.copy:
+    content: "permit nopass :wheel\n"
+    dest: /usr/local/etc/doas.conf
+    owner: root
+    group: wheel
+    mode: '0600'

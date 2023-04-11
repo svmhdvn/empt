@@ -1,0 +1,395 @@
+How to setup kerberized NFS on FreeBSD (particularily NFSv4)
+
+Setting up Kerberized NFS (more correctly: NFS using RPCSEC_GSS authentication
+via the kerberos5 mechanism) on FreeBSD:
+
+For the example:
+nfs-server.my.domain   - The FQDN of the NFS server
+nfs-client.my.domain   - The FQDN of the NFS client
+MY.REALM               - The default Kerberos realm
+ricktst                - A user assigned uid 502, with a Kerberos
+                         principal name ricktst@MY.REALM
+/export                - The single file system being exported to the client
+
+In the GSSAPI there are two kinds of principal names,
+User and Host Based.
+These names are translated to Kerberos principal names for Kerberos
+mechanism, which is the only mechanism used.
+A User principal name normally
+refers to a user and looks like:
+
+ricktst <-- which becomes ricktst@MY.REALM in KerberosV
+It normally has a TGT in a credentials cache file (/tmp/krb5cc_502)
+created by kinit or during the user's login process.
+
+A Host Based principal name also has the fully qualified host domain name (FQDN)
+in it (so it can only be used on that host) and looks like:
+nfs@nfs-server.my.domain <-- which becomes
+nfs/nfs-server.my.domain@MY.REALM in KerberosV
+It normally has credentials in a keytab file created on the KDC
+and copied to the machine's /etc/krb5.keytab via some secure mechanism.
+(These are sometimes referred to as a machine credentials, or in
+ Kerberos, a service principal. Note that the NFS client can
+ (mis)use a service principal as a client machine credential,
+ referred to as a host based initiator credential, below.)
+(Since this principal will only work on the system called
+nfs-server.my.domain, the damage done if the keytab file
+is compromised on nfs-server.my.domain it is limited to that system.)
+These principals have the advantage that their credentials
+do not expire, because they can be refreshed indefinitely.
+
+For the NFS server, the following principal will need to be added to
+the KDC and a keytab entry for it will need to be generated and copied
+to /etc/krb5.keytab on the NFS server (the first component must be "nfs"):
+nfs/nfs-server.my.domain@MY.REALM
+Section 14.5 of the FreeBSD handbook does a nice job of describing
+how to set up the Heimdal kdc that is distributed with FreeBSD and
+the use of kadmin to acquire the above keytab entry.
+(However, note that "service kdc start" is used to start the kdc
+ and not what the handbook currently says.)
+
+The following should work for Heimdal and MIT KDCs, but does not
+work for Windows AD KDCs.
+
+Once this is done, the credential may be tested by doing:
+# kinit -k nfs/nfs-server.my.domain
+on the NFS server as su/root.
+
+For the NFS client, the same is usually done to create a host based
+initiator credential, although the first component does not need to
+be "nfs" and is usually "host".
+For example, create the principal and a keytab entry for:
+host/nfs-client.my.domain@MY.REALM
+on the KDC and then copy the keytab to /etc/krb5.keytab on nfs-client and
+test it via:
+# kinit -k host/nfs-client.my.domain
+on the client, running as su/root.
+(There is a way to do mounts without this host based initiator credential.
+ See below.)
+
+For RPCSEC_GSS, there are 3 types of service which, for KerberosV are:
+krb5 - Use KerberosV for user authentication, but only protect the
+RPC header from compromise.
+krb5i - Use KerberosV for user authentication, but also use excrypted
+checksums on the RPC data to protect against "man in the middle"
+attacks involving replacement of the RPC data.
+krb5p - Use KerberosV for user authentication, but also encrypt
+the RPC data, so that it isn't on the wire in clear text.
+
+Since Kerberized NFS does not use uid/gids, these do not need to
+be uniform across the client(s) and server(s).  However, uniform
+user/group name databases across all client(s) and server(s)
+is strongly recommended.
+
+Example server setup (after confirming the above Kerberos config):
+
+Create a /etc/exports file with the following lines in it:
+
+/export -sec=krb5:krb5i:krb5p -network 192.168.1.0 -mask 255.255.255.0
+V4: /export -sec=krb5:krb5i:krb5p -network 192.168.1.0 -mask 255.255.255.0
+
+This allows all the client(s) to use any of the three
+RPCSEC_GSS types of service.  The client(s) are limited
+to the local 192.168.1.0 subnet.
+
+Add the following lines to your /etc/rc.conf:
+
+nfsuserd_enable="YES"
+gssd_enable="YES"
+nfs_server_enable="YES"
+nfsv4_server_enable="YES"
+mountd_enable="YES"
+
+If you are running FreeBSD 12.3 or 13.0 (and maybe others?), you should
+apply this simple patch to your /etc/rc.d/gssd file.
+(All client(s) and server(s).)
+--- etc/rc.d/gssd.old	2022-02-13 07:53:46.456616000 -0800
++++ etc/rc.d/gssd	2022-02-13 13:34:01.662048000 -0800
+@@ -4,7 +4,8 @@
+ #
+ 
+ # PROVIDE: gssd
+-# REQUIRE: root mountcritlocal
++# REQUIRE: root mountcritlocal NETWORKING kdc
++# BEFORE: mountcritremote
+ # KEYWORD: nojail shutdown
+ 
+ . /etc/rc.subr
+
+Then reboot the server and it should be ready to handle Kerberized NFS mounts.
+(If you are restarting the daemons without rebooting, you must stop both
+ the gssd and nfsd and then start the gssd before nfsd.)
+
+Example client setup (after confirming the above Kerberos config):
+
+Add the following lines to your /etc/rc.conf:
+
+nfsuserd_enable="YES"
+gssd_enable="YES"
+# -h is only needed for the host based initiator credential mounts
+gssd_flags="-h"
+nfs_client_enable="YES"
+nfscbd_enable="YES"
+
+Apply the above patch to /etc/rc.d/gssd, as required.
+
+If your DNS is misconfigured, there may be a long delay
+of over 25 seconds during the mount attempt.  Unless you
+have a kernel with the following patch, the 25 second
+timeout on the kernel upcall to the gssd(8) will happen
+and the gssd(8) daemon will terminate.  A similar delay will
+occur when a user's TGT has expired. (The GSSAPI library
+seems to attempt to contact a DNS service even if /etc/nsswitch.conf
+specifies "files" for the hosts line, if there is a /etc/resolv.conf
+file on the system.)
+If you run into this problem, you can:
+- Delete the /etc/resolv.conf file.
+or
+- Fix DNS so that it works.
+or
+- Apply this patch to your kernel and rebuild it from sources.
+  (After applying the patch, the mount can take 30 seconds, but
+   it will succeed and the gssd will not get terminated.)
+  https://people.freebsd.org/~rmacklem/gssdtimeout.patch
+
+Reboot and the client should be ready to do a Kerberized NFS mount.
+
+There are two ways the mount can be done.
+To do a mount using a host based initiator credential, as su/root:
+(This is the one where the client has a host/nfs-client.my.domain@MY.REALM
+ principal entry in its /etc/krb5.keytab file.)
+# mount -t nfs -o nfsv4,sec=krb5,gssname=host nfs-server.my.domain:/ /export
+
+Since an entry for the principal host/nfs-client.my.domain@MY.REALM is
+being used for the client's machine credential, this mount should continue
+to work until unmounted.  It does require that the client machine have
+a fixed, well known DNS host name (nfs-client.my.domain for this example).
+
+To do a mount without a host based initiator credential:
+
+Then, after rebooting, log in as "root" and:
+# kinit ricktst
+- Input ricktst's Kerberos password at the prompt.
+# klist
+- Should show a valid TGT for "ricktst".
+# mount -t nfs -o nfsv4,sec=krb5 nfs-server.my.domain:/ /export
+
+So long as there is a valid TGT for any principal in the KDC in root's
+credential cache, this mount should work until that TGT expires.
+
+It is possible to do this kind of mount as non-root.
+First, as root, do:
+# sysctl vfs.usermount=1
+Then, login as "ricktst" and:
+$ kinit
+- Input ricktst's Kerberos password at the prompt.
+$ klist
+- Should show a valid TGT for "ricktst".
+$ mount -t nfs -o nfsv4,sec=krb5 nfs-server.my.domain:/ /export
+- Note that for this to work, /export must be owned by "ricktst".
+  Also, "umount /export" might take 1 minute, since it must time out
+  the Mount protocol Unmount RPC, if you have a NFSv4 only server.
+
+These mounts will stop working when the TGT expires.  However, it does not
+require the client to have a fixed, well known DNS host name (a laptop
+using WIFI, for example) nor an entry in /etc/krb5.keytab.
+
+If you, for some reason, choose to switch between these two types of
+Kerberized mounts, you will need to do:
+# umount /export
+# kdestroy
+before doing the other style of mount, so that there is no "cruft" in
+the credentials cache.
+
+Once the mount is done, users will need to have valid TGTs to access files
+on the /export mount.
+
+Here are some gotchas to be aware of:
+- The time of day clocks for all systems must be synchronized to within the
+  clock skew specified in /etc/krb5.conf.
+- KerberosV principal names are case sensitive, although DNS names are not.
+  The simplest way to avoid grief is to use all lower case characters
+  in your DNS host names and all upper case characters for your
+  KerberosV REALM name.
+- The host name resolver functions must return the fully
+  qualified host name i.e. nfs-server.my.domain and not nfs-server.
+  If you are using /etc/hosts, put the fully qualified name first, like:
+  192.168.1.12 nfs-server.my.domain nfs-server
+
+If the mount is not working:
+
+Add the "-v" command line option to gssd by adding this line to /etc/rc.conf
+and rebooting (both server and client):
+gssd_flags="-v"
+
+The gssd daemon should now log information wherever your /etc/syslog.conf
+directs daemon.info.  If there are large negative numbers in the
+logged messages, they are Kerberos errors that can be found in
+/usr/include/krb5_err.h.
+
+If you can access it, the KDC should log information that may be useful.
+
+Thats about all I can think of w.r.t. diagnostics.
+
+Good luck with it, rick
+
+--- This is an email that Peter Eriksson posted with good information.
+    Copied here with his permission.
+We’ve been using NFSv4 with Kerberos from Linux clients here for many years
+(with Solaris-based NFS servers and MIT Kerberos) and lately using FreeBSD
+as the NFS server OS (in an Microsoft AD Kerberos environment). 
+
+There are a few differences in behaviour (from a Solaris perspective),
+mainly regarding the pseudo NFSv4 filesystem but not something that
+can't be handled. In the process of moving to FreeBSD based servers
+I've also been testing lots of different clients in order to make sure
+everything works as expected.
+Here are some notes:
+
+General stuff:
+
+1. Have a _kerberos.my.zone.com DNS TXT record containing the Kerberos realm
+   (nice to have)
+2. Have a _nfsv4domain.my.zone.com DNS TXT record containing the NFSv4 “domain”
+   (not all clients use it, but it’s nice to have)
+
+
+* FreeBSD server (with ZFS filesystems), things below /export is NFS-shared
+  as (for example) server:/staff/user1
+
+1. /etc/exports (we _only_ allow sec=krb<various flavours> for home directories):
+V4: /export -sec=krb5:krb5i:krb5p
+
+Or (on a server also serving some (read-only) sec=sys filesystems below /exports)
+V4: /export -sec=krb5:krb5i:krb5p:sys
+
+
+2. /etc/zfs/exports (generated from set sharenfs=xxx on the ZFS filesystems)
+Home-server:
+/export/staff   -sec=krb5:krb5i:krb5p 
+/export/staff/user1   -sec=krb5:krb5i:krb5p 
+/export/staff/user2   -sec=krb5:krb5i:krb5p 
+/export/students         -sec=krb5:krb5i:krb5p 
+/export/students/user3       -sec=krb5:krb5i:krb5p 
+
+Software-server:
+/export/db/icons         -sec=sys -ro 
+/export/old/ifm/solaris-x86     -sec=krb5:krb5i:krb5p:sys -ro 
+/export/old/ifm/windows-86     -sec=krb5:krb5i:krb5p:sys -ro 
+/export/software         -sec=krb5:krb5i:krb5p -ro 
+
+
+3. Make sure you have host/FQDN@REALM and nfs/FQDN@REALM Kerberos principals
+   in /etc/krb5.keytab and that FQDN is listed in /etc/hosts like:
+
+  1.2.3.4 foo.bar.com foo
+
+4. rc.conf (we have a lot of users in our AD so we have to use a large number
+ for usermax, replace liu.se with your NFSv4 domain for nfsuserd_flags)
+
+gssd_enable="YES"
+nfs_server_enable="YES"
+nfsv4_server_enable="YES"
+nfscbd_enable="YES"
+mountd_enable="YES"
+nfsuserd_enable="YES"
+nfsuserd_flags="-manage-gids -domain liu.se -usertimeout 10 -usermax 100000 16"
+
+5. Make sure you use NTPD so the clock is correct. 
+
+
+* All clients (Solaris 10, OmniOS, MacOS 10.12-10.14, FreeBSD 11.0-11.2,
+  CentOS 7, Debian 9, Ubuntu 17-18 tested):
+
+1. Make sure FQDN is in /etc/hosts
+
+2. Make sure you use NTPD so the clock is correct.
+
+3. Have a host/FQDN@REALM Kerberos host principal in /etc/krb5.keytab
+   (nfs or root is not needed for NFS-mounting to work)
+
+4. We use a fairly default /etc/krb5.conf, sort of like:
+
+[libdefaults]
+default_realm = REALM
+        dns_lookup_realm = true
+
+        ticket_lifetime = 24h
+        renew_lifetime = 7d
+        forwardable = true
+
+        default_ccache_name = KEYRING:persistent:%{uid}
+
+KEYRING probably only works on Linux and there are some problems with
+KEYRING in Debian & Ubuntu since not everything in it supports it due to
+them using Heimdal instead of MIT (like for smbclient) but it mostly works.
+Works fine in CentOS 7 though - in general CentOS 7 feels more
+enterprise-ready than Debian & Ubuntu. The old classic FILE-ccaches
+should work fine though.
+
+For mounting we use the automounter and a "executable map
+(perl script) that looks up records in DNS (Hesiod-style) since the built-in
+Hesiod support in most automounters is a bit.. lacking. Works quite well.
+You can find the scripts we use here:
+
+http://www.grebo.net/~peter/nfs
+
+(The dns-update scripts use data from an SQL database so probably isn't
+directly usable to anybody else. We use the same SQL database to populate
+a locally developed BerkeleyDB-based NSS-database on each FreeBSD server
+in order to speed things up since AD/LDAP-looks with ~90k users and silly
+amounts of AD groups takes forever, even with cacheing).
+
+Some Linux-specific stuff: 
+
+Packages needed:
+
+  CentOS:
+  - nfs-utils
+  - libnfsidmap
+  - nfs4-acl-tools
+  - autofs
+
+  Debian:
+  - keyutils
+  - nfs-kernel-server # rpc.idmapd needs this due to a bug in Debian
+
+  Ubuntu:
+  - keyutils
+
+  Other nice-to have packages:
+  - hesiod
+  - autofs-hesiod
+
+Some settings to check for:
+
+  /etc/default/nfs-common:
+    NEED_IDMAPD=yes
+    NEED_GSSD=yes
+
+  /etc/idmapd.conf (replace liu.se with your NFSv4 domain):
+    Domain=liu.se
+
+  /etc/request-key.d/id_resolver.conf (should be there already if using a
+  modern Linux and you've added the packages above):
+    create id_resolver * * /usr/sbin/nfsidmap %k %d
+
+
+MacOS:
+
+Basically require the latest - 10.14 (Mojave) - for things to work smoothly.
+In theory 10.12 & 10.13 should work but there is some bug in them that causes
+the OS to panic when you try to use NFS & Kerberos. 10.11 and earlier doesn't
+support good enough encryption for us. But with 10.14 you just need
+to get a Kerberos ticket and then you can mount things just fine.
+
+/etc/nfs.conf should contain (replace liu.se with your NFSv4 domain):
+nfs.client.default_nfs4domain=liu.se
+
+
+
+(There are a lot of problems you can run into with Microsofts AD
+implementation of Kerberos too that we've had to be fighting with,
+but that's a whole other topic)
+
+- Peter

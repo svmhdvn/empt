@@ -1,0 +1,34 @@
+# TODO do I need this?
+mount.devfs;
+
+# Needed for ping, traceroute, etc.
+allow.raw_sockets;
+
+# Maintain a clean ENV before starting each jail
+exec.clean;
+
+# Set timeouts to avoid startup/shutdown scripts running forever
+exec.timeout = 30;
+stop.timeout = 30;
+
+path = "/usr/jail/guests/${name}";
+
+host.hostname = "${name}.empt.siva";
+
+# TODO figure out a way to generate loopback ipv6. Not strictly necessary right now.
+#ip6.addr = "lo0|fe80:2::${ip_auto_id}/64";
+
+# Using this default for complete system jail, override if single service
+exec.start = "/bin/sh /etc/rc";
+exec.stop = "/bin/sh /etc/rc.shutdown";
+
+{% for name in jail_list %}
+  {% set hostip = inventory_hostname | ansible.utils.ipaddr('host/prefix') %}
+
+{{ name }} {
+	ip6.addr = "re0|{{ hostip | ansible.utils.ipaddr('subnet') | slaac(community.general.random_mac()) }}/{{ hostip | ansible.utils.ipaddr('prefix') }}";
+}
+
+{% endfor %}
+
+# TODO handle ssh fstab and kerberos non-rc'd kdc and kadmin

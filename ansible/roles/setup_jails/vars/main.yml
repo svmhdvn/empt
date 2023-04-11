@@ -1,0 +1,9 @@
+jail_list:
+  - certauth
+  - dns
+  - kerberos
+  - ldap
+  - logs
+  - mail
+  - prometheus
+  - ssh

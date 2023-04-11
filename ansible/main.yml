@@ -1,0 +1,17 @@
+---
+
+- name: Bootstrap all ansible prereqs onto freshly installed FreeBSD host
+  hosts: all
+  become: true
+  become_method: su
+  gather_facts: true
+  roles:
+    - bootstrap
+
+- name: Run all playbook roles
+  hosts: all
+  become: true
+  become_method: doas
+  roles:
+    - setup_host
+    - setup_jails

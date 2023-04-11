@@ -1,0 +1,2 @@
+* useful debugging between freebsd KRB5 nfs4 server + any linux client
+https://lists.freebsd.org/pipermail/freebsd-current/2013-February/039687.html

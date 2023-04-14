@@ -4,7 +4,7 @@
   hosts: all
   become: true
   become_method: su
-  gather_facts: true
+  gather_facts: false
   roles:
     - bootstrap
 
@@ -12,6 +12,10 @@
   hosts: all
   become: true
   become_method: doas
+  gather_facts: true
   roles:
-    - setup_host
-    - setup_jails
+    - host
+    - all_jails
+
+#- name: Setup jail_dns
+#  hosts: jail_dns

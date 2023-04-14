@@ -1,0 +1,10 @@
+- name: Install BIND dns server package
+  ansible.builtin.command: 'pkg install -r /usr/jail/guests/{{ jailname }} -y {{ bind_package }}'
+
+- name: Configure BIND server and zones
+  ansible.builtin.template:
+    src: '{{ item.src }}'
+    dest: '/usr/local/etc/namedb/{{ item.path | replace(".j2", "")}}'
+    mode: '0644'
+  with_filetree: 'namedb/'
+  when: item.state == 'file'

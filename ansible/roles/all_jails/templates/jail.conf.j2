@@ -22,11 +22,12 @@ host.hostname = "${name}.empt.siva";
 exec.start = "/bin/sh /etc/rc";
 exec.stop = "/bin/sh /etc/rc.shutdown";
 
-{% for name in jail_list %}
-  {% set hostip = inventory_hostname | ansible.utils.ipaddr('host/prefix') %}
+# Common fstab to share /usr/ports at a minimum
+mount.fstab = "/usr/jail/fstabs/${name}.fstab";
 
-{{ name }} {
-	ip6.addr = "re0|{{ hostip | ansible.utils.ipaddr('subnet') | slaac(community.general.random_mac()) }}/{{ hostip | ansible.utils.ipaddr('prefix') }}";
+{% for jail in all_jails %}
+{{ jail.name }} {
+	ip6.addr = "re0|{{ jail.ipaddr }}/{{ hostip.prefix }}";
 }
 
 {% endfor %}

@@ -1,0 +1,28 @@
+- name: Clone (thick) base jail to installed locations
+  ansible.builtin.copy:
+    src: /tmp/base_jail
+    remote_src: true
+    dest: '/usr/jail/guests/{{ jail.name }}'
+
+- name: Populate common /etc files
+  ansible.builtin.template:
+    src: '{{ item.src }}'
+    dest: '/usr/jail/guests/{{ jail.name }}/etc/{{ item.path | replace(".j2", "")}}'
+    mode: '0644'
+  with_filetree: 'common_etc/'
+  when: item.state == 'file'
+
+- name: Create the common fstabs
+  ansible.builtin.template:
+    src: common_fstab.j2
+    dest: '/usr/jail/fstabs/{{ jail.name }}'
+    owner: root
+    group: wheel
+    mode: '0644'
+
+- name: Add all jails to the inventory
+  ansible.builtin.add_host:
+    name: 'jail_{{ jail.name }}'
+    ansible_host: '{{ jail.ipaddr }}'
+    groups:
+      - jails

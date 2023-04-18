@@ -1,0 +1,7 @@
+dns/nsd
+mail/dovecot
+mail/mlmmj
+mail/postfix
+net-mgmt/prometheus2
+security/doas
+security/heimdal

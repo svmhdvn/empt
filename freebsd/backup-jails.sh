@@ -14,7 +14,7 @@ cp -r /usr/jail/fstabs jail/
 
 mkdir -p \
     jail/hosts/ns1/etc \
-    jail/hosts/ns1/usr/local/etc/namedb
+    jail/hosts/ns1/usr/local/etc/namedb \
 
 cp \
     /usr/jail/hosts/ns1/etc/crontab \
@@ -27,9 +27,12 @@ cp \
 
 cp -r \
     /usr/jail/hosts/ns1/usr/local/etc/namedb/named.conf \
-    /usr/jail/hosts/ns1/usr/local/etc/namedb/named.conf.sample \
     /usr/jail/hosts/ns1/usr/local/etc/namedb/dynamic \
     jail/hosts/ns1/usr/local/etc/namedb/
+
+cp -r \
+    /usr/jail/hosts/ns1/usr/local/etc/nsd \
+    jail/hosts/ns1/usr/local/etc/
 
 ##### ldap #####
 
@@ -153,6 +156,6 @@ cp \
 
 ################
 
-git add backup-jails.sh jail && \
-    git commit -m "(automated) empt freebsd jail backup" && \
-    git push
+#git add backup-jails.sh jail && \
+#    git commit -m "(automated) empt freebsd jail backup" && \
+#    git push

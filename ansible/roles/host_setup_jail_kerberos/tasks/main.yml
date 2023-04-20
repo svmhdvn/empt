@@ -1,5 +1,18 @@
-- name: Install bind9 package
-  community.general.portinstall:
-    name: '{{ bind_package }}'
+- name: Install heimdal port from poudriere
+  ansible.builtin.command: 'pkg install -r {{ jailroot }} -y heimdal'
 
-# - name: configure bind9 zones
+- name: Configure heimdal
+  ansible.builtin.template:
+    src: krb5.conf.j2
+    dest: '{{ jailroot }}/etc/krb5.conf'
+    owner: root
+    group: wheel
+    mode: '0644'
+
+- name: Enable heimdal services
+  ansible.builtin.lineinfile:
+    path: '{{ jailroot }}/etc/rc.conf'
+    line: '{{ item }}_enable="YES"'
+  loop:
+    - kdc
+    - kadmind

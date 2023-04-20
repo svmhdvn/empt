@@ -1,10 +1,15 @@
-- name: Install BIND dns server package
-  ansible.builtin.command: 'pkg install -r /usr/jail/guests/{{ jailname }} -y {{ bind_package }}'
+- name: Install nsd port from poudriere
+  ansible.builtin.command: 'pkg install -r /usr/jail/guests/{{ jail.name }} -y nsd'
 
-- name: Configure BIND server and zones
+- name: Configure nsd and DNS zones
   ansible.builtin.template:
     src: '{{ item.src }}'
-    dest: '/usr/local/etc/namedb/{{ item.path | replace(".j2", "")}}'
+    dest: '/usr/local/etc/nsd/{{ item.path | replace(".j2", "")}}'
     mode: '0644'
-  with_filetree: 'namedb/'
+  with_filetree: 'nsd/'
   when: item.state == 'file'
+
+- name: Enable nsd service
+  ansible.builtin.service:
+    name: nsd
+    enabled: yes

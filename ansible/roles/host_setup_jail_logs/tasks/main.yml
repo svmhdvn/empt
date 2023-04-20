@@ -1,5 +1,13 @@
-- name: Install bind9 package
-  community.general.portinstall:
-    name: '{{ bind_package }}'
+- name: Change syslogd server args
+  ansible.builtin.lineinfile:
+    path: /etc/rc.conf
+    regexp: '^syslogd_flags='
+    line: 'syslogd_flags="-8 -O syslog -a .empt.siva -v -v"'
 
-# - name: configure bind9 zones
+- name: Configure syslog to receive logs from every configured host
+  ansible.builtin.template:
+    src: syslog.conf.j2
+    dest: '/usr/jail/guests/{{ jail.name }}/etc/syslog.conf'
+    owner: root
+    group: wheel
+    mode: '0644'

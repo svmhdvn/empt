@@ -1,3 +1,10 @@
+- name: Add all jails to the inventory
+  ansible.builtin.add_host:
+    name: 'jail_{{ jail.name }}'
+    ansible_host: '{{ jail.ipaddr }}'
+    groups:
+      - jails
+
 - name: Clone (thick) base jail to installed locations
   ansible.builtin.copy:
     src: /tmp/base_jail
@@ -20,9 +27,6 @@
     group: wheel
     mode: '0644'
 
-- name: Add all jails to the inventory
-  ansible.builtin.add_host:
-    name: 'jail_{{ jail.name }}'
-    ansible_host: '{{ jail.ipaddr }}'
-    groups:
-      - jails
+- name: Run as much jail-specific setup as possible using the host connection
+  ansible.builtin.include_role:
+    name: 'host_setup_jail_{{ jail.name }}'

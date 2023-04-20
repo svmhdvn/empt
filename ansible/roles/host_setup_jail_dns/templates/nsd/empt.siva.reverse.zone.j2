@@ -1,0 +1,16 @@
+$TTL    1m
+
+@	IN	SOA	dns.empt.siva.	postmaster.empt.siva. (
+				1	; serial
+				4h	; refresh
+				15m	; retry
+				8h	; expire
+				4m )	; negative caching TTL
+
+		IN	NS	dns.empt.siva.
+
+{% for j in all_jails $}
+{{ j.ipaddr | ansible.utils.ipaddr('revdns') }} IN PTR {{ j.name }}.empt.siva
+{% endfor %}
+
+{{ hostvars['cl100'].ansible_host | ansible.utils.ipaddr('revdns') }} IN PTR nfs.empt.siva

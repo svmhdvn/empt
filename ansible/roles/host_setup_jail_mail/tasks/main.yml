@@ -1,18 +1,18 @@
-- name: Install required packages
-  ansible.builtin.command: 'pkg install -r /usr/jail/guests/{{ jailname }} -y postfix dovecot mlmmj'
+- name: Install required packages from poudriere
+  ansible.builtin.command: 'pkg install -r {{ jailroot }} -y postfix dovecot mlmmj'
 
 - name: Configure postfix
   ansible.builtin.template:
-    src: postfix_main.cf.j2
-    dest: /usr/local/etc/postfix/main.cf
-    owner: root
-    group: wheel
+    src: '{{ item.src }}'
+    dest: '{{ jailroot }}/usr/local/etc/postfix/{{ item.path | replace(".j2", "")}}'
     mode: '0644'
+  with_filetree: 'postfix/'
+  when: item.state == 'file'
 
 - name: Configure dovecot
   ansible.builtin.template:
     src: '{{ item.src }}'
-    dest: '/usr/local/etc/dovecot/{{ item.path | replace(".j2", "")}}'
+    dest: '{{ jailroot }}/usr/local/etc/dovecot/{{ item.path | replace(".j2", "")}}'
     mode: '0644'
   with_filetree: 'dovecot/'
   when: item.state == 'file'

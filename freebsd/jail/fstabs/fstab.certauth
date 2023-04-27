@@ -1,0 +1,2 @@
+# Device	Mountpoint	FStype	Options	Dump	Pass#
+/usr/local/poudriere/data/packages/132Rx64-local-beastie	/usr/jail/guests/certauth/usr/local/poudriere_repo	nullfs	ro	0	0

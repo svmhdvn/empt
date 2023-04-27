@@ -1,0 +1,9 @@
+fe80::202%lo0           ns1.empt.siva ns1.home.arpa ns1 localhost
+
+fdac::aaaa:201		nfs.empt.siva
+fdac::aaaa:202		ns1.empt.siva
+fdac::aaaa:204		mail.empt.siva
+fdac::aaaa:205		ssh.empt.siva
+fdac::aaaa:206		kerberos.empt.siva kerberos.empt.siva.
+fdac::aaaa:207		certauth.empt.siva
+fdac::aaaa:208		logs.empt.siva

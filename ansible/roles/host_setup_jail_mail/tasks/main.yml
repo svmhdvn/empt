@@ -16,3 +16,45 @@
     mode: '0644'
   with_filetree: 'dovecot/'
   when: item.state == 'file'
+
+- name: Create local (unix account) mail directory
+  ansible.builtin.file:
+    path: '{{ jailroot }}/var/mail/local'
+    state: directory
+    mode: '0755'
+    owner: root
+    group: mail
+
+- name: Add user to handle dovecot virtual mail
+  ansible.builtin.user:
+    name: vmail
+    uid: 145
+    comment: Virtual Mail Handler
+    home: /var/mail/vhosts
+    shell: /usr/sbin/nologin
+
+- name: Create dovecot virtual mail destination directories
+  ansible.builtin.file:
+    path: '{{ jailroot }}/var/mail/{{ item }}'
+    state: directory
+    mode: '0770'
+    owner: vmail
+    group: vmail
+  loop:
+    - vhosts
+    - attachments
+
+- name: Add user to handle mlmmj postfix transport
+  ansible.builtin.user:
+    name: mlmmj
+    comment: mlmmj transport user
+    home: /var/spool/mlmmj
+    shell: /usr/sbin/nologin
+
+- name: Create mlmmj spool directory
+  ansible.builtin.file:
+    path: '{{ jailroot }}/var/spool/mlmmj'
+    state: directory
+    mode: '0775'
+    owner: mlmmj
+    group: mlmmj

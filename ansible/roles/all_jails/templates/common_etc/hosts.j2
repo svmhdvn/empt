@@ -1,1 +1,5 @@
-{{ jail.ipaddr }}	{{ jail.name }}.empt.siva {{ jail.name }}.home.arpa {{ jail.name }} localhost
+{{ jail.ipaddr }} {{ jail.name }}.empt.siva {{ jail.name }}.home.arpa {{ jail.name }} localhost
+
+{% for j in all_jails %}
+{{ j.ipaddr }}	{{ j.name }}.empt.siva {{ j.name }}.home.arpa {{ j.name }}
+{% endfor %}

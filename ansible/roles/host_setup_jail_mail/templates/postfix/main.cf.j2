@@ -39,14 +39,14 @@ mail_owner = postfix
 # from gethostname(). $myhostname is used as a default value for many
 # other configuration parameters.
 #
-myhostname = mail.empt.siva
+#myhostname = mail.my.domain
 
 # The mydomain parameter specifies the local internet domain name.
 # The default is to use $myhostname minus the first component.
 # $mydomain is used as a default value for many other configuration
 # parameters.
 #
-#mydomain = empt.siva
+#mydomain = my.domain
 
 # SENDING MAIL
 # 
@@ -62,7 +62,6 @@ myhostname = mail.empt.siva
 # to recipient addresses that have no @domain part.
 #
 #myorigin = $myhostname
-myorigin = mail.empt.siva
 
 # RECEIVING MAIL
 
@@ -127,7 +126,7 @@ myorigin = mail.empt.siva
 #mydestination = $myhostname, localhost.$mydomain, localhost, $mydomain
 #mydestination = $myhostname, localhost.$mydomain, localhost, $mydomain,
 #	mail.$mydomain, www.$mydomain, ftp.$mydomain
-mydestination = mail.empt.siva, mail.home.arpa, localhost
+mydestination = $myhostname, mail.home.arpa, localhost
 
 # REJECTING MAIL FOR UNKNOWN LOCAL USERS
 #

@@ -1,13 +1,13 @@
 - name: Change syslogd server args
   ansible.builtin.lineinfile:
-    path: /etc/rc.conf
+    path: '{{ jailroot }}/etc/rc.conf'
     regexp: '^syslogd_flags='
-    line: 'syslogd_flags="-8 -O syslog -a .empt.siva -v -v"'
+    line: 'syslogd_flags="-8 -O syslog -a *.empt.siva -v -v"'
 
-- name: Configure syslog to receive logs from every configured host
+- name: Configure syslog and newsyslog
   ansible.builtin.template:
-    src: syslog.conf.j2
-    dest: '/usr/jail/guests/{{ jail.name }}/etc/syslog.conf'
-    owner: root
-    group: wheel
+    src: '{{ item.src }}'
+    dest: '{{ jailroot }}/etc/{{ item.path | replace(".j2", "")}}'
     mode: '0644'
+  with_filetree: 'etc/'
+  when: item.state == 'file'

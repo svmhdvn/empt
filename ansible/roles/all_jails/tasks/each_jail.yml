@@ -1,11 +1,11 @@
-- name: Add all jails to the inventory
+- name: Add jail to the inventory
   ansible.builtin.add_host:
     name: 'jail_{{ jail.name }}'
     ansible_host: '{{ jail.ipaddr }}'
     groups:
       - jails
 
-- name: Clone (thick) base jail to installed locations
+- name: Clone (thick) base jail to installed location
   ansible.builtin.copy:
     src: /tmp/base_jail
     remote_src: true

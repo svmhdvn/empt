@@ -1,3 +1,38 @@
+- name: Create all missing directories
+  ansible.builtin.file:
+    path: '{{ item }}'
+    state: directory
+    mode: '0755'
+  loop:
+    - /tmp/base_jail
+    - /usr/jail/fstabs
+    - /usr/jail/guests
+    - /usr/local/etc/pkg/repos
+    - /usr/local/poudriere_repo
+
+- name: Set poudriere pkg repo
+  ansible.builtin.copy:
+    content: |
+      Poudriere: {
+        url: "file:///usr/local/poudriere_repo"
+      }
+      FreeBSD: {
+        enabled: no
+      }
+    dest: /usr/local/etc/pkg/repos/FreeBSD.conf
+    owner: root
+    group: wheel
+    mode: '0644'
+
+- name: Extract poudriere repo archive
+  ansible.builtin.unarchive:
+    src: '{{ inventory_hostname }}-poudriere.tar.zst'
+    dest: /usr/local/poudriere_repo
+
+- name: Reinstall all previously upstream mirror installed packages from poudriere
+  ansible.builtin.command: 'pkg install -r Poudriere -f -y python doas gtar unzip'
+  changed_when: true
+
 - name: Download FreeBSD base system archive to local filesystem
   ansible.builtin.get_url:
     url: 'https://download.freebsd.org/ftp/releases/amd64/{{ freebsd_version }}/base.txz'
@@ -5,18 +40,6 @@
     owner: root
     group: wheel
     mode: '0600'
-
-- name: Create base jail directory
-  ansible.builtin.file:
-    path: /tmp/base_jail
-    state: directory
-    mode: '0755'
-
-- name: Unarchive base jail
-  ansible.builtin.unarchive:
-    src: /tmp/base.tar.xz
-    remote_src: true
-    dest: /tmp/base_jail
 
 - name: Populate jail.conf
   ansible.builtin.template:
@@ -29,9 +52,11 @@
 - name: Run common setup tasks on all jails
   ansible.builtin.include_tasks: each_jail.yml
   vars:
-    jail: '{{ item }}'
-    jailroot: '/usr/jail/guests/{{ item.name }}'
+    jail: '{{ each_jail_item }}'
+    jailroot: '/usr/jail/guests/{{ each_jail_item.name }}'
   loop: '{{ all_jails }}'
+  loop_control:
+    loop_var: each_jail_item
 
 - name: Start all barebones jails
   ansible.builtin.service:
@@ -43,10 +68,7 @@
     name: jail
     state: stopped
 
-#- name: debug
-#  tags: test
-#  ansible.builtin.debug:
-#    msg: '{{ jailname }}'
-#  vars:
-#    jailname: '{{ item.name }}'
-#  loop: '{{ all_jails }}'
+- name: debug
+  tags: test
+  ansible.builtin.debug:
+    msg: '{{ hostvars }}'

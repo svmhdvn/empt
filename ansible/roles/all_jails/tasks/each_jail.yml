@@ -5,18 +5,24 @@
     groups:
       - jails
 
-- name: Clone (thick) base jail to installed location
-  ansible.builtin.copy:
-    src: /tmp/base_jail
+- name: Create jail's install directory
+  ansible.builtin.file:
+    path: '{{ jailroot }}'
+    state: directory
+    mode: '0755'
+
+- name: Unarchive (thick) base jail to installed location
+  ansible.builtin.unarchive:
+    src: /tmp/base.tar.xz
     remote_src: true
-    dest: '/usr/jail/guests/{{ jail.name }}'
+    dest: '{{ jailroot }}'
 
 - name: Populate common /etc files
   ansible.builtin.template:
     src: '{{ item.src }}'
     dest: '/usr/jail/guests/{{ jail.name }}/etc/{{ item.path | replace(".j2", "")}}'
     mode: '0644'
-  with_filetree: 'common_etc/'
+  with_community.general.filetree: templates/common_etc/
   when: item.state == 'file'
 
 - name: Create the common fstabs

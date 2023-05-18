@@ -17,3 +17,4 @@ all_jails:
     ipaddr: '{{ ula_subnet | ansible.utils.slaac("aa:bb:cc" | community.general.random_mac) }}'
   - name: ssh
     ipaddr: '{{ ula_subnet | ansible.utils.slaac("aa:bb:cc" | community.general.random_mac) }}'
+jail_dns: '{{ all_jails | selectattr("name", "eq", "dns") | first }}'

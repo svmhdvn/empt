@@ -1,5 +1,6 @@
-- name: Ensure ansible dependencies are installed
-  ansible.builtin.raw: pkg install -y python doas gtar unzip
+- name: Install basic ansible dependencies (from freebsd pkg mirror)
+  ansible.builtin.raw: pkg install -y python doas gtar unzip zip
+  #ansible.builtin.raw: pkg install -y python doas
   # TODO fix changed_when to properly detect change
   changed_when: false
 

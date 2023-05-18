@@ -1,5 +1,5 @@
-- name: Install bind9 package
-  community.general.portinstall:
-    name: '{{ bind_package }}'
-
-# - name: configure bind9 zones
+#- name: Install bind9 package
+#  community.general.portinstall:
+#    name: '{{ bind_package }}'
+#
+## - name: configure bind9 zones

@@ -1,6 +1,5 @@
 - name: Install basic ansible dependencies (from freebsd pkg mirror)
-  ansible.builtin.raw: pkg install -y python doas gtar unzip zip
-  #ansible.builtin.raw: pkg install -y python doas
+  ansible.builtin.raw: pkg install -y python doas gtar unzip zip rsync
   # TODO fix changed_when to properly detect change
   changed_when: false
 

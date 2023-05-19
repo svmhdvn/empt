@@ -9,5 +9,5 @@
     src: '{{ item.src }}'
     dest: '{{ jailroot }}/etc/{{ item.path | replace(".j2", "")}}'
     mode: '0644'
-  with_filetree: 'etc/'
+  with_community.general.filetree: templates/etc/
   when: item.state == 'file'

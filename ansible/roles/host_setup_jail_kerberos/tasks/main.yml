@@ -1,5 +1,5 @@
 - name: Install heimdal port from poudriere
-  ansible.builtin.command: 'pkg install -r {{ jailroot }} -y heimdal'
+  ansible.builtin.command: 'pkg -r {{ jailroot }} install -y heimdal'
 
 - name: Configure heimdal
   ansible.builtin.template:

@@ -1,20 +1,28 @@
 - name: Install required packages from poudriere
-  ansible.builtin.command: 'pkg install -r {{ jailroot }} -y postfix dovecot mlmmj'
+  ansible.builtin.command: 'pkg -r {{ jailroot }} install -y postfix dovecot mlmmj'
 
 - name: Configure postfix
   ansible.builtin.template:
     src: '{{ item.src }}'
     dest: '{{ jailroot }}/usr/local/etc/postfix/{{ item.path | replace(".j2", "")}}'
     mode: '0644'
-  with_filetree: 'postfix/'
+  with_community.general.filetree: templates/postfix/
   when: item.state == 'file'
+
+- name: Create dovecot conf.d/ directory
+  ansible.builtin.file:
+    path: '{{ jailroot }}/usr/local/etc/dovecot/conf.d'
+    state: directory
+    mode: '0755'
+    owner: root
+    group: wheel
 
 - name: Configure dovecot
   ansible.builtin.template:
     src: '{{ item.src }}'
     dest: '{{ jailroot }}/usr/local/etc/dovecot/{{ item.path | replace(".j2", "")}}'
     mode: '0644'
-  with_filetree: 'dovecot/'
+  with_community.general.filetree: templates/dovecot/
   when: item.state == 'file'
 
 - name: Create local (unix account) mail directory

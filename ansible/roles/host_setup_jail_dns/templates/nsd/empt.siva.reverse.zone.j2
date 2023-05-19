@@ -9,7 +9,7 @@ $TTL    1m
 
 		IN	NS	dns.empt.siva.
 
-{% for j in all_jails $}
+{% for j in all_jails %}
 {{ j.ipaddr | ansible.utils.ipaddr('revdns') }} IN PTR {{ j.name }}.empt.siva
 {% endfor %}
 

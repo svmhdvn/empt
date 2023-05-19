@@ -15,8 +15,14 @@
     content: |
       Poudriere: {
         url: "file:///usr/local/poudriere_repo"
+        enabled: yes
       }
+
       FreeBSD: {
+        url: "pkg+http://pkg.FreeBSD.org/${ABI}/latest",
+        mirror_type: "srv",
+        signature_type: "fingerprints",
+        fingerprints: "/usr/share/keys/pkg",
         enabled: no
       }
     dest: /usr/local/etc/pkg/repos/FreeBSD.conf
@@ -40,6 +46,12 @@
     owner: root
     group: wheel
     mode: '0600'
+
+- name: Unarchive (thick) base jail to temporary location
+  ansible.builtin.unarchive:
+    src: /tmp/base.tar.xz
+    remote_src: true
+    dest: /tmp/base_jail
 
 - name: Populate jail.conf
   ansible.builtin.template:

@@ -11,7 +11,7 @@ $TTL    1m
 		IN	NS	dns
 		MX	10	mail
 
-{% for j in all_jails $}
+{% for j in all_jails %}
 {{ j.name }}	IN	AAAA	{{ j.ipaddr }}
 {% endfor %}
 

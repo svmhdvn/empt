@@ -1,0 +1,136 @@
+- name: Create all missing directories on jailhost
+  ansible.builtin.file:
+    path: '{{ item }}'
+    state: directory
+    mode: '0755'
+  tags: always
+  loop:
+    - /tmp/base_jail
+    - /usr/jail/fstabs
+    - /usr/jail/guests
+
+# NOTE: doing this here because we require strict, one-time evaluation of variables
+- name: Generate random IPv6 addresses for all jails
+  ansible.builtin.set_fact:
+    jail_certauth:
+      name: certauth
+      ipaddr: '{{ ula_subnet | ansible.utils.slaac("aa:bb:cc" | community.general.random_mac) }}'
+    jail_dns:
+      name: dns
+      ipaddr: '{{ ula_subnet | ansible.utils.slaac("aa:bb:cc" | community.general.random_mac) }}'
+    jail_kerberos:
+      name: kerberos
+      ipaddr: '{{ ula_subnet | ansible.utils.slaac("aa:bb:cc" | community.general.random_mac) }}'
+    jail_logs:
+      name: logs
+      ipaddr: '{{ ula_subnet | ansible.utils.slaac("aa:bb:cc" | community.general.random_mac) }}'
+    jail_mail:
+      name: mail
+      ipaddr: '{{ ula_subnet | ansible.utils.slaac("aa:bb:cc" | community.general.random_mac) }}'
+    jail_prometheus:
+      name: prometheus
+      ipaddr: '{{ ula_subnet | ansible.utils.slaac("aa:bb:cc" | community.general.random_mac) }}'
+    jail_ssh:
+      name: ssh
+      ipaddr: '{{ ula_subnet | ansible.utils.slaac("aa:bb:cc" | community.general.random_mac) }}'
+
+- name: Assign miscellaneous dependent helper variables
+  ansible.builtin.set_fact:
+    all_jails:
+      - '{{ jail_certauth }}'
+      - '{{ jail_dns }}'
+      - '{{ jail_kerberos }}'
+      - '{{ jail_logs }}'
+      - '{{ jail_mail }}'
+      - '{{ jail_prometheus }}'
+      - '{{ jail_ssh }}'
+
+- name: Download FreeBSD base system archive to local filesystem
+  ansible.builtin.get_url:
+    url: 'https://download.freebsd.org/ftp/releases/amd64/{{ freebsd_version }}/base.txz'
+    dest: /tmp/base.tar.xz
+    owner: root
+    group: wheel
+    mode: '0644'
+  tags: once
+
+- name: Unarchive (thick) base jail to temporary location
+  ansible.builtin.unarchive:
+    src: /tmp/base.tar.xz
+    remote_src: true
+    dest: /tmp/base_jail
+  tags: once
+
+- name: Populate common /etc files into base jail
+  ansible.builtin.template:
+    src: '{{ item.src }}'
+    dest: '/tmp/base_jail/etc/{{ item.path | replace(".j2", "")}}'
+    mode: '0644'
+    owner: root
+    group: wheel
+  with_community.general.filetree: templates/common_etc/
+  when: item.state == 'file'
+  tags: always
+
+- name: Clone (thick) base jail to installed locations
+  ansible.builtin.copy:
+    src: /tmp/base_jail/
+    remote_src: true
+    dest: '/usr/jail/guests/{{ each_jail_item.name }}/'
+  tags: once
+  loop: '{{ all_jails }}'
+
+- name: Populate jail.conf
+  ansible.builtin.template:
+    src: jail.conf.j2
+    dest: /etc/jail.conf
+    owner: root
+    group: wheel
+    mode: '0644'
+  tags: always
+
+- name: Copy the common fstab for each jail
+  ansible.builtin.template:
+    src: common_fstab.j2
+    dest: '/usr/jail/fstabs/{{ item.name }}.fstab'
+    owner: root
+    group: wheel
+    mode: '0644'
+  tags: always
+  loop: '{{ all_jails }}'
+
+- name: Add all jails to jailhost's /etc/hosts
+  ansible.builtin.template:
+    src: common_etc/hosts.j2
+    dest: /etc/hosts
+    mode: '0644'
+  tags: always
+  vars:
+    jail:
+      name: '{{ inventory_hostname }}'
+      ipaddr: '{{ ansible_host }}'
+
+- name: Start all barebones jails
+  ansible.builtin.service:
+    name: jail
+    state: started
+  tags: final
+
+- name: Add all jails to the inventory
+  ansible.builtin.add_host:
+    name: 'jail_{{ item.name }}'
+    ansible_host: '{{ item.ipaddr }}'
+    groups:
+      - jails
+  tags: always
+  loop: '{{ all_jails }}'
+
+- name: Run common setup tasks on all jails
+  ansible.builtin.include_role:
+    name: 'host_setup_jail_{{ jail.name }}'
+  vars:
+    jail: '{{ each_jail_item }}'
+  loop: '{{ all_jails }}'
+  loop_control:
+    loop_var: each_jail_item
+  tags: always

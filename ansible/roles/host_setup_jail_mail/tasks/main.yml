@@ -1,5 +1,6 @@
 - name: Install required packages from poudriere
   ansible.builtin.command: 'pkg -r {{ jailroot }} install -y postfix dovecot mlmmj'
+  tags: always
 
 - name: Configure postfix
   ansible.builtin.template:
@@ -8,6 +9,7 @@
     mode: '0644'
   with_community.general.filetree: templates/postfix/
   when: item.state == 'file'
+  tags: always
 
 - name: Create dovecot conf.d/ directory
   ansible.builtin.file:
@@ -16,6 +18,7 @@
     mode: '0755'
     owner: root
     group: wheel
+  tags: always
 
 - name: Configure dovecot
   ansible.builtin.template:
@@ -24,6 +27,7 @@
     mode: '0644'
   with_community.general.filetree: templates/dovecot/
   when: item.state == 'file'
+  tags: always
 
 - name: Create local (unix account) mail directory
   ansible.builtin.file:
@@ -32,7 +36,10 @@
     mode: '0755'
     owner: root
     group: mail
+  tags: always
 
+# TODO have to move these to setup within the jail itself. Currently, it's
+# setting up users in the jailhost
 - name: Add user to handle dovecot virtual mail
   ansible.builtin.user:
     name: vmail
@@ -40,6 +47,7 @@
     comment: Virtual Mail Handler
     home: /var/mail/vhosts
     shell: /usr/sbin/nologin
+  tags: always
 
 - name: Create dovecot virtual mail destination directories
   ansible.builtin.file:
@@ -51,6 +59,7 @@
   loop:
     - vhosts
     - attachments
+  tags: always
 
 - name: Add user to handle mlmmj postfix transport
   ansible.builtin.user:
@@ -58,6 +67,7 @@
     comment: mlmmj transport user
     home: /var/spool/mlmmj
     shell: /usr/sbin/nologin
+  tags: always
 
 - name: Create mlmmj spool directory
   ansible.builtin.file:
@@ -66,3 +76,13 @@
     mode: '0775'
     owner: mlmmj
     group: mlmmj
+  tags: always
+
+- name: Enable mail services
+  ansible.builtin.lineinfile:
+    path: '{{ jailroot }}/etc/rc.conf'
+    line: '{{ item }}_enable="YES"'
+  loop:
+    - postfix
+    - dovecot
+  tags: always

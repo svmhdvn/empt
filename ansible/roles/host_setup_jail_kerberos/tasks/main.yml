@@ -1,5 +1,6 @@
 - name: Install heimdal port from poudriere
   ansible.builtin.command: 'pkg -r {{ jailroot }} install -y heimdal'
+  tags: always
 
 - name: Configure heimdal
   ansible.builtin.template:
@@ -8,11 +9,16 @@
     owner: root
     group: wheel
     mode: '0644'
+  tags: always
 
 - name: Enable heimdal services
-  ansible.builtin.lineinfile:
+  ansible.builtin.blockinfile:
     path: '{{ jailroot }}/etc/rc.conf'
-    line: '{{ item }}_enable="YES"'
+    marker: ''
+    block: |
+      {{ item }}_enable="YES"
+      {{ item }}_program="/usr/local/libexec/{{ item }}"
   loop:
     - kdc
     - kadmind
+  tags: always

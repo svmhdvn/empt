@@ -1,0 +1,37 @@
+- name: Create all missing directories on jailhost
+  ansible.builtin.file:
+    path: '{{ item }}'
+    state: directory
+    mode: '0755'
+  loop:
+    - /usr/local/etc/pkg/repos
+    - /usr/local/poudriere_repo
+
+- name: Set poudriere pkg repo
+  ansible.builtin.copy:
+    content: |
+      Poudriere: {
+        url: "file:///usr/local/poudriere_repo"
+        enabled: yes
+      }
+
+      FreeBSD: {
+        url: "pkg+http://pkg.FreeBSD.org/${ABI}/latest",
+        mirror_type: "srv",
+        signature_type: "fingerprints",
+        fingerprints: "/usr/share/keys/pkg",
+        enabled: no
+      }
+    dest: /usr/local/etc/pkg/repos/FreeBSD.conf
+    owner: root
+    group: wheel
+    mode: '0644'
+
+- name: Extract poudriere repo archive
+  ansible.builtin.unarchive:
+    src: '{{ inventory_hostname }}-poudriere.tar.zst'
+    dest: /usr/local/poudriere_repo
+
+- name: Reinstall all previously upstream mirror installed packages from poudriere
+  ansible.builtin.command: 'pkg upgrade -f -y'
+  changed_when: true

@@ -1,2 +1,0 @@
-ansible_python_interpreter: auto_silent
-freebsd_version: 13.2-RELEASE

@@ -1,7 +1,7 @@
 - name: Install basic ansible dependencies (from freebsd pkg mirror)
-  ansible.builtin.raw: pkg install -y python doas gtar unzip zip rsync
+  ansible.builtin.raw: pkg install -y python doas gtar unzip zip
   # TODO fix changed_when to properly detect change
-  changed_when: false
+  changed_when: true
 
 # TODO deal with properly setting password
 - name: Create ansible bootstrapping setup user

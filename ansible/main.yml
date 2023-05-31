@@ -1,9 +1,43 @@
 ---
-
-- name: Run all playbook roles
+- name: Bootstrap all ansible prereqs onto freshly installed FreeBSD host
   hosts: cl100
+  remote_user: siva
+  become: true
+  become_method: su
+  gather_facts: false
+  roles:
+    - bootstrap
+
+- name: Prepare jailhost
+  hosts: cl100
+  remote_user: ansible
   become: true
   become_method: doas
   gather_facts: true
   roles:
-    - all_jails
+    - update_poudriere
+    - setup_jailhost
+
+- name: Setup logs jail
+  hosts: jail_logs
+  connection: community.general.jail
+  remote_user: root
+  become: true
+  become_method: doas
+  gather_facts: false
+  roles:
+    - setup_jail_logs
+  vars:
+    jail: '{{ jail_logs }}'
+
+      #- name: Final cleanup
+      #  hosts: cl100
+      #  remote_user: ansible
+      #  become: true
+      #  become_method: doas
+      #  gather_facts: false
+      #  tasks:
+      #    - name: Stop all jails
+      #      ansible.builtin.service:
+      #        name: jail
+      #        state: stopped

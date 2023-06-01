@@ -1,7 +1,8 @@
-- name: Install basic ansible dependencies (from freebsd pkg mirror)
-  ansible.builtin.raw: pkg install -y python doas gtar unzip zip
+- name: Install basic ansible dependencies
+  ansible.builtin.raw: pkg install -y python doas gtar unzip
   # TODO fix changed_when to properly detect change
   changed_when: true
+  tags: initial
 
 # TODO deal with properly setting password
 - name: Create ansible bootstrapping setup user
@@ -9,6 +10,7 @@
     name: ansible
     append: true
     groups: wheel
+  tags: always
 
 # local key just for testing
 # TODO use newly generated key through variable
@@ -17,6 +19,7 @@
     user: ansible
     key: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINqa5qTRGfyJckSBOXWyqdSC4tortF5Nc0O6kQFkORFi siva@think"
     exclusive: true
+  tags: always
 
 - name: Add setup user to doas configuration
   ansible.builtin.copy:
@@ -25,3 +28,4 @@
     owner: root
     group: wheel
     mode: '0600'
+  tags: always

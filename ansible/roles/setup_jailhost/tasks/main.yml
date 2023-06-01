@@ -1,49 +1,24 @@
+# TODO forcing strict evaluation of these two hostvars. Find a cleaner way.
+- name: Set jailhost_ip hostvar
+  ansible.builtin.set_fact:
+    jailhost_ip: '{{ ansible_facts["re0"]["ipv6"] | selectattr("address", "ansible.utils.in_network", "fc00::/7") | first }}'
+  tags: always
+
+- name: Set ula_subnet hostvar
+  ansible.builtin.set_fact:
+    ula_subnet: '{{ jailhost_ip.address | ansible.utils.ipsubnet(jailhost_ip.prefix) }}'
+  tags: always
+
 - name: Create all missing directories on jailhost
   ansible.builtin.file:
     path: '{{ item }}'
     state: directory
     mode: '0755'
-  tags: always
   loop:
     - /tmp/base_jail
     - /usr/jail/fstabs
     - /usr/jail/guests
-
-# NOTE: doing this here because we require strict, one-time evaluation of variables
-- name: Generate random IPv6 addresses for all jails
-  ansible.builtin.set_fact:
-    jail_certauth:
-      name: certauth
-      ipaddr: '{{ ula_subnet | ansible.utils.slaac("aa:bb:cc" | community.general.random_mac) }}'
-    jail_dns:
-      name: dns
-      ipaddr: '{{ ula_subnet | ansible.utils.slaac("aa:bb:cc" | community.general.random_mac) }}'
-    jail_kerberos:
-      name: kerberos
-      ipaddr: '{{ ula_subnet | ansible.utils.slaac("aa:bb:cc" | community.general.random_mac) }}'
-    jail_logs:
-      name: logs
-      ipaddr: '{{ ula_subnet | ansible.utils.slaac("aa:bb:cc" | community.general.random_mac) }}'
-    jail_mail:
-      name: mail
-      ipaddr: '{{ ula_subnet | ansible.utils.slaac("aa:bb:cc" | community.general.random_mac) }}'
-    jail_prometheus:
-      name: prometheus
-      ipaddr: '{{ ula_subnet | ansible.utils.slaac("aa:bb:cc" | community.general.random_mac) }}'
-    jail_ssh:
-      name: ssh
-      ipaddr: '{{ ula_subnet | ansible.utils.slaac("aa:bb:cc" | community.general.random_mac) }}'
-
-- name: Assign miscellaneous dependent helper variables
-  ansible.builtin.set_fact:
-    all_jails:
-      - '{{ jail_certauth }}'
-      - '{{ jail_dns }}'
-      - '{{ jail_kerberos }}'
-      - '{{ jail_logs }}'
-      - '{{ jail_mail }}'
-      - '{{ jail_prometheus }}'
-      - '{{ jail_ssh }}'
+  tags: always
 
 - name: Download FreeBSD base system archive to local filesystem
   ansible.builtin.get_url:
@@ -52,33 +27,62 @@
     owner: root
     group: wheel
     mode: '0644'
-  tags: once
+  tags: initial
 
 - name: Unarchive (thick) base jail to temporary location
   ansible.builtin.unarchive:
     src: /tmp/base.tar.xz
     remote_src: true
     dest: /tmp/base_jail
-  tags: once
+  tags: initial
+
+- name: Create all missing directories in base jail
+  ansible.builtin.file:
+    path: '{{ item }}'
+    state: directory
+    mode: '0755'
+  loop:
+    - /tmp/base_jail/usr/local/etc/pkg/repos
+    - /tmp/base_jail/usr/local/poudriere_repo
+    - /tmp/base_jail/root/.ssh
+  tags: always
 
 - name: Populate common /etc files into base jail
   ansible.builtin.template:
     src: '{{ item.src }}'
-    dest: '/tmp/base_jail/etc/{{ item.path | replace(".j2", "")}}'
+    dest: '/tmp/base_jail/etc/{{ item.path | replace(".j2", "") }}'
     mode: '0644'
     owner: root
     group: wheel
-  with_community.general.filetree: templates/common_etc/
+  with_community.general.filetree: '{{ "templates/common_etc/" }}'
   when: item.state == 'file'
+  tags: always
+
+- name: Copy pkg repo config to base jail
+  ansible.builtin.copy:
+    src: /usr/local/etc/pkg/repos/FreeBSD.conf
+    remote_src: true
+    dest: /tmp/base_jail/usr/local/etc/pkg/repos/
+    mode: '0644'
+    owner: root
+    group: wheel
+  tags: always
+
+- name: Add control host's ssh key to base jail
+  ansible.posix.authorized_key:
+    user: root
+    key: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINqa5qTRGfyJckSBOXWyqdSC4tortF5Nc0O6kQFkORFi siva@think"
+    path: /tmp/base_jail/root/.ssh/authorized_keys
+    exclusive: true
   tags: always
 
 - name: Clone (thick) base jail to installed locations
   ansible.builtin.copy:
     src: /tmp/base_jail/
     remote_src: true
-    dest: '/usr/jail/guests/{{ each_jail_item.name }}/'
-  tags: once
+    dest: '/usr/jail/guests/{{ item.name }}/'
   loop: '{{ all_jails }}'
+  tags: always
 
 - name: Populate jail.conf
   ansible.builtin.template:
@@ -96,8 +100,10 @@
     owner: root
     group: wheel
     mode: '0644'
-  tags: always
+  vars:
+    jail: '{{ item }}'
   loop: '{{ all_jails }}'
+  tags: always
 
 - name: Add all jails to jailhost's /etc/hosts
   ansible.builtin.template:
@@ -105,16 +111,19 @@
     dest: /etc/hosts
     mode: '0644'
   tags: always
-  vars:
-    jail:
-      name: '{{ inventory_hostname }}'
-      ipaddr: '{{ ansible_host }}'
 
-- name: Start all barebones jails
+- name: Enable jail service
   ansible.builtin.service:
     name: jail
-    state: started
-  tags: final
+    enabled: true
+  tags: always
+
+# TODO temporary until all jails are ready
+- name: Set list of enabled jails
+  ansible.builtin.lineinfile:
+    path: /etc/rc.conf
+    line: 'jail_list="logs"'
+  tags: always
 
 - name: Add all jails to the inventory
   ansible.builtin.add_host:
@@ -122,15 +131,19 @@
     ansible_host: '{{ item.ipaddr }}'
     groups:
       - jails
+  loop: '{{ all_jails }}'
   tags: always
-  loop: '{{ all_jails }}'
 
-- name: Run common setup tasks on all jails
-  ansible.builtin.include_role:
-    name: 'host_setup_jail_{{ jail.name }}'
-  vars:
-    jail: '{{ each_jail_item }}'
-  loop: '{{ all_jails }}'
-  loop_control:
-    loop_var: each_jail_item
+# TODO file an ansible bug: ansible.builtin.service doesn't start the jail
+# service
+- name: Enable jail service
+  ansible.builtin.command: 'service jail onerestart'
+  tags: always
+
+# TODO pending on 'https://bugs.freebsd.org/bugzilla/show_bug.cgi?id=271069'
+- name: WORKAROUND restart all services inside each jail for good measure
+  ansible.builtin.shell: 'jls name | xargs -L1 -I% service -j % {{ item }} restart'
+  loop:
+    - syslogd
+    - sshd
   tags: always

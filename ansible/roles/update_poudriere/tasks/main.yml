@@ -6,8 +6,9 @@
   loop:
     - /usr/local/etc/pkg/repos
     - /usr/local/poudriere_repo
+  tags: always
 
-- name: Set poudriere pkg repo
+- name: Configure pkg to use Poudriere repo
   ansible.builtin.copy:
     content: |
       Poudriere: {
@@ -26,12 +27,15 @@
     owner: root
     group: wheel
     mode: '0644'
+  tags: always
 
 - name: Extract poudriere repo archive
   ansible.builtin.unarchive:
     src: '{{ inventory_hostname }}-poudriere.tar.zst'
     dest: /usr/local/poudriere_repo
+  tags: initial
 
 - name: Reinstall all previously upstream mirror installed packages from poudriere
   ansible.builtin.command: 'pkg upgrade -f -y'
   changed_when: true
+  tags: initial

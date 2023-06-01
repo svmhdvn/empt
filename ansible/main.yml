@@ -1,5 +1,5 @@
 ---
-- name: Bootstrap all ansible prereqs onto freshly installed FreeBSD host
+- name: Bootstrap jailhost
   hosts: cl100
   remote_user: siva
   become: true
@@ -8,36 +8,54 @@
   roles:
     - bootstrap
 
-- name: Prepare jailhost
+- name: Setup jailhost
   hosts: cl100
   remote_user: ansible
   become: true
   become_method: doas
   gather_facts: true
+  vars_files:
+    - vars/shared.yml
   roles:
     - update_poudriere
     - setup_jailhost
 
-- name: Setup logs jail
-  hosts: jail_logs
-  connection: community.general.jail
+- name: Bootstrap all jails
+  hosts:
+    # - jail_certauth
+    # - jail_dns
+    # - jail_kerberos
+    - jail_logs
+    # - jail_mail
+    # - jail_prometheus
+    # - jail_ssh
   remote_user: root
-  become: true
-  become_method: doas
+  become: false
   gather_facts: false
   roles:
-    - setup_jail_logs
+    - bootstrap
+
+- name: Setup logs jail
+  hosts: jail_logs
+  remote_user: ansible
+  become: true
+  become_method: doas
+  gather_facts: true
   vars:
     jail: '{{ jail_logs }}'
+  vars_files:
+    - vars/shared.yml
+  roles:
+    - setup_jail_logs
 
-      #- name: Final cleanup
-      #  hosts: cl100
-      #  remote_user: ansible
-      #  become: true
-      #  become_method: doas
-      #  gather_facts: false
-      #  tasks:
-      #    - name: Stop all jails
-      #      ansible.builtin.service:
-      #        name: jail
-      #        state: stopped
+# - name: Final cleanup
+#   hosts: cl100
+#   remote_user: ansible
+#   become: true
+#   become_method: doas
+#   gather_facts: false
+#   tasks:
+#     - name: Stop all jails
+#       ansible.builtin.service:
+#         name: jail
+#         state: stopped

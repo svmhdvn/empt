@@ -1,4 +1,0 @@
-- name: Run as much jail-specific setup as possible using the host connection
-  ansible.builtin.include_role:
-    name: 'host_setup_jail_{{ jail.name }}'
-  tags: always

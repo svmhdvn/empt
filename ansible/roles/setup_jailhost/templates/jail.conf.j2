@@ -1,4 +1,3 @@
-# TODO do I need this?
 mount.devfs;
 
 # Needed for ping, traceroute, etc.
@@ -27,9 +26,7 @@ mount.fstab = "/usr/jail/fstabs/${name}.fstab";
 
 {% for jail in all_jails %}
 {{ jail.name }} {
-	ip6.addr = "re0|{{ jail.ipaddr }}/{{ hostip.prefix }}";
+	ip6.addr = "re0|{{ jail.ipaddr }}/{{ jailhost_ip.prefix }}";
 }
 
 {% endfor %}
-
-# TODO handle ssh fstab and kerberos non-rc'd kdc and kadmin

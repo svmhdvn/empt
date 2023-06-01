@@ -1,4 +1,0 @@
-# TODO determine if we should use DHCPv6 instead of random mac + SLAAC for each jail's IP
-# TODO automate/loop the individual jail IP generation, especially the random_mac seeds
-hostip: '{{ ansible_facts["re0"]["ipv6"] | selectattr("address", "ansible.utils.in_network", "fc00::/7") | first }}'
-ula_subnet: '{{ hostip.address | ansible.utils.ipsubnet(hostip.prefix) }}'

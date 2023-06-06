@@ -9,8 +9,8 @@ $TTL    1m
 
 		IN	NS	dns.empt.siva.
 
-{% for j in all_jails %}
-{{ j.ipaddr | ansible.utils.ipaddr('revdns') }} IN PTR {{ j.name }}.empt.siva
+{% for jail in groups['jails'] %}
+{{ hostvars[jail].ansible_host | ansible.utils.ipaddr('revdns') }} IN PTR {{ hostvars[jail].inventory_hostname }}
 {% endfor %}
 
-{{ hostvars['cl100'].ansible_host | ansible.utils.ipaddr('revdns') }} IN PTR nfs.empt.siva
+{{ hostvars['jailhost.empt.siva'].ansible_host | ansible.utils.ipaddr('revdns') }} IN PTR {{ hostvars['jailhost.empt.siva'].inventory_hostname }}

@@ -1,0 +1,9 @@
+---
+- name: Update poudriere repo on jailhost
+  hosts: jailhost.empt.siva
+  remote_user: ansible
+  become: true
+  become_method: doas
+  gather_facts: true
+  roles:
+    - update_poudriere

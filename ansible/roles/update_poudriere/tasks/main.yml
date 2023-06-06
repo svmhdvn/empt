@@ -31,7 +31,7 @@
 
 - name: Extract poudriere repo archive
   ansible.builtin.unarchive:
-    src: '{{ inventory_hostname }}-poudriere.tar.zst'
+    src: 'poudriere.tar.zst'
     dest: /usr/local/poudriere_repo
   tags: initial
 

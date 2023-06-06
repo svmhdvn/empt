@@ -24,9 +24,9 @@ exec.stop = "/bin/sh /etc/rc.shutdown";
 # Common fstab to share /usr/ports at a minimum
 mount.fstab = "/usr/jail/fstabs/${name}.fstab";
 
-{% for jail in all_jails %}
-{{ jail.name }} {
-	ip6.addr = "re0|{{ jail.ipaddr }}/{{ jailhost_ip.prefix }}";
+{% for jail in groups['jails'] %}
+{{ hostvars[jail].inventory_hostname_short }} {
+	ip6.addr = "re0|{{ hostvars[jail].ansible_host }}/64";
 }
 
 {% endfor %}

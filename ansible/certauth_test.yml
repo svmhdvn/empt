@@ -1,0 +1,11 @@
+---
+- name: Test ansible CA operations
+  hosts: jail_certauth
+  remote_user: ansible
+  become: true
+  become_method: doas
+  gather_facts: true
+  roles:
+    - setup_jail_certauth
+  vars_files:
+    - vars/shared.yml

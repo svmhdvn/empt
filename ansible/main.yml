@@ -1,18 +1,18 @@
 ---
 - name: Bootstrap jailhost
-  hosts: cl100
+  hosts: jailhost.empt.siva
   remote_user: siva
   become: true
-  become_method: su
+  become_method: ansible.builtin.su
   gather_facts: false
   roles:
     - bootstrap
 
 - name: Setup jailhost
-  hosts: cl100
+  hosts: jailhost.empt.siva
   remote_user: ansible
   become: true
-  become_method: doas
+  become_method: community.general.doas
   gather_facts: true
   vars_files:
     - vars/shared.yml
@@ -21,38 +21,40 @@
     - setup_jailhost
 
 - name: Bootstrap all jails
-  hosts:
-    # - jail_certauth
-    # - jail_dns
-    # - jail_kerberos
-    - jail_logs
-    # - jail_mail
-    # - jail_prometheus
-    # - jail_ssh
+  hosts: jails
   remote_user: root
   become: false
   gather_facts: false
   roles:
     - bootstrap
 
-- name: Setup logs jail
-  hosts: jail_logs
+- name: Setup certauth jail
+  hosts: certauth.empt.siva
   remote_user: ansible
   become: true
-  become_method: doas
+  become_method: community.general.doas
   gather_facts: true
-  vars:
-    jail: '{{ jail_logs }}'
   vars_files:
     - vars/shared.yml
   roles:
-    - setup_jail_logs
+    - setup_jail_certauth
+
+- name: Generate host certs for each jail
+  hosts: jails
+  remote_user: ansible
+  become: true
+  become_method: community.general.doas
+  gather_facts: true
+  vars_files:
+    - vars/shared.yml
+  roles:
+    - gen_host_cert
 
 # - name: Final cleanup
-#   hosts: cl100
+#   hosts: jailhost.empt.siva
 #   remote_user: ansible
 #   become: true
-#   become_method: doas
+#   become_method: community.general.doas
 #   gather_facts: false
 #   tasks:
 #     - name: Stop all jails

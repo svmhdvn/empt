@@ -1,0 +1,18 @@
+- name: Install samba port
+  ansible.builtin.command: 'pkg install -y {{ samba_package }}'
+  tags: always
+
+- name: Configure samba
+  ansible.builtin.template:
+    src: smb4.conf.j2
+    dest: /usr/local/etc/smb4.conf
+    mode: '0644'
+    owner: root
+    group: wheel
+  tags: always
+
+- name: Enable samba server
+  ansible.builtin.service:
+    name: samba_server
+    enabled: true
+  tags: always

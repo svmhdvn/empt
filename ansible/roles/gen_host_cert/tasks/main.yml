@@ -1,0 +1,49 @@
+- name: Install ansible CA crypto dependencies
+  ansible.builtin.command: 'pkg install -y py39-cryptography'
+  tags: always
+
+# TODO passphrase
+- name: Create private key for new host certificate on each jail
+  community.crypto.openssl_privatekey:
+    path: '/etc/ssl/{{ inventory_hostname }}.key'
+    backup: true
+    type: Ed25519
+
+- name: Create CSR for new server certificate
+  community.crypto.openssl_csr_pipe:
+    privatekey_path: '/etc/ssl/{{ inventory_hostname }}.key'
+    common_name: '{{ inventory_hostname }}'
+  register: gen_host_cert_csr
+
+- name: Check whether certificate already exists
+  ansible.builtin.stat:
+    path: '/etc/ssl/{{ inventory_hostname }}.crt'
+  register: gen_host_cert_certificate_exists
+
+- name: Read existing certificate if exists
+  ansible.builtin.slurp:
+    src: '/etc/ssl/{{ inventory_hostname }}.crt'
+  when: gen_host_cert_certificate_exists.stat.exists
+  register: gen_host_cert_certificate
+
+- name: Sign certificate with the CA
+  community.crypto.x509_certificate_pipe:
+    content: '{{ (gen_host_cert_certificate.content | b64decode) if gen_host_cert_certificate_exists.stat.exists else omit }}'
+    csr_content: '{{ gen_host_cert_csr.csr }}'
+    provider: ownca
+    ownca_path: '/etc/ssl/certauth.empt.siva.cacrt'
+    ownca_privatekey_path: '/etc/ssl/certauth.empt.siva.cakey'
+    ownca_privatekey_passphrase: '{{ secret_ca_passphrase }}'
+    ownca_not_after: '+365d'  # valid for one year
+    ownca_not_before: '-1d'  # valid since yesterday
+  delegate_to: certauth.empt.siva
+  register: gen_host_cert_certificate
+
+- name: Write out host certificate file
+  ansible.builtin.copy:
+    dest: '/etc/ssl/{{ inventory_hostname }}.crt'
+    content: '{{ gen_host_cert_certificate.certificate }}'
+    owner: root
+    group: wheel
+    mode: '0644'
+  when: gen_host_cert_certificate is changed

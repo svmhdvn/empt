@@ -1,2 +1,10 @@
-cl100 ansible_host=fdac::7af2:9eff:fe90:dbc4
-beastie ansible_host=fdac::329c:23ff:feb2:ee47
+jailhost.empt.siva     ansible_host=fdac::7af2:9eff:fe90:dbc4
+poudriere.empt.siva    ansible_host=fdac::329c:23ff:feb2:ee47
+
+[jails]
+certauth.empt.siva     ansible_host=fdac::a8bb:ccff:fe60:7f75
+dns.empt.siva          ansible_host=fdac::a8bb:ccff:fed7:35b1
+kerberos.empt.siva     ansible_host=fdac::a8bb:ccff:fe6b:24f9
+mail.empt.siva         ansible_host=fdac::a8bb:ccff:fe7c:a812
+prometheus.empt.siva   ansible_host=fdac::a8bb:ccff:fe43:636f
+ssh.empt.siva          ansible_host=fdac::a8bb:ccff:fe59:884a

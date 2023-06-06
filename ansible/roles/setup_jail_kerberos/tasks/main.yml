@@ -1,0 +1,73 @@
+- name: Install heimdal port from poudriere
+  ansible.builtin.command: 'pkg install -y heimdal'
+  tags: always
+
+- name: Configure heimdal
+  ansible.builtin.template:
+    src: krb5.conf.j2
+    dest: '/etc/krb5.conf'
+    owner: root
+    group: wheel
+    mode: '0644'
+  tags: always
+
+- name: Enable heimdal services
+  ansible.builtin.blockinfile:
+    path: '/etc/rc.conf'
+    marker: ''
+    block: |
+      kdc_enable="YES"
+      kdc_program="/usr/local/libexec/kdc"
+      kadmind_enable="YES"
+      kadmind_program="/usr/local/libexec/kadmind"
+  tags: always
+
+# TODO retrieve and store securely
+- name: Create heimdal master key
+  ansible.builtin.command: '/usr/local/sbin/kstash --random-key'
+  tags: always
+
+# TODO retrieve and store securely
+- name: Initialize kerberos realm
+  ansible.builtin.command: '/usr/local/bin/kadmin --local init EMPT.SIVA'
+  tags: always
+
+# TODO secure passwords
+- name: Setup some user principals for testing
+  ansible.builtin.command: '/usr/local/bin/kadmin --local add --password={{ item }} {{ item }}'
+  tags: always
+  loop:
+    - tillman
+    - siva
+
+# TODO factor out into variables for reuse
+- name: Setup all required service principals
+  ansible.builtin.command: '/usr/local/bin/kadmin --local add --random-key {{ item }}'
+  tags: always
+  loop:
+    - host/ssh.empt.siva
+    - imap/mail.empt.siva
+    - smtp/mail.empt.siva
+    - cifs/cifs.empt.siva
+
+- name: Extract service principals into their respective keytabs
+  ansible.builtin.command: '/usr/local/bin/kadmin --local ext_keytab --keytab=/tmp/{{ item.keytab }} {{ item.principal }}'
+  tags: always
+  loop:
+    - principal: host/ssh.empt.siva
+      keytab: ssh.krb5.keytab
+    - principal: imap/mail.empt.siva
+      keytab: mail.krb5.keytab
+    - principal: smtp/mail.empt.siva
+      keytab: mail.krb5.keytab
+    - principal: cifs/cifs.empt.siva
+      keytab: cifs.krb5.keytab
+
+- name: Start all heimdal services
+  ansible.builtin.service:
+    name: '{{ item }}'
+    state: started
+  loop:
+    - kdc
+    - kadmind
+  tags: always

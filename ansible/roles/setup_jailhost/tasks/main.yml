@@ -1,14 +1,3 @@
-# TODO forcing strict evaluation of these two hostvars. Find a cleaner way.
-- name: Set jailhost_ip hostvar
-  ansible.builtin.set_fact:
-    jailhost_ip: '{{ ansible_facts["re0"]["ipv6"] | selectattr("address", "ansible.utils.in_network", "fc00::/7") | first }}'
-  tags: always
-
-- name: Set ula_subnet hostvar
-  ansible.builtin.set_fact:
-    ula_subnet: '{{ jailhost_ip.address | ansible.utils.ipsubnet(jailhost_ip.prefix) }}'
-  tags: always
-
 - name: Create all missing directories on jailhost
   ansible.builtin.file:
     path: '{{ item }}'
@@ -80,8 +69,8 @@
   ansible.builtin.copy:
     src: /tmp/base_jail/
     remote_src: true
-    dest: '/usr/jail/guests/{{ item.name }}/'
-  loop: '{{ all_jails }}'
+    dest: '/usr/jail/guests/{{ hostvars[item].inventory_hostname_short }}/'
+  loop: '{{ groups["jails"] }}'
   tags: always
 
 - name: Populate jail.conf
@@ -96,13 +85,13 @@
 - name: Copy the common fstab for each jail
   ansible.builtin.template:
     src: common_fstab.j2
-    dest: '/usr/jail/fstabs/{{ item.name }}.fstab'
+    dest: '/usr/jail/fstabs/{{ hostvars[item].inventory_hostname_short }}.fstab'
     owner: root
     group: wheel
     mode: '0644'
   vars:
     jail: '{{ item }}'
-  loop: '{{ all_jails }}'
+  loop: '{{ groups["jails"] }}'
   tags: always
 
 - name: Add all jails to jailhost's /etc/hosts
@@ -112,31 +101,33 @@
     mode: '0644'
   tags: always
 
-- name: Enable jail service
-  ansible.builtin.service:
-    name: jail
-    enabled: true
-  tags: always
+# TODO enable once everything is figured out
+# - name: Enable jail service
+#   ansible.builtin.service:
+#     name: jail
+#     enabled: true
+#   tags: always
+#
+# - name: Set list of enabled jails
+#   ansible.builtin.lineinfile:
+#     path: /etc/rc.conf
+#     line: 'jail_list="certauth"'
+#   tags: always
 
-# TODO temporary until all jails are ready
-- name: Set list of enabled jails
-  ansible.builtin.lineinfile:
-    path: /etc/rc.conf
-    line: 'jail_list="logs"'
-  tags: always
-
-- name: Add all jails to the inventory
-  ansible.builtin.add_host:
-    name: 'jail_{{ item.name }}'
-    ansible_host: '{{ item.ipaddr }}'
-    groups:
-      - jails
-  loop: '{{ all_jails }}'
-  tags: always
+# TODO unnecessary for now since we've hardcoded IP addresses.
+# Commenting out for now.
+# - name: Add all jails to the inventory
+#   ansible.builtin.add_host:
+#     name: 'jail_{{ item.name }}'
+#     ansible_host: '{{ item.ipaddr }}'
+#     groups:
+#       - jails
+#   loop: '{{ all_jails }}'
+#   tags: always
 
 # TODO file an ansible bug: ansible.builtin.service doesn't start the jail
 # service
-- name: Enable jail service
+- name: Start all enabled jails
   ansible.builtin.command: 'service jail onerestart'
   tags: always
 

@@ -1,35 +1,9 @@
 freebsd_version: 13.2-RELEASE
+ula_subnet: '{{ hostvars["jailhost.empt.siva"].ansible_host | ansible.utils.ipsubnet(64) }}'
+
+# TODO secure
+secret_ca_passphrase: cakey
 
 # TODO determine if we should use DHCPv6 instead of random mac + SLAAC for each jail's IP
 # TODO automate/loop the individual jail IP generation, especially the random_mac seeds
 # TODO currently hardcoding the _random_ IPv6 addresses for convenience
-jail_certauth:
-  name: certauth
-  ipaddr: 'fdac::a8bb:ccff:fe60:7f75'
-jail_dns:
-  name: dns
-  ipaddr: 'fdac::a8bb:ccff:fed7:35b1'
-jail_kerberos:
-  name: kerberos
-  ipaddr: 'fdac::a8bb:ccff:fe6b:24f9'
-jail_logs:
-  name: logs
-  ipaddr: 'fdac::a8bb:ccff:fecd:f588'
-jail_mail:
-  name: mail
-  ipaddr: 'fdac::a8bb:ccff:fe7c:a812'
-jail_prometheus:
-  name: prometheus
-  ipaddr: 'fdac::a8bb:ccff:fe43:636f'
-jail_ssh:
-  name: ssh
-  ipaddr: 'fdac::a8bb:ccff:fe59:884a'
-
-all_jails:
-  - '{{ jail_certauth }}'
-  - '{{ jail_dns }}'
-  - '{{ jail_kerberos }}'
-  - '{{ jail_logs }}'
-  - '{{ jail_mail }}'
-  - '{{ jail_prometheus }}'
-  - '{{ jail_ssh }}'

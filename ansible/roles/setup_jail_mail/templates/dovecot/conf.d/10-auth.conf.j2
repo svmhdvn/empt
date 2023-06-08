@@ -13,12 +13,12 @@ auth_mechanisms = gssapi
 # Host name to use in GSSAPI principal names. The default is to use the
 # name returned by gethostname(). Use "$ALL" (with quotes) to allow all keytab
 # entries.
-#auth_gssapi_hostname = "$ALL"
+auth_gssapi_hostname = "$ALL"
 
 # Kerberos keytab to use for the GSSAPI mechanism. Will use the system
 # default (usually /etc/krb5.keytab) if not specified. You may need to change
 # the auth service to run as root to be able to read this file.
-auth_krb5_keytab = /var/lib/dovecot/dovecot.krb5.keytab
+auth_krb5_keytab = /etc/krb5.keytab
 
 # Disable LOGIN command and all other plaintext authentications unless
 # SSL/TLS is used (LOGINDISABLED capability). Note that if the remote IP
@@ -124,4 +124,9 @@ auth_default_realm = EMPT.SIVA
 userdb {
 	driver = static
 	args = uid=vmail gid=vmail home=/var/mail/vhosts/%d/%n
+}
+
+passdb {
+	driver = static
+	args = nopassword=y
 }

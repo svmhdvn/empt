@@ -10,14 +10,14 @@
   tags: always
 
 # TODO move back to downloading from freebsd.org once fully tested
-#- name: Download FreeBSD base system archive to local filesystem
-#  ansible.builtin.get_url:
-#    url: 'https://download.freebsd.org/ftp/releases/amd64/{{ freebsd_version }}/base.txz'
-#    dest: /tmp/base.tar.xz
-#    owner: root
-#    group: wheel
-#    mode: '0644'
-#  tags: initial
+# - name: Download FreeBSD base system archive to local filesystem
+#   ansible.builtin.get_url:
+#     url: 'https://download.freebsd.org/ftp/releases/amd64/{{ freebsd_version }}/base.txz'
+#     dest: /tmp/base.tar.xz
+#     owner: root
+#     group: wheel
+#     mode: '0644'
+#   tags: initial
 
 - name: Unarchive (thick) base jail to temporary location
   ansible.builtin.unarchive:

@@ -7,3 +7,13 @@ secret_ca_passphrase: cakey
 # TODO determine if we should use DHCPv6 instead of random mac + SLAAC for each jail's IP
 # TODO automate/loop the individual jail IP generation, especially the random_mac seeds
 # TODO currently hardcoding the _random_ IPv6 addresses for convenience
+
+kerberos_service_principals:
+  - service: host
+    host: ssh.empt.siva
+  - service: imap
+    host: mail.empt.siva
+  - service: smtp
+    host: mail.empt.siva
+      #- name: cifs/cifs.empt.siva
+      #  keytab: cifs.krb5.keytab

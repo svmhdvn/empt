@@ -22,12 +22,12 @@
     key_usage:
       - keyCertSign
     key_usage_critical: true
-  register: ca_csr
+  register: setup_jail_certauth_ca_csr
 
 - name: Create self-signed CA certificate from CSR
   community.crypto.x509_certificate:
     path: /etc/ssl/certauth.empt.siva.cacrt
-    csr_content: "{{ ca_csr.csr }}"
+    csr_content: "{{ setup_jail_certauth_ca_csr.csr }}"
     privatekey_path: /etc/ssl/certauth.empt.siva.cakey
     privatekey_passphrase: "{{ secret_ca_passphrase }}"
     provider: selfsigned

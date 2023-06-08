@@ -19,7 +19,7 @@ service imap-login {
     port = 0
   }
   inet_listener imaps {
-    address = {{ jail.ipaddr }}
+    address = ::
   }
 
   # Number of connections to handle before starting a new process. Typically

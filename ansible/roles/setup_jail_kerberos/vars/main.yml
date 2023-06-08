@@ -1,0 +1,3 @@
+setup_jail_kerberos_user_principals:
+  - tillman
+  - siva

@@ -176,9 +176,8 @@ mail_privileged_group = vmail
 # to make sure that users can't log in as daemons or other system users.
 # Note that denying root logins is hardcoded to dovecot binary and can't
 # be done even if first_valid_uid is set to 0.
-# TODO figure this out, how do I limit it correctly?
-first_valid_uid = 145
-last_valid_uid = 145
+first_valid_uid = {{ setup_jail_mail_user_vmail.uid }}
+last_valid_uid = {{ setup_jail_mail_user_vmail.uid }}
 
 # Valid GID range for users, defaults to non-root/wheel. Users having
 # non-valid GID as primary group ID aren't allowed to log in. If user

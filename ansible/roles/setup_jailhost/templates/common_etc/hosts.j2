@@ -1,3 +1,3 @@
 {% for jail in groups['jails'] %}
-{{ hostvars[jail].ansible_host }}	{{ hostvars[jail].inventory_hostname }}.empt.siva {{ hostvars[jail].inventory_hostname_short }}.home.arpa {{ hostvars[jail].inventory_hostname_short }}
+{{ hostvars[jail].ansible_host }}	{{ hostvars[jail].inventory_hostname }} {{ hostvars[jail].inventory_hostname_short }}.home.arpa {{ hostvars[jail].inventory_hostname_short }}
 {% endfor %}

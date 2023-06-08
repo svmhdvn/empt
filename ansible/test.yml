@@ -1,0 +1,11 @@
+---
+- name: Setup kerberos KDC
+  hosts: kerberos.empt.siva
+  remote_user: ansible
+  become: true
+  become_method: community.general.doas
+  gather_facts: true
+  vars_files:
+    - vars/shared.yml
+  roles:
+    - setup_jail_kerberos

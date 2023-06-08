@@ -1,4 +1,8 @@
 [libdefaults]
 	default_realm = EMPT.SIVA
+	allow_weak_crypto = false
+	tgt-use-strongest-session-key = true
+	svc-use-strongest-session-key = true
+	preauth-use-strongest-session-key = true
 [domain_realm]
 	.empt.siva = EMPT.SIVA

@@ -50,14 +50,45 @@
   roles:
     - gen_host_cert
 
-# - name: Final cleanup
-#   hosts: jailhost.empt.siva
-#   remote_user: ansible
-#   become: true
-#   become_method: community.general.doas
-#   gather_facts: false
-#   tasks:
-#     - name: Stop all jails
-#       ansible.builtin.service:
-#         name: jail
-#         state: stopped
+- name: Setup kerberos KDC
+  hosts: kerberos.empt.siva
+  remote_user: ansible
+  become: true
+  become_method: community.general.doas
+  gather_facts: true
+  vars_files:
+    - vars/shared.yml
+  roles:
+    - setup_jail_kerberos
+
+- name: Move all keytabs to their respective hosts
+  hosts: jailhost.empt.siva
+  remote_user: ansible
+  become: true
+  become_method: community.general.doas
+  gather_facts: true
+  vars_files:
+    - vars/shared.yml
+  tasks:
+    - name: Copy keytab from jailhost to jail
+      ansible.builtin.copy:
+        src: '/usr/jail/guests/kerberos/tmp/{{ item.host }}.keytab'
+        remote_src: true
+        # TODO lol this is jokes, clean this up
+        dest: '/usr/jail/guests/{{ item.host.split(".")[0] }}/etc/krb5.keytab'
+        mode: '0600'
+        owner: root
+        group: wheel
+      tags: always
+      loop: '{{ kerberos_service_principals }}'
+
+- name: Setup mail server
+  hosts: mail.empt.siva
+  remote_user: ansible
+  become: true
+  become_method: community.general.doas
+  gather_facts: true
+  vars_files:
+    - vars/shared.yml
+  roles:
+    - setup_jail_mail

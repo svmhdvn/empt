@@ -26,19 +26,19 @@
   tags: always
 
 - name: Initialize kerberos realm
-  ansible.builtin.command: '/usr/local/bin/kadmin --local init --realm-max-ticket-life=1d --realm-max-renewable-life=1w EMPT.SIVA'
+  ansible.builtin.command: '/usr/local/bin/kadmin --local init --realm-max-ticket-life=1d --realm-max-renewable-life=1w {{ ansible_domain | upper }}'
   tags: always
 
 # TODO a lot of bugs with Heimdal's `get` and `list` commands, fix them.
 - name: Check which user principals are missing
-  ansible.builtin.command: '/usr/local/bin/kadmin --local get --short {{ item }}'
-  loop: '{{ setup_jail_kerberos_user_principals }}'
+  ansible.builtin.command: '/usr/local/bin/kadmin --local get --short {{ item.name }}'
+  loop: '{{ humans }}'
   register: setup_jail_kerberos_user_principal_exists
   failed_when: setup_jail_kerberos_user_principal_exists.rc >= 2
 
 # TODO secure passwords
 - name: Add missing user principals
-  ansible.builtin.command: '/usr/local/bin/kadmin --local add --password={{ item.item }} --use-defaults {{ item.item }}'
+  ansible.builtin.command: '/usr/local/bin/kadmin --local add --password={{ item.item.name }} --use-defaults {{ item.item.name }}'
   tags: always
   when: '"Principal does not exist" in item.stderr'
   loop: '{{ setup_jail_kerberos_user_principal_exists.results }}'

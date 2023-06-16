@@ -1,6 +1,6 @@
 ---
 - name: Update poudriere repo on jailhost
-  hosts: jailhost.empt.siva
+  hosts: jailhost
   remote_user: ansible
   become: true
   become_method: doas

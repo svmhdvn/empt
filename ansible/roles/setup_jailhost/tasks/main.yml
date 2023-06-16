@@ -85,12 +85,12 @@
 - name: Copy the common fstab for each jail
   ansible.builtin.template:
     src: common_fstab.j2
-    dest: '/usr/jail/fstabs/{{ hostvars[item].inventory_hostname_short }}.fstab'
+    dest: '/usr/jail/fstabs/{{ item }}.fstab'
     owner: root
     group: wheel
     mode: '0644'
   vars:
-    setup_jailhost_jail: '{{ item }}'
+    setup_jailhost_fstab_jail: '{{ item }}'
   loop: '{{ groups["jails"] }}'
   tags: always
 

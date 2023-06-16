@@ -1,5 +1,10 @@
+# TODO needed for bootstrapping domain information before ansible fact
+# gathering works on jails.
+# Technically this isn't needed, since we can do all
+# jailhost setup after the jails' facts have been gathered.
+org_domain: empt.siva
 freebsd_version: 13.2-RELEASE
-ula_subnet: '{{ hostvars["jailhost.empt.siva"].ansible_host | ansible.utils.ipsubnet(64) }}'
+ula_subnet: '{{ hostvars["jailhost"].ansible_host | ansible.utils.ipsubnet(64) }}'
 
 # TODO secure
 secret_ca_passphrase: cakey
@@ -8,12 +13,27 @@ secret_ca_passphrase: cakey
 # TODO automate/loop the individual jail IP generation, especially the random_mac seeds
 # TODO currently hardcoding the _random_ IPv6 addresses for convenience
 
+humans:
+  - name: siva
+  - name: tillman
+  - name: alice
+  - name: bob
+  - name: carol
+  - name: dan
+  - name: eve
+
+mailing_lists:
+  - name: everyone
+    recipients: '{{ humans }}'
+  - name: cryptoppl
+    recipients: '{{ humans[2:] }}'
+
 kerberos_service_principals:
   - service: host
-    host: ssh.empt.siva
+    host: ssh
   - service: imap
-    host: mail.empt.siva
+    host: mail
   - service: smtp
-    host: mail.empt.siva
-      #- name: cifs/cifs.empt.siva
-      #  keytab: cifs.krb5.keytab
+    host: mail
+      #- service: cifs
+      #  host: cifs

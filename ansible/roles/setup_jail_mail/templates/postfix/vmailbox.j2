@@ -1,2 +1,4 @@
-empt.siva	empt.siva
-siva@empt.siva	empt.siva/siva
+{{ ansible_domain }}	{{ ansible_domain }}
+{% for h in humans %}
+{{ h.name }}@{{ ansible_domain }} {{ ansible_domain }}/{{ h.name }}
+{% endfor %}

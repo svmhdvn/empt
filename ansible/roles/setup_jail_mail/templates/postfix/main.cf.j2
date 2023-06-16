@@ -646,8 +646,8 @@ smtp_tls_session_cache_database = btree:${data_directory}/smtp_scache
 smtp_tls_CAfile=/etc/ssl/cert.pem
 
 smtpd_tls_auth_only = yes
-smtpd_tls_cert_file = /etc/ssl/mail.empt.siva.crt
-smtpd_tls_key_file = /etc/ssl/mail.empt.siva.key
+smtpd_tls_cert_file = /etc/ssl/{{ ansible_fqdn }}.crt
+smtpd_tls_key_file = /etc/ssl/{{ ansible_fqdn }}.key
 smtpd_tls_loglevel = 1
 smtpd_tls_received_header = yes
 smtpd_tls_security_level = encrypt

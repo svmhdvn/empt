@@ -12,7 +12,7 @@ stop.timeout = 30;
 
 path = "/usr/jail/guests/${name}";
 
-host.hostname = "${name}.empt.siva";
+host.hostname = "${name}.{{ org_domain }}";
 
 # TODO figure out a way to generate loopback ipv6. Not strictly necessary right now.
 #ip6.addr = "lo0|fe80:2::${ip_auto_id}/64";
@@ -25,7 +25,7 @@ exec.stop = "/bin/sh /etc/rc.shutdown";
 mount.fstab = "/usr/jail/fstabs/${name}.fstab";
 
 {% for jail in groups['jails'] %}
-{{ hostvars[jail].inventory_hostname_short }} {
+{{ jail }} {
 	ip6.addr = "re0|{{ hostvars[jail].ansible_host }}/64";
 }
 

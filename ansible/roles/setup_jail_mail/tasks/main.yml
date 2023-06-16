@@ -83,6 +83,10 @@
   when: item.state == 'file'
   tags: always
 
+# TODO finish making mlmmj-make-ml unattendable
+# - name: Create all pre-configured mlmmj mailing lists
+#  #ansible.builtin.command: '
+
 - name: Enable and start mail services
   ansible.builtin.service:
     name: '{{ item }}'

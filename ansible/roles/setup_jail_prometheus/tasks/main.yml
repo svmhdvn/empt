@@ -1,0 +1,12 @@
+- name: Install prometheus, grafana, and exporters
+  ansible.builtin.command: 'pkg install prometheus2 grafana9'
+  tags: always
+
+- name: Configure prometheus
+  ansible.builtin.template:
+    src: prometheus.yml.j2
+    dest: /usr/local/etc/prometheus.yml
+    mode: '0644'
+    owner: root
+    group: wheel
+  tags: always

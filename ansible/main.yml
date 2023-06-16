@@ -1,6 +1,6 @@
 ---
 - name: Bootstrap jailhost
-  hosts: jailhost.empt.siva
+  hosts: jailhost
   remote_user: siva
   become: true
   become_method: ansible.builtin.su
@@ -9,7 +9,7 @@
     - bootstrap
 
 - name: Setup jailhost
-  hosts: jailhost.empt.siva
+  hosts: jailhost
   remote_user: ansible
   become: true
   become_method: community.general.doas
@@ -28,12 +28,19 @@
   roles:
     - bootstrap
 
-- name: Setup certauth jail
-  hosts: certauth.empt.siva
+- name: Gather facts from all jails
+  hosts: jails
   remote_user: ansible
   become: true
   become_method: community.general.doas
   gather_facts: true
+
+- name: Setup certauth jail
+  hosts: certauth
+  remote_user: ansible
+  become: true
+  become_method: community.general.doas
+  gather_facts: false
   vars_files:
     - vars/shared.yml
   roles:
@@ -44,29 +51,29 @@
   remote_user: ansible
   become: true
   become_method: community.general.doas
-  gather_facts: true
+  gather_facts: false
   vars_files:
     - vars/shared.yml
   roles:
     - gen_host_cert
 
 - name: Setup kerberos KDC
-  hosts: kerberos.empt.siva
+  hosts: kerberos
   remote_user: ansible
   become: true
   become_method: community.general.doas
-  gather_facts: true
+  gather_facts: false
   vars_files:
     - vars/shared.yml
   roles:
     - setup_jail_kerberos
 
 - name: Move all keytabs to their respective hosts
-  hosts: jailhost.empt.siva
+  hosts: jailhost
   remote_user: ansible
   become: true
   become_method: community.general.doas
-  gather_facts: true
+  gather_facts: false
   vars_files:
     - vars/shared.yml
   tasks:
@@ -74,8 +81,7 @@
       ansible.builtin.copy:
         src: '/usr/jail/guests/kerberos/tmp/{{ item.host }}.keytab'
         remote_src: true
-        # TODO lol this is jokes, clean this up
-        dest: '/usr/jail/guests/{{ item.host.split(".")[0] }}/etc/krb5.keytab'
+        dest: '/usr/jail/guests/{{ item.host }}/etc/krb5.keytab'
         mode: '0600'
         owner: root
         group: wheel
@@ -83,7 +89,7 @@
       loop: '{{ kerberos_service_principals }}'
 
 - name: Setup mail server
-  hosts: mail.empt.siva
+  hosts: mail
   remote_user: ansible
   become: true
   become_method: community.general.doas

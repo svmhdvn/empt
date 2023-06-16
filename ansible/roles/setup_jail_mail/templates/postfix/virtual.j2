@@ -1,1 +1,3 @@
-everyone@empt.siva	empt.siva--everyone@localhost.mlmmj
+{% for l in mailing_lists %}
+{{ l.name }}@{{ ansible_domain }}	{{ ansible_domain }}--{{ l.name }}@localhost.mlmmj
+{% endfor %}

@@ -472,12 +472,12 @@ remote-control:
 # Zones that are dynamically added and deleted are put in the zonelist file.
 #
 zone:
-	name: "empt.siva"
+	name: "{{ ansible_domain }}"
 	# you can give a pattern here, all the settings from that pattern
 	# are then inserted at this point
 	# include-pattern: "master"
 	# You can also specify (additional) options directly for this zone.
-	zonefile: "empt.siva.forward.zone"
+	zonefile: "{{ ansible_domain }}.forward.zone"
 	# request-xfr: 192.0.2.1 example.com.key
 
 	# RRLconfig
@@ -496,4 +496,4 @@ zone:
 
 zone:
 	name: "{{ ula_subnet | ansible.utils.ipaddr('revdns') }}"
-	zonefile: "empt.siva.reverse.zone"
+	zonefile: "{{ ansible_domain }}.reverse.zone"

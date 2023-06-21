@@ -34,8 +34,8 @@
     content: '{{ (gen_host_cert_certificate.content | b64decode) if gen_host_cert_certificate_exists.stat.exists else omit }}'
     csr_content: '{{ gen_host_cert_csr.csr }}'
     provider: ownca
-    ownca_path: '/etc/ssl/{{ ansible_fqdn }}.cacrt'
-    ownca_privatekey_path: '/etc/ssl/{{ ansible_fqdn }}.cakey'
+    ownca_path: '/etc/ssl/{{ hostvars["certauth"].ansible_fqdn }}.cacrt'
+    ownca_privatekey_path: '/etc/ssl/{{ hostvars["certauth"].ansible_fqdn }}.cakey'
     ownca_privatekey_passphrase: '{{ secret_ca_passphrase }}'
     ownca_not_after: '+365d'  # valid for one year
     ownca_not_before: '-1d'  # valid since yesterday

@@ -1,6 +1,5 @@
 - name: Install heimdal port from poudriere
   ansible.builtin.command: 'pkg install -y heimdal'
-  tags: always
 
 - name: Configure heimdal
   ansible.builtin.template:
@@ -9,13 +8,11 @@
     owner: root
     group: wheel
     mode: '0644'
-  tags: always
 
 - name: Use the Poudriere-installed heimdal RC services
   ansible.builtin.lineinfile:
     path: /etc/rc.conf
     line: '{{ item }}_program="/usr/local/libexec/{{ item }}"'
-  tags: always
   loop:
     - kdc
     - kadmind
@@ -23,11 +20,16 @@
 # TODO retrieve and store securely
 - name: Create heimdal master key
   ansible.builtin.command: '/usr/local/sbin/kstash --random-key'
-  tags: always
+
+- name: Check if kerberos realm exists
+  ansible.builtin.command: '/usr/local/bin/kadmin --local check {{ ansible_domain | upper }}'
+  register: setup_jail_kerberos_realm_exists
+  failed_when: setup_jail_kerberos_realm_exists.rc >= 2
 
 - name: Initialize kerberos realm
   ansible.builtin.command: '/usr/local/bin/kadmin --local init --realm-max-ticket-life=1d --realm-max-renewable-life=1w {{ ansible_domain | upper }}'
-  tags: always
+  # TODO waiting on https://github.com/heimdal/heimdal/pull/1160 to switch to stderr
+  when: "\"doesn't exist\" in setup_jail_kerberos_realm_exists.stdout"
 
 # TODO a lot of bugs with Heimdal's `get` and `list` commands, fix them.
 - name: Check which user principals are missing
@@ -39,34 +41,26 @@
 # TODO secure passwords
 - name: Add missing user principals
   ansible.builtin.command: '/usr/local/bin/kadmin --local add --password={{ item.item.name }} --use-defaults {{ item.item.name }}'
-  tags: always
   when: '"Principal does not exist" in item.stderr'
   loop: '{{ setup_jail_kerberos_user_principal_exists.results }}'
 
 - name: Check which service principals are missing
-  ansible.builtin.command: '/usr/local/bin/kadmin --local get --short {{ item.service }}/{{ item.host }}'
+  ansible.builtin.command: '/usr/local/bin/kadmin --local get --short {{ item.service }}/{{ hostvars[item.host].ansible_fqdn }}'
   loop: '{{ kerberos_service_principals }}'
   register: setup_jail_kerberos_service_principal_exists
   failed_when: setup_jail_kerberos_service_principal_exists.rc >= 2
 
 - name: Add missing service principals
-  ansible.builtin.command: '/usr/local/bin/kadmin --local add --random-key --use-defaults {{ item.item.service }}/{{ item.item.host }}'
-  tags: always
+  ansible.builtin.command: '/usr/local/bin/kadmin --local add --random-key --use-defaults {{ item.item.service }}/{{ hostvars[item.item.host].ansible_fqdn }}'
   when: '"Principal does not exist" in item.stderr'
   loop: '{{ setup_jail_kerberos_service_principal_exists.results }}'
 
 - name: Extract service principals into their respective keytabs
-  ansible.builtin.command: '/usr/local/bin/kadmin --local ext_keytab --keytab=/tmp/{{ item.host }}.keytab {{ item.service }}/{{ item.host }}'
-  tags: always
+  ansible.builtin.command: '/usr/local/bin/kadmin --local ext_keytab --keytab=/tmp/{{ hostvars[item.host].ansible_fqdn }}.keytab {{ item.service }}/{{ hostvars[item.host].ansible_fqdn }}'
   loop: '{{ kerberos_service_principals }}'
 
-# TODO figure out why kadmind is stalling
 - name: Start the KDC
   ansible.builtin.service:
-    name: '{{ item }}'
+    name: kdc
     enabled: true
     state: started
-  loop:
-    - kdc
-    # - kadmind
-  tags: always

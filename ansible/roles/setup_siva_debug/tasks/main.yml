@@ -1,0 +1,22 @@
+- name: Install useful testing and debug packages
+  ansible.builtin.command: 'pkg install -y tmux wget htop tree'
+
+- name: Create siva user
+  ansible.builtin.user:
+    name: siva
+    append: true
+    groups: wheel
+
+- name: Add control host's ssh key to siva
+  ansible.posix.authorized_key:
+    user: siva
+    key: "{{ lookup('file', '/home/siva/.ssh/id_ed25519.pub') }}"
+    exclusive: true
+
+- name: Configure tmux
+  ansible.builtin.copy:
+    src: tmux.conf
+    dest: /home/siva/.tmux.conf
+    mode: '0644'
+    owner: siva
+    group: siva

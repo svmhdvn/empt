@@ -650,7 +650,10 @@ smtpd_tls_cert_file = /etc/ssl/{{ ansible_fqdn }}.crt
 smtpd_tls_key_file = /etc/ssl/{{ ansible_fqdn }}.key
 smtpd_tls_loglevel = 1
 smtpd_tls_received_header = yes
-smtpd_tls_security_level = encrypt
+
+# use *_restrictions to determine whether AUTH should be done over TLS or not
+smtpd_tls_security_level = may
+
 # TODO change if some desired TLS implementations don't support 1.3
 smtpd_tls_protocols = >=TLSv1.3
 tls_preempt_cipherlist = yes

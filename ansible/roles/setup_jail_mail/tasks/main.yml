@@ -42,7 +42,7 @@
 
 - name: Create mlmmj spool directory
   ansible.builtin.file:
-    path: /var/spool/mlmmj
+    path: '/var/spool/mlmmj/{{ ansible_domain }}'
     state: directory
     mode: '0775'
     owner: mlmmj
@@ -83,9 +83,32 @@
   when: item.state == 'file'
   tags: always
 
-# TODO finish making mlmmj-make-ml unattendable
-# - name: Create all pre-configured mlmmj mailing lists
-#  #ansible.builtin.command: '
+# TODO remove after mlmmj release 1.4.0
+- name: TMP copy prerelease mymlmmj-make-ml script
+  ansible.builtin.copy:
+    src: mlmmj-make-ml.sh
+    dest: /root/mymlmmj-make-ml
+    mode: '0755'
+    owner: root
+    group: wheel
+
+- name: Create all pre-configured mlmmj mailing lists
+  ansible.builtin.include_tasks: mlmmj_make_ml.yml
+  loop: '{{ mailing_lists }}'
+  loop_control:
+    loop_var: setup_jail_mail_mailinglist
+
+- name: Change owner of the mlmmj spool directory
+  ansible.builtin.file:
+    path: /var/spool/mlmmj
+    recurse: true
+    owner: mlmmj
+    group: mlmmj
+
+- name: Add mlmmj maintenance task to cron
+  ansible.builtin.lineinfile:
+    path: /etc/crontab
+    line: '*/2 * * * * root /usr/local/bin/mlmmj-maintd -F -d /var/spool/mlmmj/{{ ansible_domain }}'
 
 - name: Enable and start mail services
   ansible.builtin.service:

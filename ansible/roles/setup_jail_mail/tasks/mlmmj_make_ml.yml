@@ -1,0 +1,18 @@
+# TODO at some point, allow mlmmj-make-ml to create a mailinglist fully on the command line
+# to avoid this whole answer file thing.
+- name: Create mlmmj-make-ml answer file
+  ansible.builtin.template:
+    src: mlmmj-answers.txt.j2
+    dest: /root/mlmmj-answers.txt
+    mode: '0644'
+    owner: root
+    group: wheel
+
+# TODO change to /usr/local/bin after mlmmj release 1.4.0
+- name: Create mailing list
+  #ansible.builtin.command: '/usr/local/bin/mlmmj-make-ml -f /root/mlmmj-answers.txt'
+  ansible.builtin.command: '/root/mymlmmj-make-ml -f /root/mlmmj-answers.txt'
+
+- name: Subscribe all selected addresses
+  ansible.builtin.command: '/usr/local/bin/mlmmj-sub -L /var/spool/mlmmj/{{ ansible_domain }}/{{ setup_jail_mail_mailinglist.name }} -a {{ item }}@{{ ansible_domain }} -c -f -s'
+  loop: '{{ setup_jail_mail_mailinglist.recipients }}'

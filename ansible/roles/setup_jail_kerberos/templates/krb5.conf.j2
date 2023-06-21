@@ -1,9 +1,6 @@
 [libdefaults]
 	default_realm = {{ ansible_domain | upper }}
 	allow_weak_crypto = false
-	tgt-use-strongest-session-key = true
-	svc-use-strongest-session-key = true
-	preauth-use-strongest-session-key = true
 [realms]
 	{{ ansible_domain | upper }} = {
 		kdc = {{ ansible_fqdn }}

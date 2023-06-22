@@ -643,7 +643,7 @@ virtual_transport = lmtp:unix:private/dovecot-lmtp
 smtp_tls_loglevel = 1
 smtp_tls_security_level = may
 smtp_tls_session_cache_database = btree:${data_directory}/smtp_scache
-smtp_tls_CAfile=/etc/ssl/cert.pem
+smtp_tls_CApath=/etc/ssl/certs
 
 smtpd_tls_auth_only = yes
 smtpd_tls_cert_file = /etc/ssl/{{ ansible_fqdn }}.crt
@@ -665,8 +665,18 @@ smtpd_sasl_path = private/auth
 smtpd_sasl_type = dovecot
 smtpd_sasl_local_domain = $mydomain
 
-# Don't even allow mynetworks. Only permit SASL authenticated clients.
-smtpd_relay_restrictions = permit_sasl_authenticated, reject_unauth_destination
+# restrictions for all SMTP connections
+smtpd_client_restrictions =
+  # allow local clients to send mail unconditionally
+  permit_inet_interfaces
+  # otherwise, only allow SASL authenticated clients over mandatory TLS
+  reject_plaintext_session
+  permit_sasl_authenticated
+
+# pre-restrictions for recipients
+smtpd_relay_restrictions =
+  # this server must the final destination
+  reject_unauth_destination
 
 # don't allow plaintext auth methods on unencrypted connections
 smtpd_sasl_security_options = noanonymous, noplaintext

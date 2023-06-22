@@ -1,0 +1,26 @@
+# TODO remove these for production
+hostname="jailhost.{{ org_domain }}"
+keymap="colemak.acc.kbd"
+
+ifconfig_re0="DHCP"
+ifconfig_re0_ipv6="inet6 accept_rtadv"
+
+ntpd_enable="YES"
+powerd_enable="YES"
+sshd_enable="YES"
+
+# Set dumpdev to "AUTO" to enable crash dumps, "NO" to disable
+dumpdev="AUTO"
+zfs_enable="YES"
+
+sendmail_enable="NO"
+sendmail_msp_queue_enable="NO"
+sendmail_outbound_enable="NO"
+sendmail_submit_enable="NO"
+
+syslogd_enable="YES"
+syslogd_flags="-8 -O syslog -N -s -s"
+
+# TODO enable these if needed
+#kdc_program="/usr/local/libexec/kdc"
+#kadmind_program="/usr/local/libexec/kadmind"

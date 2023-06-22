@@ -10,8 +10,13 @@
 
 # TODO change to /usr/local/bin after mlmmj release 1.4.0
 - name: Create mailing list
-  #ansible.builtin.command: '/usr/local/bin/mlmmj-make-ml -f /root/mlmmj-answers.txt'
+  # ansible.builtin.command: '/usr/local/bin/mlmmj-make-ml -f /root/mlmmj-answers.txt'
   ansible.builtin.command: '/root/mymlmmj-make-ml -f /root/mlmmj-answers.txt'
+
+- name: Change relay host to local IPv6
+  ansible.builtin.copy:
+    dest: '/var/spool/mlmmj/{{ ansible_domain }}/{{ setup_jail_mail_mailinglist.name }}/control/relayhost'
+    content: '{{ ansible_host }}'
 
 - name: Subscribe all selected addresses
   ansible.builtin.command: '/usr/local/bin/mlmmj-sub -L /var/spool/mlmmj/{{ ansible_domain }}/{{ setup_jail_mail_mailinglist.name }} -a {{ item }}@{{ ansible_domain }} -c -f -s'

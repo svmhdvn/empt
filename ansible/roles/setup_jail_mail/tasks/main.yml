@@ -32,21 +32,22 @@
     - attachments
   tags: always
 
-- name: Add user to handle mlmmj postfix transport
-  ansible.builtin.user:
-    name: mlmmj
-    comment: mlmmj transport user
-    home: /var/spool/mlmmj
-    shell: /usr/sbin/nologin
+- name: Create dovecot conf.d/ directory
+  ansible.builtin.file:
+    path: '/usr/local/etc/dovecot/conf.d'
+    state: directory
+    mode: '0755'
+    owner: root
+    group: wheel
   tags: always
 
-- name: Create mlmmj spool directory
-  ansible.builtin.file:
-    path: '/var/spool/mlmmj/{{ ansible_domain }}'
-    state: directory
-    mode: '0775'
-    owner: mlmmj
-    group: mlmmj
+- name: Configure dovecot
+  ansible.builtin.template:
+    src: '{{ item.src }}'
+    dest: '/usr/local/etc/dovecot/{{ item.path | replace(".j2", "") }}'
+    mode: '0644'
+  with_community.general.filetree: '{{ "templates/dovecot" }}'
+  when: item.state == 'file'
   tags: always
 
 - name: Configure postfix
@@ -65,22 +66,31 @@
     - virtual
     - vmailbox
 
-- name: Create dovecot conf.d/ directory
-  ansible.builtin.file:
-    path: '/usr/local/etc/dovecot/conf.d'
-    state: directory
-    mode: '0755'
-    owner: root
-    group: wheel
+- name: Add user to handle mlmmj postfix transport
+  ansible.builtin.user:
+    name: mlmmj
+    comment: mlmmj transport user
+    home: /var/spool/mlmmj
+    shell: /usr/sbin/nologin
   tags: always
 
-- name: Configure dovecot
-  ansible.builtin.template:
-    src: '{{ item.src }}'
-    dest: '/usr/local/etc/dovecot/{{ item.path | replace(".j2", "") }}'
-    mode: '0644'
-  with_community.general.filetree: '{{ "templates/dovecot" }}'
-  when: item.state == 'file'
+- name: Create mlmmj spool directory
+  ansible.builtin.file:
+    path: '/var/spool/mlmmj/{{ ansible_domain }}'
+    state: directory
+    mode: '0775'
+    owner: mlmmj
+    group: mlmmj
+  tags: always
+
+- name: Enable and start mail services
+  ansible.builtin.service:
+    name: '{{ item }}'
+    enabled: true
+    state: started
+  loop:
+    - postfix
+    - dovecot
   tags: always
 
 # TODO remove after mlmmj release 1.4.0
@@ -109,13 +119,3 @@
   ansible.builtin.lineinfile:
     path: /etc/crontab
     line: '*/2 * * * * root /usr/local/bin/mlmmj-maintd -F -d /var/spool/mlmmj/{{ ansible_domain }}'
-
-- name: Enable and start mail services
-  ansible.builtin.service:
-    name: '{{ item }}'
-    enabled: true
-    state: started
-  loop:
-    - postfix
-    - dovecot
-  tags: always

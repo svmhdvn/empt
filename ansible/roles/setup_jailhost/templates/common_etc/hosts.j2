@@ -1,3 +1,0 @@
-{% for jail in groups['jails'] %}
-{{ hostvars[jail].ansible_host }}	{{ jail }}.{{ org_domain }} {{ jail }}.home.arpa {{ jail }}
-{% endfor %}

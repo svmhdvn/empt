@@ -30,18 +30,16 @@
   roles:
     - bootstrap
 
-- name: Fact gathering
-  hosts:
-    - jailhost
-    - jails
+- name: Refresh /etc/hosts for each host in the inventory
+  hosts: all
   remote_user: ansible
   become: true
   become_method: community.general.doas
-  gather_facts: false
-  tasks:
-    - name: "Gather facts from all inventory hosts"
-      ansible.builtin.gather_facts:
-        parallel: true
+  gather_facts: true
+  vars_files:
+    - vars/shared.yml
+  roles:
+    - refresh_etc_hosts
 
 - name: Setup certauth jail
   hosts: certauth

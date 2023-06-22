@@ -1,5 +1,4 @@
 jailhost     ansible_host=fdac::7af2:9eff:fe90:dbc4
-poudriere    ansible_host=fdac::329c:23ff:feb2:ee47
 
 [jails]
 certauth     ansible_host=fdac::a8bb:ccff:fe60:7f75

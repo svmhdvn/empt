@@ -102,19 +102,6 @@
     owner: root
     group: wheel
 
-- name: Create all pre-configured mlmmj mailing lists
-  ansible.builtin.include_tasks: mlmmj_make_ml.yml
-  loop: '{{ mailing_lists }}'
-  loop_control:
-    loop_var: setup_jail_mail_mailinglist
-
-- name: Change owner of the mlmmj spool directory
-  ansible.builtin.file:
-    path: /var/spool/mlmmj
-    recurse: true
-    owner: mlmmj
-    group: mlmmj
-
 - name: Add mlmmj maintenance task to cron
   ansible.builtin.lineinfile:
     path: /etc/crontab

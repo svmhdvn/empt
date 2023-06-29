@@ -126,7 +126,9 @@ mail_owner = postfix
 #mydestination = $myhostname, localhost.$mydomain, localhost, $mydomain
 #mydestination = $myhostname, localhost.$mydomain, localhost, $mydomain,
 #	mail.$mydomain, www.$mydomain, ftp.$mydomain
-mydestination = $myhostname, mail.home.arpa, localhost
+#
+# DISABLING LOCAL DELIVERY.
+mydestination =
 
 # REJECTING MAIL FOR UNKNOWN LOCAL USERS
 #
@@ -388,7 +390,6 @@ recipient_delimiter = +
 # UNIX-style mailboxes are kept. The default setting depends on the
 # system type.
 #
-mail_spool_directory = /var/mail/local
 #mail_spool_directory = /var/spool/mail
 
 # The mailbox_command parameter specifies the optional external

@@ -1,12 +1,65 @@
+- name: Create ZFS dataset for the top level jails filesystem
+  community.general.zfs:
+    name: zroot/jails
+    state: present
+    extra_zfs_properties:
+      mountpoint: '/email'
+
+- name: Create ZFS dataset for top level container for email-related filesystems
+  community.general.zfs:
+    name: zroot/email
+    state: present
+    extra_zfs_properties:
+      atime: 'off'
+      canmount: 'off'
+      compression: 'zstd'
+      # TODO figure out how to enable encryption properly
+      # turning off for now
+      encryption: 'off'
+      exec: 'off'
+      mountpoint: '/email'
+      setuid: 'off'
+
+- name: Create ZFS datasets for all email-related filesystems
+  community.general.zfs:
+    name: 'zroot{{ item.path }}'
+    state: present
+    extra_zfs_properties:
+      canmount: 'on'
+  loop: '{{ special_zfs_datasets }}'
+
+- name: Create unix users that will be mapped on both jailhost and jails
+  ansible.builtin.user:
+    name: '{{ item.name }}'
+    comment: '{{ item.comment }}'
+    uid: '{{ item.uid }}'
+    home: '{{ item.host_home_dir }}'
+    shell: /usr/sbin/nologin
+  loop: '{{ host_jails_mapped_users }}'
+
+- name: Create a ZFS dataset for each jail
+  community.general.zfs:
+    name: 'zroot/jails/{{ item }}'
+    state: present
+  loop: '{{ groups["jails"] }}'
+
+- name: Change ownership of newly created ZFS datasets
+  ansible.builtin.file:
+    name: '{{ item.path }}'
+    state: directory
+    recurse: true
+    owner: mlmmj
+    group: mlmmj
+  loop: '{{ special_zfs_datasets }}'
+
 - name: Create all missing directories on jailhost
   ansible.builtin.file:
     path: '{{ item }}'
     state: directory
     mode: '0755'
   loop:
+    - /etc/jail_fstabs
     - /tmp/base_jail
-    - /usr/jail/fstabs
-    - /usr/jail/guests
 
 # TODO move back to downloading from freebsd.org once fully tested
 # - name: Download FreeBSD base system archive to local filesystem
@@ -64,7 +117,7 @@
   ansible.builtin.copy:
     src: /tmp/base_jail/
     remote_src: true
-    dest: '/usr/jail/guests/{{ hostvars[item].inventory_hostname_short }}/'
+    dest: '/jails/{{ hostvars[item].inventory_hostname_short }}/'
   loop: '{{ groups["jails"] }}'
 
 - name: Populate jailhost /etc files
@@ -79,8 +132,8 @@
 
 - name: Copy the common fstab for each jail
   ansible.builtin.template:
-    src: common_fstab.j2
-    dest: '/usr/jail/fstabs/{{ item }}.fstab'
+    src: 'jail_fstabs/{{ item }}.fstab'
+    dest: '/etc/jail_fstabs/{{ item }}.fstab'
     owner: root
     group: wheel
     mode: '0644'

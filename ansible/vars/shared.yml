@@ -13,6 +13,26 @@ secret_ca_passphrase: cakey
 # TODO automate/loop the individual jail IP generation, especially the random_mac seeds
 # TODO currently hardcoding the _random_ IPv6 addresses for convenience
 
+host_jails_mapped_users:
+  - name: mlmmj
+    comment: Mlmmj Owner
+    uid: 2000
+    host_home_dir: /email/mailing_lists
+    guest_home_dir: /var/spool/mlmmj
+  - name: vmail
+    comment: Virtual Mail Handler
+    uid: 2001
+    host_home_dir: /email/virtual_mail
+    guest_home_dir: /var/mail/vhosts
+
+special_zfs_datasets:
+  - path: /email/mailing_lists
+    owner: mlmmj
+  - path: /email/virtual_attachments
+    owner: vmail
+  - path: /email/virtual_mail
+    owner: vmail
+
 humans:
   - name: siva
   - name: tillman

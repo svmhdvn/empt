@@ -1,0 +1,2 @@
+# Device        Mountpoint        FStype        Options        Dump        Pass#
+/usr/local/poudriere_repo	/jails/{{ setup_jailhost_fstab_jail }}/usr/local/poudriere_repo	nullfs	ro	0	0

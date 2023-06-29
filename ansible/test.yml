@@ -1,11 +1,30 @@
 ---
 - name: Testing playbook
-  hosts: jails
+  hosts: jailhost
   remote_user: ansible
   become: true
   become_method: community.general.doas
-  gather_facts: true
+  become_user: siva
+  gather_facts: false
   tasks:
-    - name: Debug
+    - name: debug 1
+      ansible.builtin.command: whoami
+      register: dbg1
+    - name: debug 1 output
       ansible.builtin.debug:
-        msg: '{{ ansible_fqdn }}'
+        msg: '{{ dbg1.stdout }}'
+
+- name: Testing playbook 2
+  hosts: jailhost
+  remote_user: ansible
+  become: true
+  become_method: community.general.doas
+  become_user: root
+  gather_facts: false
+  tasks:
+    - name: debug 2
+      ansible.builtin.command: whoami
+      register: dbg2
+    - name: debug 2 output
+      ansible.builtin.debug:
+        msg: '{{ dbg2.stdout }}'

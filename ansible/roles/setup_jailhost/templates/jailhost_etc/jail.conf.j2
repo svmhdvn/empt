@@ -10,7 +10,7 @@ exec.clean;
 exec.timeout = 30;
 stop.timeout = 30;
 
-path = "/usr/jail/guests/${name}";
+path = "/jails/${name}";
 
 host.hostname = "${name}.{{ org_domain }}";
 
@@ -22,7 +22,7 @@ exec.start = "/bin/sh /etc/rc";
 exec.stop = "/bin/sh /etc/rc.shutdown";
 
 # Common fstab to share /usr/ports at a minimum
-mount.fstab = "/usr/jail/fstabs/${name}.fstab";
+mount.fstab = "/etc/jail_fstabs/${name}.fstab";
 
 {% for jail in groups['jails'] %}
 {{ jail }} {

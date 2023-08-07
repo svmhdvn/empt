@@ -1,0 +1,10 @@
+image: alpine/edge
+packages:
+  - ansible-lint
+tasks:
+  - prep_ansible: |
+      cd empt/ansible
+      ansible-galaxy install -r requirements.yml
+  - ansible_lint: |
+      cd empt/ansible
+      ansible-lint main.yml

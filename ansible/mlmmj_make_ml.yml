@@ -12,12 +12,19 @@
 - name: Create mailing list
   # ansible.builtin.command: '/usr/local/bin/mlmmj-make-ml -f /root/mlmmj-answers.txt'
   ansible.builtin.command: '/root/mymlmmj-make-ml -f /root/mlmmj-answers.txt'
+  register: make_ml_output
+  changed_when: make_ml_output.rc == 0
 
 - name: Change relay host to local IPv6
   ansible.builtin.copy:
     dest: '/var/spool/mlmmj/{{ ansible_domain }}/{{ setup_jail_mail_mailinglist.name }}/control/relayhost'
     content: '{{ ansible_host }}'
+    mode: '0644'
+    owner: mlmmj
+    group: mlmmj
 
 - name: Subscribe all selected addresses
   ansible.builtin.command: '/usr/local/bin/mlmmj-sub -L /var/spool/mlmmj/{{ ansible_domain }}/{{ setup_jail_mail_mailinglist.name }} -a {{ item }}@{{ ansible_domain }} -c -f -s'
   loop: '{{ setup_jail_mail_mailinglist.recipients }}'
+  register: mlmmj_sub_output
+  changed_when: mlmmj_sub_output.rc == 0

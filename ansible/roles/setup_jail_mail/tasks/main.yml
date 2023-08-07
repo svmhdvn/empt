@@ -1,6 +1,6 @@
 - name: Install required packages from poudriere
   ansible.builtin.command: 'pkg install -y postfix dovecot mlmmj'
-  tags: always
+  changed_when: true
 
 - name: Create local (unix account) mail directory
   ansible.builtin.file:
@@ -65,6 +65,8 @@
     - transport
     - virtual
     - vmailbox
+  register: setup_jail_mail_postmap
+  changed_when: setup_jail_mail_postmap.rc == 0
 
 - name: Add user to handle mlmmj postfix transport
   ansible.builtin.user:

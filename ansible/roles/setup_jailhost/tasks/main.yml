@@ -118,6 +118,9 @@
     src: /tmp/base_jail/
     remote_src: true
     dest: '/jails/{{ hostvars[item].inventory_hostname_short }}/'
+    mode: '0755'
+    owner: root
+    group: wheel
   loop: '{{ groups["jails"] }}'
 
 - name: Populate jailhost /etc files
@@ -165,11 +168,17 @@
 # TODO file an ansible bug: ansible.builtin.service doesn't start the jail
 # service
 - name: Start all enabled jails
-  ansible.builtin.command: 'service jail onerestart'
+  ansible.builtin.service:
+    name: jail
+    state: reloaded
+  changed_when: true
 
 # TODO pending on 'https://bugs.freebsd.org/bugzilla/show_bug.cgi?id=271069'
 - name: WORKAROUND restart all services inside each jail for good measure
-  ansible.builtin.shell: 'jls name | xargs -L1 -I% service -j % {{ item }} restart'
+  ansible.builtin.shell: |
+    set -o pipefail
+    jls name | xargs -L1 -I% service -j % {{ item }} restart
+  changed_when: true
   loop:
     - syslogd
     - sshd

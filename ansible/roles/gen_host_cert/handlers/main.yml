@@ -1,0 +1,7 @@
+- name: Write new host certificate file
+  ansible.builtin.copy:
+    dest: '/etc/ssl/{{ ansible_fqdn }}.crt'
+    content: '{{ gen_host_cert_certificate.certificate }}'
+    owner: root
+    group: wheel
+    mode: '0644'

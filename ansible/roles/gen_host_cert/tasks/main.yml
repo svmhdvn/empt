@@ -1,6 +1,6 @@
 - name: Install ansible CA crypto dependencies
   ansible.builtin.command: 'pkg install -y py39-cryptography'
-  tags: always
+  changed_when: true
 
 # TODO waiting on https://bugzilla.mozilla.org/show_bug.cgi?id=1325335 for ED25519 support
 # generating P-256 keys in the meantime
@@ -41,12 +41,5 @@
     ownca_not_before: '-1d'  # valid since yesterday
   delegate_to: certauth
   register: gen_host_cert_certificate
-
-- name: Write out host certificate file
-  ansible.builtin.copy:
-    dest: '/etc/ssl/{{ ansible_fqdn }}.crt'
-    content: '{{ gen_host_cert_certificate.certificate }}'
-    owner: root
-    group: wheel
-    mode: '0644'
-  when: gen_host_cert_certificate is changed
+  notify:
+    - Write new host certificate file

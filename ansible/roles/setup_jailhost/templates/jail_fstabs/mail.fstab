@@ -1,6 +1,5 @@
 # Device        Mountpoint        FStype        Options        Dump        Pass#
-/usr/local/poudriere_repo	/jails/{{ setup_jailhost_fstab_jail }}/usr/local/poudriere_repo	nullfs	ro	0	0
-/email/virtual_attachments	/jails/{{ setup_jailhost_fstab_jail }}/var/mail/attachments	nullfs	rw	0	0
-/email/unix_local_mail		/jails/{{ setup_jailhost_fstab_jail }}/var/mail/local		nullfs	rw	0	0
-/email/virtual_mail		/jails/{{ setup_jailhost_fstab_jail }}/var/mail/vhosts		nullfs	rw	0	0
-/email/mailing_lists		/jails/{{ setup_jailhost_fstab_jail }}/var/spool/mlmmj		nullfs	rw	0	0
+/usr/local/poudriere_repo		/empt/jails/{{ setup_jailhost_fstab_jail }}/usr/local/poudriere_repo	nullfs	ro	0	0
+/empt/email/virtual_attachments		/empt/jails/{{ setup_jailhost_fstab_jail }}/var/mail/attachments	nullfs	rw	0	0
+/empt/email/virtual_mail		/empt/jails/{{ setup_jailhost_fstab_jail }}/var/mail/vhosts		nullfs	rw	0	0
+/empt/email/mailing_lists		/empt/jails/{{ setup_jailhost_fstab_jail }}/var/spool/mlmmj		nullfs	rw	0	0

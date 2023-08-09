@@ -1,13 +1,20 @@
-- name: Create ZFS dataset for the top level jails filesystem
+# TODO determine whether we need this or not. It helps with organizing
+# new dataset creation under a different hierarchy for easy deletion
+- name: Create ZFS top level dataset for empt
   community.general.zfs:
-    name: zroot/jails
+    name: zroot/empt
     state: present
     extra_zfs_properties:
-      mountpoint: '/email'
+      mountpoint: '/empt'
+
+- name: Create ZFS dataset for the top level jails filesystem
+  community.general.zfs:
+    name: zroot/empt/jails
+    state: present
 
 - name: Create ZFS dataset for top level container for email-related filesystems
   community.general.zfs:
-    name: zroot/email
+    name: zroot/empt/email
     state: present
     extra_zfs_properties:
       atime: 'off'
@@ -17,7 +24,6 @@
       # turning off for now
       encryption: 'off'
       exec: 'off'
-      mountpoint: '/email'
       setuid: 'off'
 
 - name: Create ZFS datasets for all email-related filesystems
@@ -39,7 +45,7 @@
 
 - name: Create a ZFS dataset for each jail
   community.general.zfs:
-    name: 'zroot/jails/{{ item }}'
+    name: 'zroot/empt/jails/{{ item }}'
     state: present
   loop: '{{ groups["jails"] }}'
 
@@ -48,8 +54,8 @@
     name: '{{ item.path }}'
     state: directory
     recurse: true
-    owner: mlmmj
-    group: mlmmj
+    owner: '{{ item.owner }}'
+    group: '{{ item.owner }}'
   loop: '{{ special_zfs_datasets }}'
 
 - name: Create all missing directories on jailhost
@@ -117,11 +123,23 @@
   ansible.builtin.copy:
     src: /tmp/base_jail/
     remote_src: true
-    dest: '/jails/{{ hostvars[item].inventory_hostname_short }}/'
+    dest: '/empt/jails/{{ hostvars[item].inventory_hostname_short }}/'
     mode: '0755'
     owner: root
     group: wheel
   loop: '{{ groups["jails"] }}'
+
+# TODO move to central location, I don't think this belongs here
+- name: Create all missing nullfs mount destinations in mail jail
+  ansible.builtin.file:
+    path: '{{ item }}'
+    state: directory
+    mode: '0755'
+  loop:
+    - /empt/jails/mail/var/mail/attachments
+    - /empt/jails/mail/var/mail/local
+    - /empt/jails/mail/var/mail/vhosts
+    - /empt/jails/mail/var/spool/mlmmj
 
 - name: Populate jailhost /etc files
   ansible.builtin.template:
@@ -165,12 +183,10 @@
 #       - jails
 #   loop: '{{ all_jails }}'
 
-# TODO file an ansible bug: ansible.builtin.service doesn't start the jail
+# TODO file an ansible bug: ansible.builtin.service doesn't onerestart the jail
 # service
 - name: Start all enabled jails
-  ansible.builtin.service:
-    name: jail
-    state: reloaded
+  ansible.builtin.command: 'service jail onerestart'
   changed_when: true
 
 # TODO pending on 'https://bugs.freebsd.org/bugzilla/show_bug.cgi?id=271069'

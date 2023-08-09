@@ -57,7 +57,6 @@
     mode: '0644'
   with_community.general.filetree: '{{ "templates/postfix" }}'
   when: item.state == 'file'
-  tags: always
 
 - name: Generate postfix maps
   ansible.builtin.command: 'postmap /usr/local/etc/postfix/{{ item }}'
@@ -73,8 +72,14 @@
     name: mlmmj
     comment: mlmmj transport user
     home: /var/spool/mlmmj
-    shell: /usr/sbin/nologin
-  tags: always
+      #shell: /usr/sbin/nologin
+
+# local key just for testing
+- name: Add control host's ssh key to mlmmj's authorized keys
+  ansible.posix.authorized_key:
+    user: mlmmj
+    key: "{{ lookup('file', '/home/siva/.ssh/id_ed25519.pub') }}"
+    exclusive: true
 
 - name: Create mlmmj spool directory
   ansible.builtin.file:
@@ -83,7 +88,6 @@
     mode: '0775'
     owner: mlmmj
     group: mlmmj
-  tags: always
 
 - name: Enable and start mail services
   ansible.builtin.service:
@@ -93,18 +97,17 @@
   loop:
     - postfix
     - dovecot
-  tags: always
 
 # TODO remove after mlmmj release 1.4.0
 - name: TMP copy prerelease mymlmmj-make-ml script
   ansible.builtin.copy:
     src: mlmmj-make-ml.sh
-    dest: /root/mymlmmj-make-ml
+    dest: /var/spool/mlmmj/mymlmmj-make-ml
     mode: '0755'
-    owner: root
-    group: wheel
+    owner: mlmmj
+    group: mlmmj
 
 - name: Add mlmmj maintenance task to cron
   ansible.builtin.lineinfile:
     path: /etc/crontab
-    line: '*/2 * * * * root /usr/local/bin/mlmmj-maintd -F -d /var/spool/mlmmj/{{ ansible_domain }}'
+    line: '*/2 * * * * mlmmj /usr/local/bin/mlmmj-maintd -F -d /var/spool/mlmmj/{{ ansible_domain }}'

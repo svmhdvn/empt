@@ -21,3 +21,11 @@
     mode: '0644'
     owner: siva
     group: siva
+
+- name: Install script to reset to fresh install
+  ansible.builtin.copy:
+    src: reset_to_fresh_install.sh
+    dest: /home/siva/reset_to_fresh_install.sh
+    mode: '0755'
+    owner: siva
+    group: siva

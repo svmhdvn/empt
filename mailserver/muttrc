@@ -1,5 +1,0 @@
-set imap_user=siva
-set imap_authenticators=gssapi
-set folder=imaps://mail.empt.siva
-set spoolfile=+INBOX
-mailboxes = +INBOX

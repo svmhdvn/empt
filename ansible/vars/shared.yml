@@ -14,12 +14,12 @@ secret_ca_passphrase: cakey
 # TODO currently hardcoding the _random_ IPv6 addresses for convenience
 
 host_jails_mapped_users:
-  - name: mlmmj
+  mlmmj:
     comment: Mlmmj Owner
     uid: 2000
     host_home_dir: /empt/email/mailing_lists
     guest_home_dir: /var/spool/mlmmj
-  - name: vmail
+  vmail:
     comment: Virtual Mail Handler
     uid: 2001
     host_home_dir: /empt/email/virtual_mail
@@ -34,18 +34,18 @@ special_zfs_datasets:
     owner: vmail
 
 humans:
-  - name: siva
-  - name: tillman
-  - name: alice
-  - name: bob
-  - name: carol
-  - name: dan
-  - name: eve
+  - siva
+  - tillman
+  - alice
+  - bob
+  - carol
+  - dan
+  - eve
 
 mailing_lists:
-  - name: everyone
+  everyone:
     recipients: '{{ humans }}'
-  - name: cryptoppl
+  cryptoppl:
     recipients: '{{ humans[2:] }}'
 
 kerberos_service_principals:

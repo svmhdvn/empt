@@ -1,2 +1,3 @@
 ansible/roles/update_poudriere/files/poudriere.tar.zst
 ansible/roles/setup_jailhost/files/base.tar.xz
+playground/

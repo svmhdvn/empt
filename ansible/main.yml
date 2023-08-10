@@ -113,6 +113,15 @@
   tasks:
     - name: Create mlmmj mailing list
       ansible.builtin.include_tasks: mlmmj_make_ml.yml
-      loop: '{{ mailing_lists }}'
+      loop: '{{ mailing_lists | dict2items }}'
       loop_control:
-        loop_var: setup_jail_mail_mailinglist
+        loop_var: setup_jail_mail_mailinglist_kv
+
+- name: Reboot after successful run
+  hosts: jailhost
+  remote_user: ansible
+  become: true
+  become_method: community.general.doas
+  tasks:
+    - name: Reboot
+      ansible.builtin.reboot:

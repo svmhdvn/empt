@@ -17,14 +17,14 @@
 
 - name: Change relay host to local IPv6
   ansible.builtin.copy:
-    dest: '/var/spool/mlmmj/{{ ansible_domain }}/{{ setup_jail_mail_mailinglist.name }}/control/relayhost'
+    dest: '/var/spool/mlmmj/{{ ansible_domain }}/{{ setup_jail_mail_mailinglist_kv.key }}/control/relayhost'
     content: '{{ ansible_host }}'
     mode: '0644'
     owner: mlmmj
     group: mlmmj
 
 - name: Subscribe all selected addresses
-  ansible.builtin.command: '/usr/local/bin/mlmmj-sub -L /var/spool/mlmmj/{{ ansible_domain }}/{{ setup_jail_mail_mailinglist.name }} -a {{ item }}@{{ ansible_domain }} -c -f -s'
-  loop: '{{ setup_jail_mail_mailinglist.recipients }}'
+  ansible.builtin.command: '/usr/local/bin/mlmmj-sub -L /var/spool/mlmmj/{{ ansible_domain }}/{{ setup_jail_mail_mailinglist_kv.key }} -a {{ item }}@{{ ansible_domain }} -c -f -s'
+  loop: '{{ setup_jail_mail_mailinglist_kv.value.recipients }}'
   register: mlmmj_sub_output
   changed_when: mlmmj_sub_output.rc == 0

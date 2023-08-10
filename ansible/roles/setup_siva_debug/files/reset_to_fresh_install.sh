@@ -1,5 +1,7 @@
 #!/bin/sh
+# must be run as root
 
-doas service jail onestop
-doas zfs destroy -Rf zroot/empt
-zfs list -H -t snapshot -o name | grep '@fresh$' | doas xargs -L1 zfs rollback -R
+service jail onestop
+zfs destroy -Rf zroot/empt
+zfs list -H -t snapshot -o name | grep '@fresh$' | xargs -L1 zfs rollback -R
+reboot

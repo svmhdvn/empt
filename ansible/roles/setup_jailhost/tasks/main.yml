@@ -36,12 +36,12 @@
 
 - name: Create unix users that will be mapped on both jailhost and jails
   ansible.builtin.user:
-    name: '{{ item.name }}'
-    comment: '{{ item.comment }}'
-    uid: '{{ item.uid }}'
-    home: '{{ item.host_home_dir }}'
+    name: '{{ item.key }}'
+    comment: '{{ item.value.comment }}'
+    uid: '{{ item.value.uid }}'
+    home: '{{ item.value.host_home_dir }}'
     shell: /usr/sbin/nologin
-  loop: '{{ host_jails_mapped_users }}'
+  loop: '{{ host_jails_mapped_users | dict2items }}'
 
 - name: Create a ZFS dataset for each jail
   community.general.zfs:
@@ -186,7 +186,7 @@
 # TODO file an ansible bug: ansible.builtin.service doesn't onerestart the jail
 # service
 - name: Start all enabled jails
-  ansible.builtin.command: 'service jail onerestart'
+  ansible.builtin.command: 'service jail onerestart' # noqa: command-instead-of-module
   changed_when: true
 
 # TODO pending on 'https://bugs.freebsd.org/bugzilla/show_bug.cgi?id=271069'

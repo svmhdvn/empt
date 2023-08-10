@@ -1,5 +1,5 @@
 {{ ansible_host }}	{{ inventory_hostname_short }}.{{ org_domain }} {{ inventory_hostname_short }}.home.arpa {{ inventory_hostname_short }} localhost
 
 {% for host in groups['all'] %}
-{{ hostvars[host].ansible_host }}	host.{{ org_domain }} {{ host }}.home.arpa {{ host }}
+{{ hostvars[host].ansible_host }}	{{ host }}.{{ org_domain }} {{ host }}.home.arpa {{ host }}
 {% endfor %}

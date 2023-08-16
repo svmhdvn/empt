@@ -11,6 +11,28 @@
   community.general.zfs:
     name: zroot/empt/jails
     state: present
+    extra_zfs_properties:
+      compression: 'off'
+
+- name: Create ZFS dataset for log storage
+  community.general.zfs:
+    name: zroot/empt/logs
+    state: present
+    extra_zfs_properties:
+      atime: 'off'
+      compression: 'zstd'
+        # TODO figure out how to enable encryption properly
+        # turning off for now
+      encryption: 'off'
+      exec: 'off'
+      setuid: 'off'
+
+- name: Create log subdirectories for individual jail mounting
+  ansible.builtin.file:
+    path: '/empt/logs/{{ item }}'
+    state: directory
+    mode: '0755'
+  loop: '{{ groups["jails"] }}'
 
 - name: Create ZFS dataset for top level container for email-related filesystems
   community.general.zfs:
@@ -188,13 +210,3 @@
 - name: Start all enabled jails
   ansible.builtin.command: 'service jail onerestart' # noqa: command-instead-of-module
   changed_when: true
-
-# TODO pending on 'https://bugs.freebsd.org/bugzilla/show_bug.cgi?id=271069'
-- name: WORKAROUND restart all services inside each jail for good measure
-  ansible.builtin.shell: |
-    set -o pipefail
-    jls name | xargs -L1 -I% service -j % {{ item }} restart
-  changed_when: true
-  loop:
-    - syslogd
-    - sshd

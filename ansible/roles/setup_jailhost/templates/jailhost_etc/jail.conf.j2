@@ -17,8 +17,15 @@ host.hostname = "${name}.{{ org_domain }}";
 # TODO figure out a way to generate loopback ipv6. Not strictly necessary right now.
 #ip6.addr = "lo0|fe80:2::${ip_auto_id}/64";
 
-# Using this default for complete system jail, override if single service
-exec.start = "/bin/sh /etc/rc";
+
+# TODO waiting on resolution of FreeBSD bug 271069
+# See:
+# * https://bugs.freebsd.org/bugzilla/show_bug.cgi?id=271069
+# * https://dan.langille.org/2023/03/10/is-your-jail-not-getting-an-ipv6-address-soon-enough-blame-dad/
+#exec.start = "/bin/sh /etc/rc";
+exec.start = "/bin/sleep 5";
+exec.start += "/bin/sh /etc/rc";
+
 exec.stop = "/bin/sh /etc/rc.shutdown";
 
 # Common fstab to share /usr/ports at a minimum

@@ -1,8 +1,12 @@
-# TODO needed for bootstrapping domain information before ansible fact
-# gathering works on jails.
-# Technically this isn't needed, since we can do all
-# jailhost setup after the jails' facts have been gathered.
+# Currently needed for bootstrapping domain information before ansible fact
+# gathering works on jails. Technically this isn't needed, since we can do all
+# jailhost setup after the jails' facts have been gathered. However, this makes
+# it much easier to track, and doesn't accidentally run into other local FQDN
+# names like '.lan'.
+# TODO see if there's a cleaner way to do this centrally, or automatically
+# through fact gathering.
 org_domain: empt.siva
+
 freebsd_version: 13.2-RELEASE
 ula_subnet: '{{ hostvars["jailhost"].ansible_host | ansible.utils.ipsubnet(64) }}'
 
@@ -34,19 +38,24 @@ special_zfs_datasets:
     owner: vmail
 
 humans:
-  - siva
-  - tillman
   - alice
   - bob
   - carol
   - dan
   - eve
+  - siva
+  - tillman
 
 mailing_lists:
   everyone:
     recipients: '{{ humans }}'
   cryptoppl:
-    recipients: '{{ humans[2:] }}'
+    recipients:
+      - alice
+      - bob
+      - carol
+      - dan
+      - eve
 
 kerberos_service_principals:
   - service: host

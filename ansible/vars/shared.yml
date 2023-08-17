@@ -37,18 +37,30 @@ special_zfs_datasets:
   - path: /empt/email/virtual_mail
     owner: vmail
 
+# TODO random UID generation
 humans:
-  - alice
-  - bob
-  - carol
-  - dan
-  - eve
-  - siva
-  - tillman
+  alice:
+    fullname: Alice Crypto
+    uid: 3000
+  bob:
+    fullname: Bob Crypto
+    uid: 3001
+  carol:
+    fullname: Carol Crypto
+    uid: 3002
+  dan:
+    fullname: Dan Crypto
+    uid: 3003
+  eve:
+    fullname: Eve Crypto
+    uid: 3004
+  siva:
+    fullname: Siva Mahadevan
+    uid: 3005
 
 mailing_lists:
   everyone:
-    recipients: '{{ humans }}'
+    recipients: '{{ humans.keys() | list }}'
   cryptoppl:
     recipients:
       - alice

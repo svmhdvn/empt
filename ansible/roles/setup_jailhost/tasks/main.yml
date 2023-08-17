@@ -21,9 +21,9 @@
     extra_zfs_properties:
       atime: 'off'
       compression: 'zstd'
-        # TODO figure out how to enable encryption properly
-        # turning off for now
-      encryption: 'off'
+      # TODO figure out how to enable encryption properly
+      # turning off for now
+      # encryption: 'on'
       exec: 'off'
       setuid: 'off'
 
@@ -44,7 +44,7 @@
       compression: 'zstd'
       # TODO figure out how to enable encryption properly
       # turning off for now
-      encryption: 'off'
+      # encryption: 'on'
       exec: 'off'
       setuid: 'off'
 
@@ -55,6 +55,37 @@
     extra_zfs_properties:
       canmount: 'on'
   loop: '{{ special_zfs_datasets }}'
+
+- name: Create top level ZFS dataset for human's unix account home directories
+  community.general.zfs:
+    name: zroot/empt/homes
+    state: present
+    extra_zfs_properties:
+      canmount: 'off'
+      compression: 'zstd'
+      # TODO figure out how to enable encryption properly
+      # turning off for now
+      # encryption: 'on'
+      setuid: 'off'
+
+- name: Create ZFS datasets for all humans
+  community.general.zfs:
+    name: 'zroot/empt/homes/{{ item }}'
+    state: present
+    extra_zfs_properties:
+      canmount: 'on'
+      quota: '4G'
+      reservation: '4G'
+  loop: '{{ humans.keys() | list }}'
+
+- name: Change ownership of human home zfs datasets
+  ansible.builtin.file:
+    name: '/empt/homes/{{ item.key }}'
+    state: directory
+    recurse: true
+    owner: '{{ item.value.uid }}'
+    group: '{{ item.value.uid }}'
+  loop: '{{ humans | dict2items }}'
 
 - name: Create unix users that will be mapped on both jailhost and jails
   ansible.builtin.user:
@@ -71,7 +102,7 @@
     state: present
   loop: '{{ groups["jails"] }}'
 
-- name: Change ownership of newly created ZFS datasets
+- name: Change ownership of special ZFS datasets
   ansible.builtin.file:
     name: '{{ item.path }}'
     state: directory
@@ -151,8 +182,9 @@
     group: wheel
   loop: '{{ groups["jails"] }}'
 
-# TODO move to central location, I don't think this belongs here
-- name: Create all missing nullfs mount destinations in mail jail
+# TODO move these directory creation tasks to central location
+# I don't think these belong in this file
+- name: Create mail jail's missing nullfs mount destinations
   ansible.builtin.file:
     path: '{{ item }}'
     state: directory
@@ -162,6 +194,13 @@
     - /empt/jails/mail/var/mail/local
     - /empt/jails/mail/var/mail/vhosts
     - /empt/jails/mail/var/spool/mlmmj
+
+- name: Create ssh jail's missing nullfs mount destinations
+  ansible.builtin.file:
+    path: '/empt/jails/ssh/home/{{ item.key }}'
+    state: directory
+    mode: '0755'
+  loop: '{{ humans | dict2items }}'
 
 - name: Populate jailhost /etc files
   ansible.builtin.template:

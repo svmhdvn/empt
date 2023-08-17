@@ -1,4 +1,4 @@
 {{ ansible_domain }}	{{ ansible_domain }}
-{% for h in humans %}
+{% for h in (humans.keys() | list) %}
 {{ h }}@{{ ansible_domain }} {{ ansible_domain }}/{{ h }}
 {% endfor %}

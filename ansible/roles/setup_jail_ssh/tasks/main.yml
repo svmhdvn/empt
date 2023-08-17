@@ -1,0 +1,7 @@
+- name: Create a unix system user for each human
+  ansible.builtin.user:
+    name: '{{ item.key }}'
+    comment: '{{ item.value.fullname }}'
+    uid: '{{ item.value.uid }}'
+    home: '/home/{{ item.key }}'
+  loop: '{{ humans }}'

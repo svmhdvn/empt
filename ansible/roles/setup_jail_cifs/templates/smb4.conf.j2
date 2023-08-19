@@ -1,0 +1,26 @@
+[global]
+	log level = 1
+	logging = syslog
+
+	bind interfaces only = yes
+	interfaces = {{ ansible_fqdn }}
+
+	map to guest = never
+
+	server role = standalone
+	security = user
+
+	kerberos encryption types = strong
+	kerberos method = dedicated keytab
+	dedicated keytab file = /etc/krb5.keytab
+
+	realm = {{ org_domain | upper }}
+	workgroup = {{ org_domain | upper }}
+
+	client use kerberos = required
+	ntlm auth = disabled
+
+	vfs objects = zfsacl
+[homes]
+	read only = no
+	inherit permissions = yes

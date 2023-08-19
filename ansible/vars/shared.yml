@@ -54,9 +54,6 @@ humans:
   eve:
     fullname: Eve Crypto
     uid: 3004
-  siva:
-    fullname: Siva Mahadevan
-    uid: 3005
 
 mailing_lists:
   everyone:
@@ -70,11 +67,18 @@ mailing_lists:
       - eve
 
 kerberos_service_principals:
+  - service: cifs
+    host: cifs
+    keytab_dest: /empt/jails/cifs/etc/krb5.keytab
   - service: host
     host: ssh
+    keytab_dest: /empt/jails/ssh/etc/krb5.keytab
   - service: imap
     host: mail
+    keytab_dest: /empt/jails/mail/etc/krb5.keytab
   - service: smtp
     host: mail
-      #- service: cifs
-      #  host: cifs
+    keytab_dest: /empt/jails/mail/etc/krb5.keytab
+  - service: nfs
+    host: jailhost
+    keytab_dest: /etc/krb5.keytab

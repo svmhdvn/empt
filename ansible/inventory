@@ -2,6 +2,7 @@ jailhost     ansible_host=fdac::7af2:9eff:fe90:dbc4
 
 [jails]
 certauth     ansible_host=fdac::a8bb:ccff:fe60:7f75
+cifs         ansible_host=fdac::a8bb:ccff:fe92:12a7
 dns          ansible_host=fdac::a8bb:ccff:fed7:35b1
 kerberos     ansible_host=fdac::a8bb:ccff:fe6b:24f9
 mail         ansible_host=fdac::a8bb:ccff:fe7c:a812

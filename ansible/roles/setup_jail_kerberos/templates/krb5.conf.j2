@@ -9,3 +9,6 @@
 	allow-anonymous = false
 [domain_realm]
 	.{{ ansible_domain }} = {{ ansible_domain | upper }}
+[logging]
+        libkrb5 = 0-/SYSLOG:
+        kdc = 0-/SYSLOG:

@@ -18,9 +18,9 @@
     - vars/shared.yml
   roles:
     - update_poudriere
-    - setup_jailhost
       # TODO remove once everything is ready for production
     - setup_siva_debug
+    - setup_jailhost
 
 - name: Bootstrap all jails
   hosts: jails
@@ -39,6 +39,28 @@
     - vars/shared.yml
   roles:
     - refresh_etc_hosts
+
+- name: Setup samba CIFS jail
+  hosts: cifs
+  remote_user: ansible
+  become: true
+  become_method: community.general.doas
+  gather_facts: true
+  vars_files:
+    - vars/shared.yml
+  roles:
+    - setup_jail_cifs
+
+- name: Setup ssh jail
+  hosts: ssh
+  remote_user: ansible
+  become: true
+  become_method: community.general.doas
+  gather_facts: false
+  vars_files:
+    - vars/shared.yml
+  roles:
+    - setup_jail_ssh
 
 - name: Setup certauth jail
   hosts: certauth
@@ -82,15 +104,14 @@
   vars_files:
     - vars/shared.yml
   tasks:
-    - name: Copy keytab from jailhost to jail
+    - name: Copy jail keytabs from jailhost to jail
       ansible.builtin.copy:
         src: '/empt/jails/kerberos/tmp/{{ hostvars[item.host].ansible_fqdn }}.keytab'
         remote_src: true
-        dest: '/empt/jails/{{ item.host }}/etc/krb5.keytab'
+        dest: '{{ item.keytab_dest }}'
         mode: '0600'
         owner: root
         group: wheel
-      tags: always
       loop: '{{ kerberos_service_principals }}'
 
 - name: Setup mail server jail

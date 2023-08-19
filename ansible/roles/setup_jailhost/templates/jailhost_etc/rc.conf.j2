@@ -9,7 +9,6 @@ ntpd_enable="YES"
 powerd_enable="YES"
 sshd_enable="YES"
 
-# Set dumpdev to "AUTO" to enable crash dumps, "NO" to disable
 dumpdev="AUTO"
 zfs_enable="YES"
 
@@ -21,6 +20,9 @@ sendmail_submit_enable="NO"
 syslogd_enable="YES"
 syslogd_flags="-8 -O syslog -N -s -s"
 
-# TODO enable these if needed
-#kdc_program="/usr/local/libexec/kdc"
-#kadmind_program="/usr/local/libexec/kadmind"
+nfs_server_enable="YES"
+nfsv4_server_enable="YES"
+nfsuserd_enable="YES"
+nfsuserd_flags="-verbose"
+gssd_enable="YES"
+gssd_flags="-h"

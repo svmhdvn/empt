@@ -1,3 +1,7 @@
+- name: Install jailhost required packages
+  ansible.builtin.raw: pkg install -y heimdal
+  changed_when: true
+
 # TODO determine whether we need this or not. It helps with organizing
 # new dataset creation under a different hierarchy for easy deletion
 - name: Create ZFS top level dataset for empt
@@ -67,6 +71,8 @@
       # turning off for now
       # encryption: 'on'
       setuid: 'off'
+      exec: 'off'
+      sharenfs: '-sec=krb5p'
 
 - name: Create ZFS datasets for all humans
   community.general.zfs:
@@ -83,11 +89,12 @@
     name: '/empt/homes/{{ item.key }}'
     state: directory
     recurse: true
+    mode: '1700'
     owner: '{{ item.value.uid }}'
     group: '{{ item.value.uid }}'
   loop: '{{ humans | dict2items }}'
 
-- name: Create unix users that will be mapped on both jailhost and jails
+- name: Create unix system users mapped on both jailhost and jails
   ansible.builtin.user:
     name: '{{ item.key }}'
     comment: '{{ item.value.comment }}'
@@ -183,7 +190,9 @@
   loop: '{{ groups["jails"] }}'
 
 # TODO move these directory creation tasks to central location
+# or find better solution.
 # I don't think these belong in this file
+# =====================
 - name: Create mail jail's missing nullfs mount destinations
   ansible.builtin.file:
     path: '{{ item }}'
@@ -201,6 +210,14 @@
     state: directory
     mode: '0755'
   loop: '{{ humans | dict2items }}'
+
+- name: Create cifs jail's missing nullfs mount destinations
+  ansible.builtin.file:
+    path: '/empt/jails/cifs/home/{{ item.key }}'
+    state: directory
+    mode: '0755'
+  loop: '{{ humans | dict2items }}'
+# =====================
 
 - name: Populate jailhost /etc files
   ansible.builtin.template:
@@ -222,6 +239,14 @@
   vars:
     setup_jailhost_fstab_jail: '{{ item }}'
   loop: '{{ groups["jails"] }}'
+
+- name: Create a regular unix user for each human
+  ansible.builtin.user:
+    name: '{{ item.key }}'
+    comment: '{{ item.value.fullname }}'
+    uid: '{{ item.value.uid }}'
+    home: '/empt/homes/{{ item.key }}'
+  loop: '{{ humans | dict2items }}'
 
 # TODO enable once everything is figured out
 # - name: Enable jail service

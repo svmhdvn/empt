@@ -4,4 +4,4 @@
     comment: '{{ item.value.fullname }}'
     uid: '{{ item.value.uid }}'
     home: '/home/{{ item.key }}'
-  loop: '{{ humans }}'
+  loop: '{{ humans | dict2items }}'

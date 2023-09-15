@@ -25,13 +25,13 @@
     creates: /var/heimdal/m-key
 
 - name: Check if kerberos realm exists
-  ansible.builtin.command: '/usr/local/bin/kadmin --local check {{ ansible_domain | upper }}'
+  ansible.builtin.command: '/usr/local/bin/kadmin --local check {{ org_domain | upper }}'
   register: setup_jail_kerberos_realm_exists
   failed_when: setup_jail_kerberos_realm_exists.rc >= 2
   changed_when: false
 
 - name: Initialize kerberos realm
-  ansible.builtin.command: '/usr/local/bin/kadmin --local init --realm-max-ticket-life=1d --realm-max-renewable-life=1w {{ ansible_domain | upper }}'
+  ansible.builtin.command: '/usr/local/bin/kadmin --local init --realm-max-ticket-life=1d --realm-max-renewable-life=1w {{ org_domain | upper }}'
   # TODO waiting on https://github.com/heimdal/heimdal/pull/1160 to switch to stderr
   when: "\"doesn't exist\" in setup_jail_kerberos_realm_exists.stdout"
   register: setup_jail_kerberos_init_realm_output

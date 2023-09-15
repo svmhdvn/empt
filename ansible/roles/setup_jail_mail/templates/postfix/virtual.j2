@@ -1,3 +1,3 @@
 {% for l in (mailing_lists | dict2items) %}
-{{ l.key }}@{{ ansible_domain }}	{{ ansible_domain }}--{{ l.key }}@localhost.mlmmj
+{{ l.key }}@{{ org_domain }}	{{ org_domain }}--{{ l.key }}@localhost.mlmmj
 {% endfor %}

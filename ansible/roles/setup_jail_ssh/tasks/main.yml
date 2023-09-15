@@ -1,7 +1,8 @@
-- name: Create a unix system user for each human
-  ansible.builtin.user:
-    name: '{{ item.key }}'
-    comment: '{{ item.value.fullname }}'
-    uid: '{{ item.value.uid }}'
-    home: '/home/{{ item.key }}'
-  loop: '{{ humans | dict2items }}'
+# TODO configure after all ansible setup is done
+#- name: Configure sshd
+#  ansible.builtin.template:
+#    src: 'sshd_config.j2'
+#    dest: '/etc/ssh/sshd_config'
+#    mode: '0644'
+#    owner: root
+#    group: wheel

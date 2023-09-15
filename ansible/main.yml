@@ -125,14 +125,28 @@
   roles:
     - setup_jail_mail
 
-- name: Create all pre-configured mlmmj mailing lists inside mail server jail
+- name: Add all pre-configured humans
+  hosts: jailhost
+  remote_user: ansible
+  become: true
+  become_method: community.general.doas
+  vars_files:
+    - vars/shared.yml
+  tasks:
+    - name: Add human
+      ansible.builtin.include_role: new_human
+      loop: '{{ humans.values() }}'
+      loop_control:
+        loop_var: human
+
+- name: Create all pre-configured mailing lists
   hosts: mail
   remote_user: mlmmj
   gather_facts: false
   vars_files:
     - vars/shared.yml
   tasks:
-    - name: Create mlmmj mailing list
+    - name: Create mailing list
       ansible.builtin.include_tasks: mlmmj_make_ml.yml
       loop: '{{ mailing_lists | dict2items }}'
       loop_control:

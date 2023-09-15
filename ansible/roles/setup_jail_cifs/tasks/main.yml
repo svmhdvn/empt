@@ -1,5 +1,6 @@
 - name: Install samba port
   ansible.builtin.command: 'pkg install -y {{ samba_package }}'
+  changed_when: true
 
 - name: Create a unix system user for each human
   ansible.builtin.user:
@@ -24,5 +25,5 @@
     name: samba_server
     enabled: true
 
-      #- name: SIVA PAUSE VERIFY
-      #  ansible.builtin.pause:
+      # - name: SIVA PAUSE VERIFY
+      #   ansible.builtin.pause:

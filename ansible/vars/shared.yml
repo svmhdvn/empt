@@ -39,26 +39,21 @@ special_zfs_datasets:
 
 # TODO random UID generation
 humans:
-  alice:
+  - username: alice
     fullname: Alice Crypto
-    uid: 3000
-  bob:
+  - username: bob
     fullname: Bob Crypto
-    uid: 3001
-  carol:
+  - username: carol
     fullname: Carol Crypto
-    uid: 3002
-  dan:
+  - username: dan
     fullname: Dan Crypto
-    uid: 3003
-  eve:
+  - username: eve
     fullname: Eve Crypto
-    uid: 3004
 
 mailing_lists:
-  everyone:
-    recipients: '{{ humans.keys() | list }}'
-  cryptoppl:
+  - name: everyone
+    recipients: '{{ humans | map(attribute="username") }}'
+  - name: cryptoppl
     recipients:
       - alice
       - bob

@@ -1,7 +1,12 @@
 #Port 22
-AddressFamily inet6
-#ListenAddress 0.0.0.0
+
+# TODO switch to IPv6 only once ready
+#AddressFamily inet6
+#ListenAddress ::
+
+AddressFamily any
 ListenAddress ::
+ListenAddress 0.0.0.0
 
 #HostKey /etc/ssh/ssh_host_rsa_key
 #HostKey /etc/ssh/ssh_host_ecdsa_key

@@ -85,7 +85,7 @@
 
 - name: Create mlmmj spool directory
   ansible.builtin.file:
-    path: '/var/spool/mlmmj/{{ ansible_domain }}'
+    path: '/var/spool/mlmmj/{{ org_domain }}'
     state: directory
     mode: '0775'
     owner: mlmmj
@@ -112,4 +112,4 @@
 - name: Add mlmmj maintenance task to cron
   ansible.builtin.lineinfile:
     path: /etc/crontab
-    line: '*/2 * * * * mlmmj /usr/local/bin/mlmmj-maintd -F -d /var/spool/mlmmj/{{ ansible_domain }}'
+    line: '*/2 * * * * mlmmj /usr/local/bin/mlmmj-maintd -F -d /var/spool/mlmmj/{{ org_domain }}'

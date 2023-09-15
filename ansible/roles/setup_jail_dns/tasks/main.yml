@@ -1,18 +1,15 @@
 - name: Install nsd port from poudriere
-  ansible.builtin.command: 'pkg -r {{ jailroot }} install -y nsd'
-  tags: always
+  ansible.builtin.command: 'pkg install -y nsd'
 
 - name: Configure nsd
   ansible.builtin.template:
     src: '{{ item.src }}'
-    dest: '{{ jailroot }}/usr/local/etc/nsd/{{ item.path | replace(".j2", "")}}'
+    dest: '/usr/local/etc/nsd/{{ item.path | replace(".j2", "")}}'
     mode: '0644'
   with_community.general.filetree: templates/nsd/
   when: item.state == 'file'
-  tags: always
 
 - name: Enable nsd service
   ansible.builtin.lineinfile:
     path: '{{ jailroot }}/etc/rc.conf'
     line: 'nsd_enable=YES'
-  tags: always

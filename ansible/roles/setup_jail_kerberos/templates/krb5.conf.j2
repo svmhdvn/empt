@@ -1,14 +1,14 @@
 [libdefaults]
-	default_realm = {{ ansible_domain | upper }}
+	default_realm = {{ org_domain | upper }}
 	allow_weak_crypto = false
 [realms]
-	{{ ansible_domain | upper }} = {
+	{{ org_domain | upper }} = {
 		kdc = {{ ansible_fqdn }}
 	}
 [kdc]
 	allow-anonymous = false
 [domain_realm]
-	.{{ ansible_domain }} = {{ ansible_domain | upper }}
+	.{{ org_domain }} = {{ org_domain | upper }}
 [logging]
         libkrb5 = 0-/SYSLOG:
         kdc = 0-/SYSLOG:

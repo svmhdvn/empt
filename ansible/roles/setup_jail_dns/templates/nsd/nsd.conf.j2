@@ -23,7 +23,7 @@ server:
 	# For servers with multiple IP addresses, list them one by one,
 	# or the source address of replies could be wrong.
 	# Use ip-transparent to be able to list addresses that turn on later.
-	ip-address: {{ jail.ipaddr }}
+	ip-address: ::0
 	# ip-address: 1.2.3.4@5678
 	# ip-address: 12fe::8ef0
 	#
@@ -472,12 +472,12 @@ remote-control:
 # Zones that are dynamically added and deleted are put in the zonelist file.
 #
 zone:
-	name: "{{ ansible_domain }}"
+	name: "{{ org_domain }}"
 	# you can give a pattern here, all the settings from that pattern
 	# are then inserted at this point
 	# include-pattern: "master"
 	# You can also specify (additional) options directly for this zone.
-	zonefile: "{{ ansible_domain }}.forward.zone"
+	zonefile: "{{ org_domain }}.forward.zone"
 	# request-xfr: 192.0.2.1 example.com.key
 
 	# RRLconfig
@@ -496,4 +496,4 @@ zone:
 
 zone:
 	name: "{{ ula_subnet | ansible.utils.ipaddr('revdns') }}"
-	zonefile: "{{ ansible_domain }}.reverse.zone"
+	zonefile: "{{ org_domain }}.reverse.zone"

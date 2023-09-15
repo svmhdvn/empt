@@ -1,0 +1,71 @@
+# Expects variable:
+# human:
+#   username: str
+#   fullname: str
+
+- name: Create home directory in jailhost
+  community.general.zfs:
+    name: 'zroot/empt/homes/{{ human.username }}'
+    state: present
+    extra_zfs_properties:
+      canmount: 'on'
+      quota: '4G'
+      reservation: '4G'
+
+- name: Create a login-capable unix user for the human in the ssh jail
+  ansible.builtin.user:
+    name: '{{ human.username }}'
+    comment: '{{ human.fullname }}'
+    home: '/home/{{ human.username }}'
+  delegate_to: ssh
+  register: new_human_unix_user
+
+- name: Create a uid-matching login-incapable system unix user for cifs
+  ansible.builtin.user:
+    name: '{{ human.username }}'
+    comment: '{{ human.fullname }}'
+    home: '/home/{{ human.username }}'
+    uid: '{{ new_human_unix_user.uid }}'
+    shell: /usr/sbin/nologin
+  delegate_to: cifs
+
+- name: Create a uid-matching login-incapable system unix user in the jailhost
+  ansible.builtin.user:
+    name: '{{ human.username }}'
+    comment: '{{ human.fullname }}'
+    home: '/empt/homes/{{ human.username }}'
+    uid: '{{ new_human_unix_user.uid }}'
+    shell: /usr/sbin/nologin
+  delegate_to: jailhost
+
+- name: Change ownership of home to narrow strictly to human
+  ansible.builtin.file:
+    name: '/empt/homes/{{ human.username }}'
+    state: directory
+    recurse: true
+    mode: '1700'
+    owner: '{{ human.username }}'
+    group: '{{ human.username }}'
+
+- name: Add new kerberos principal
+  ansible.builtin.command: '/usr/local/bin/kadmin --local add --password={{ item.item }} --use-defaults {{ item.item }}'
+  delegate_to: kerberos
+  register: setup_jail_kerberos_add_user_principals_output
+  changed_when: setup_jail_kerberos_add_user_principals_output.rc == 0
+
+- name: Add human to mailserver vmailbox
+  ansible.builtin.lineinfile:
+    path: /usr/local/etc/postfix/vmailbox
+    line: '{{ human.username }}@{{ org_domain }} {{ org_domain }}/{{ human.username }}'
+  delegate_to: mail
+
+- name: Regenerate vmailbox postfix map
+  ansible.builtin.command: 'postmap /usr/local/etc/postfix/vmailbox'
+  register: setup_jail_mail_postmap
+  changed_when: setup_jail_mail_postmap.rc == 0
+
+- name: Subscribe to full organization mailing list
+  ansible.builtin.command: '/usr/local/bin/mlmmj-sub -L /var/spool/mlmmj/{{ org_domain }}/everyone -a {{ human.username }}@{{ org_domain }} -c -f -s'
+  delegate_to: mail
+  register: mlmmj_sub_output
+  changed_when: mlmmj_sub_output.rc == 0

@@ -12,6 +12,11 @@
       quota: '4G'
       reservation: '4G'
 
+- name: Add new home directory nullfs mount to ssh jail's fstab
+  ansible.builtin.lineinfile:
+    path: /etc/jail_fstabs/ssh.fstab
+    line: '/empt/homes/{{ human.username }} /empt/jails/ssh/home/{{ human.username }} nullfs rw 0 0'
+
 - name: Create a login-capable unix user for the human in the ssh jail
   ansible.builtin.user:
     name: '{{ human.username }}'

@@ -74,16 +74,6 @@
       exec: 'off'
       sharenfs: '-sec=krb5p'
 
-- name: Create ZFS datasets for all humans
-  community.general.zfs:
-    name: 'zroot/empt/homes/{{ item }}'
-    state: present
-    extra_zfs_properties:
-      canmount: 'on'
-      quota: '4G'
-      reservation: '4G'
-  loop: '{{ humans.keys() | list }}'
-
 - name: Change ownership of human home zfs datasets
   ansible.builtin.file:
     name: '/empt/homes/{{ item.key }}'

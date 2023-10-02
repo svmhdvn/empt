@@ -37,22 +37,6 @@
   register: setup_jail_kerberos_init_realm_output
   changed_when: setup_jail_kerberos_init_realm_output.rc == 0
 
-# TODO a lot of bugs with Heimdal's `get` and `list` commands, fix them.
-- name: Check which user principals are missing
-  ansible.builtin.command: '/usr/local/bin/kadmin --local get --short {{ item }}'
-  loop: '{{ humans.keys() | list }}'
-  register: setup_jail_kerberos_user_principal_exists
-  failed_when: setup_jail_kerberos_user_principal_exists.rc >= 2
-  changed_when: false
-
-# TODO secure passwords
-- name: Add missing user principals
-  ansible.builtin.command: '/usr/local/bin/kadmin --local add --password={{ item.item }} --use-defaults {{ item.item }}'
-  when: '"Principal does not exist" in item.stderr'
-  register: setup_jail_kerberos_add_user_principals_output
-  changed_when: setup_jail_kerberos_add_user_principals_output.rc == 0
-  loop: '{{ setup_jail_kerberos_user_principal_exists.results }}'
-
 - name: Check which service principals are missing
   ansible.builtin.command: '/usr/local/bin/kadmin --local get --short {{ item.service }}/{{ hostvars[item.host].ansible_fqdn }}'
   loop: '{{ kerberos_service_principals }}'

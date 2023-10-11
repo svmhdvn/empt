@@ -37,18 +37,22 @@ special_zfs_datasets:
   - path: /empt/email/virtual_mail
     owner: vmail
 
-# TODO random UID generation
 humans:
   - username: alice
     fullname: Alice Crypto
+    uid: '{{ 60000 | random(start=3000) }}'
   - username: bob
     fullname: Bob Crypto
+    uid: '{{ 60000 | random(start=3000) }}'
   - username: carol
     fullname: Carol Crypto
+    uid: '{{ 60000 | random(start=3000) }}'
   - username: dan
     fullname: Dan Crypto
+    uid: '{{ 60000 | random(start=3000) }}'
   - username: eve
     fullname: Eve Crypto
+    uid: '{{ 60000 | random(start=3000) }}'
 
 mailing_lists:
   - name: everyone

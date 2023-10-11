@@ -1,3 +1,3 @@
-{% for l in (mailing_lists | dict2items) %}
-{{ org_domain }}--{{ l.key }}@localhost.mlmmj	mlmmj:{{ org_domain }}/{{ l.key }}
+{% for l in mailing_lists %}
+{{ org_domain }}--{{ l.name }}@localhost.mlmmj	mlmmj:{{ org_domain }}/{{ l.name }}
 {% endfor %}

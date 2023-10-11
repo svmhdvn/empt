@@ -1,26 +1,26 @@
-- name: Install jailhost required packages
+- name: "Install jailhost required packages"
   ansible.builtin.raw: pkg install -y heimdal
   changed_when: true
 
 # TODO determine whether we need this or not. It helps with organizing
 # new dataset creation under a different hierarchy for easy deletion
-- name: Create ZFS top level dataset for empt
+- name: "Create ZFS top level dataset for empt"
   community.general.zfs:
-    name: zroot/empt
+    name: "zroot/empt"
     state: present
     extra_zfs_properties:
       mountpoint: '/empt'
 
-- name: Create ZFS dataset for the top level jails filesystem
+- name: "Create ZFS dataset for the top level jails filesystem"
   community.general.zfs:
-    name: zroot/empt/jails
+    name: "zroot/empt/jails"
     state: present
     extra_zfs_properties:
       compression: 'off'
 
-- name: Create ZFS dataset for log storage
+- name: "Create ZFS dataset for log storage"
   community.general.zfs:
-    name: zroot/empt/logs
+    name: "zroot/empt/logs"
     state: present
     extra_zfs_properties:
       atime: 'off'
@@ -31,16 +31,16 @@
       exec: 'off'
       setuid: 'off'
 
-- name: Create log subdirectories for individual jail mounting
+- name: "Create log subdirectories for individual jail mounting"
   ansible.builtin.file:
     path: '/empt/logs/{{ item }}'
     state: directory
     mode: '0755'
   loop: '{{ groups["jails"] }}'
 
-- name: Create ZFS dataset for top level container for email-related filesystems
+- name: "Create ZFS dataset for top level container for email-related filesystems"
   community.general.zfs:
-    name: zroot/empt/email
+    name: "zroot/empt/email"
     state: present
     extra_zfs_properties:
       atime: 'off'
@@ -52,7 +52,7 @@
       exec: 'off'
       setuid: 'off'
 
-- name: Create ZFS datasets for all email-related filesystems
+- name: "Create ZFS datasets for all email-related filesystems"
   community.general.zfs:
     name: 'zroot{{ item.path }}'
     state: present
@@ -60,9 +60,9 @@
       canmount: 'on'
   loop: '{{ special_zfs_datasets }}'
 
-- name: Create top level ZFS dataset for human's unix account home directories
+- name: "Create top level ZFS dataset for human unix account home directories"
   community.general.zfs:
-    name: zroot/empt/homes
+    name: "zroot/empt/homes"
     state: present
     extra_zfs_properties:
       canmount: 'off'
@@ -74,17 +74,7 @@
       exec: 'off'
       sharenfs: '-sec=krb5p'
 
-- name: Change ownership of human home zfs datasets
-  ansible.builtin.file:
-    name: '/empt/homes/{{ item.key }}'
-    state: directory
-    recurse: true
-    mode: '1700'
-    owner: '{{ item.value.uid }}'
-    group: '{{ item.value.uid }}'
-  loop: '{{ humans | dict2items }}'
-
-- name: Create unix system users mapped on both jailhost and jails
+- name: "Create unix system users mapped on both jailhost and jails"
   ansible.builtin.user:
     name: '{{ item.key }}'
     comment: '{{ item.value.comment }}'
@@ -93,13 +83,13 @@
     shell: /usr/sbin/nologin
   loop: '{{ host_jails_mapped_users | dict2items }}'
 
-- name: Create a ZFS dataset for each jail
+- name: "Create a ZFS dataset for each jail"
   community.general.zfs:
     name: 'zroot/empt/jails/{{ item }}'
     state: present
   loop: '{{ groups["jails"] }}'
 
-- name: Change ownership of special ZFS datasets
+- name: "Change ownership of special ZFS datasets"
   ansible.builtin.file:
     name: '{{ item.path }}'
     state: directory
@@ -108,7 +98,7 @@
     group: '{{ item.owner }}'
   loop: '{{ special_zfs_datasets }}'
 
-- name: Create all missing directories on jailhost
+- name: "Create all missing directories on jailhost"
   ansible.builtin.file:
     path: '{{ item }}'
     state: directory
@@ -118,7 +108,7 @@
     - /tmp/base_jail
 
 # TODO move back to downloading from freebsd.org once fully tested
-# - name: Download FreeBSD base system archive to local filesystem
+# - name: "Download FreeBSD base system archive to local filesystem"
 #   ansible.builtin.get_url:
 #     url: 'https://download.freebsd.org/ftp/releases/amd64/{{ freebsd_version }}/base.txz'
 #     dest: /tmp/base.tar.xz
@@ -127,13 +117,13 @@
 #     mode: '0644'
 #   tags: initial
 
-- name: Unarchive (thick) base jail to temporary location
+- name: "Unarchive (thick) base jail to temporary location"
   ansible.builtin.unarchive:
     src: base.tar.xz
     dest: /tmp/base_jail
   tags: initial
 
-- name: Create all missing directories in base jail
+- name: "Create all missing directories in base jail"
   ansible.builtin.file:
     path: '{{ item }}'
     state: directory
@@ -143,7 +133,7 @@
     - /tmp/base_jail/usr/local/poudriere_repo
     - /tmp/base_jail/root/.ssh
 
-- name: Populate common /etc files into base jail
+- name: "Populate common /etc files into base jail"
   ansible.builtin.template:
     src: '{{ item.src }}'
     dest: '/tmp/base_jail/etc/{{ item.path | replace(".j2", "") }}'
@@ -153,7 +143,7 @@
   with_community.general.filetree: '{{ "templates/common_etc/" }}'
   when: item.state == 'file'
 
-- name: Copy pkg repo config to base jail
+- name: "Copy pkg repo config to base jail"
   ansible.builtin.copy:
     src: /usr/local/etc/pkg/repos/FreeBSD.conf
     remote_src: true
@@ -162,14 +152,14 @@
     owner: root
     group: wheel
 
-- name: Add control host's ssh key to base jail
+- name: "Add control host's ssh key to base jail"
   ansible.posix.authorized_key:
     user: root
-    key: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINqa5qTRGfyJckSBOXWyqdSC4tortF5Nc0O6kQFkORFi siva@think"
+    key: "{{ lookup('file', '/home/siva/.ssh/id_ed25519.pub') }}"
     path: /tmp/base_jail/root/.ssh/authorized_keys
     exclusive: true
 
-- name: Clone (thick) base jail to installed locations
+- name: "Clone (thick) base jail to installed locations"
   ansible.builtin.copy:
     src: /tmp/base_jail/
     remote_src: true
@@ -183,7 +173,7 @@
 # or find better solution.
 # I don't think these belong in this file
 # =====================
-- name: Create mail jail's missing nullfs mount destinations
+- name: "Create mail jail's missing nullfs mount destinations"
   ansible.builtin.file:
     path: '{{ item }}'
     state: directory
@@ -194,22 +184,9 @@
     - /empt/jails/mail/var/mail/vhosts
     - /empt/jails/mail/var/spool/mlmmj
 
-- name: Create ssh jail's missing nullfs mount destinations
-  ansible.builtin.file:
-    path: '/empt/jails/ssh/home/{{ item.key }}'
-    state: directory
-    mode: '0755'
-  loop: '{{ humans | dict2items }}'
-
-- name: Create cifs jail's missing nullfs mount destinations
-  ansible.builtin.file:
-    path: '/empt/jails/cifs/home/{{ item.key }}'
-    state: directory
-    mode: '0755'
-  loop: '{{ humans | dict2items }}'
 # =====================
 
-- name: Populate jailhost /etc files
+- name: "Populate jailhost /etc files"
   ansible.builtin.template:
     src: '{{ item.src }}'
     dest: '/etc/{{ item.path | replace(".j2", "") }}'
@@ -219,7 +196,7 @@
   with_community.general.filetree: '{{ "templates/jailhost_etc/" }}'
   when: item.state == 'file'
 
-- name: Copy the common fstab for each jail
+- name: "Copy the common fstab for each jail"
   ansible.builtin.template:
     src: 'jail_fstabs/{{ item }}.fstab'
     dest: '/etc/jail_fstabs/{{ item }}.fstab'
@@ -230,28 +207,20 @@
     setup_jailhost_fstab_jail: '{{ item }}'
   loop: '{{ groups["jails"] }}'
 
-- name: Create a regular unix user for each human
-  ansible.builtin.user:
-    name: '{{ item.key }}'
-    comment: '{{ item.value.fullname }}'
-    uid: '{{ item.value.uid }}'
-    home: '/empt/homes/{{ item.key }}'
-  loop: '{{ humans | dict2items }}'
-
 # TODO enable once everything is figured out
-# - name: Enable jail service
+# - name: "Enable jail service"
 #   ansible.builtin.service:
-#     name: jail
+#     name: "jail"
 #     enabled: true
 #
-# - name: Set list of enabled jails
+# - name: "Set list of enabled jails"
 #   ansible.builtin.lineinfile:
 #     path: /etc/rc.conf
 #     line: 'jail_list="certauth"'
 
 # TODO unnecessary for now since we've hardcoded IP addresses.
 # Commenting out for now.
-# - name: Add all jails to the inventory
+# - name: "Add all jails to the inventory"
 #   ansible.builtin.add_host:
 #     name: 'jail_{{ item.name }}'
 #     ansible_host: '{{ item.ipaddr }}'
@@ -261,6 +230,6 @@
 
 # TODO file an ansible bug: ansible.builtin.service doesn't onerestart the jail
 # service
-- name: Start all enabled jails
+- name: "Start all enabled jails"
   ansible.builtin.command: 'service jail onerestart' # noqa: command-instead-of-module
   changed_when: true

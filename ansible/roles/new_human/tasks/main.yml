@@ -1,9 +1,9 @@
 # Expects variable:
 # human:
-#   username: str
-#   fullname: str
+#   username: "str"
+#   fullname: "str"
 
-- name: Create home directory in jailhost
+- name: "Create home directory in jailhost"
   community.general.zfs:
     name: 'zroot/empt/homes/{{ human.username }}'
     state: present
@@ -12,38 +12,27 @@
       quota: '4G'
       reservation: '4G'
 
-- name: Add new home directory nullfs mount to ssh jail's fstab
-  ansible.builtin.lineinfile:
-    path: /etc/jail_fstabs/ssh.fstab
-    line: '/empt/homes/{{ human.username }} /empt/jails/ssh/home/{{ human.username }} nullfs rw 0 0'
-
-- name: Create a login-capable unix user for the human in the ssh jail
-  ansible.builtin.user:
-    name: '{{ human.username }}'
-    comment: '{{ human.fullname }}'
-    home: '/home/{{ human.username }}'
-  delegate_to: ssh
-  register: new_human_unix_user
-
-- name: Create a uid-matching login-incapable system unix user for cifs
-  ansible.builtin.user:
-    name: '{{ human.username }}'
-    comment: '{{ human.fullname }}'
-    home: '/home/{{ human.username }}'
-    uid: '{{ new_human_unix_user.uid }}'
-    shell: /usr/sbin/nologin
-  delegate_to: cifs
-
-- name: Create a uid-matching login-incapable system unix user in the jailhost
+- name: "Create login-incapable system unix users in the required hosts"
   ansible.builtin.user:
     name: '{{ human.username }}'
     comment: '{{ human.fullname }}'
     home: '/empt/homes/{{ human.username }}'
-    uid: '{{ new_human_unix_user.uid }}'
+    uid: '{{ human.uid }}'
     shell: /usr/sbin/nologin
-  delegate_to: jailhost
+  delegate_to: '{{ item }}'
+  loop:
+    - jailhost
+    - cifs
 
-- name: Change ownership of home to narrow strictly to human
+- name: "Create a login-capable unix user for the human in the ssh jail"
+  ansible.builtin.user:
+    name: '{{ human.username }}'
+    comment: '{{ human.fullname }}'
+    home: '/home/{{ human.username }}'
+    uid: '{{ human.uid }}'
+  delegate_to: ssh
+
+- name: "Change ownership of home to narrow strictly to human"
   ansible.builtin.file:
     name: '/empt/homes/{{ human.username }}'
     state: directory
@@ -52,32 +41,50 @@
     owner: '{{ human.username }}'
     group: '{{ human.username }}'
 
+- name: "Create dependent service jail's missing nullfs mount destinations"
+  ansible.builtin.file:
+    path: '/empt/jails/{{ item }}/home/{{ human.username }}'
+    state: directory
+    mode: '0755'
+  loop:
+    - cifs
+    - ssh
+
+- name: "Add new home directory nullfs mount to dependent service jail fstabs"
+  ansible.builtin.lineinfile:
+    path: '/etc/jail_fstabs/{{ item }}.fstab'
+    line: '/empt/homes/{{ human.username }} /empt/jails/ssh/home/{{ human.username }} nullfs rw 0 0'
+  loop:
+    - cifs
+    - ssh
+
 # TODO a lot of bugs with Heimdal's `get` and `list` commands, fix them.
-- name: Check which user principals are missing
+- name: "Check which user principals are missing"
   ansible.builtin.command: '/usr/local/bin/kadmin --local get --short {{ human.username }}'
   register: new_human_user_principal_exists
   failed_when: new_human_user_principal_exists.rc >= 2
   changed_when: false
 
-- name: Add new kerberos principal
+- name: "Add new kerberos principal"
   ansible.builtin.command: '/usr/local/bin/kadmin --local add --password={{ human.username }} --use-defaults {{ human.username }}'
   delegate_to: kerberos
   when: '"Principal does not exist" in new_human_user_principal_exists.stderr'
   register: setup_jail_kerberos_add_user_principals_output
   changed_when: setup_jail_kerberos_add_user_principals_output.rc == 0
 
-- name: Add human to mailserver vmailbox
+- name: "Add human to mailserver vmailbox"
   ansible.builtin.lineinfile:
     path: /usr/local/etc/postfix/vmailbox
     line: '{{ human.username }}@{{ org_domain }} {{ org_domain }}/{{ human.username }}'
   delegate_to: mail
 
-- name: Regenerate vmailbox postfix map
+- name: "Regenerate vmailbox postfix map"
   ansible.builtin.command: 'postmap /usr/local/etc/postfix/vmailbox'
+  delegate_to: mail
   register: setup_jail_mail_postmap
   changed_when: setup_jail_mail_postmap.rc == 0
 
-- name: Subscribe to full organization mailing list
+- name: "Subscribe to full organization mailing list"
   ansible.builtin.command: '/usr/local/bin/mlmmj-sub -L /var/spool/mlmmj/{{ org_domain }}/everyone -a {{ human.username }}@{{ org_domain }} -c -f -s'
   delegate_to: mail
   register: mlmmj_sub_output

@@ -1,3 +1,3 @@
-{% for l in (mailing_lists | dict2items) %}
-{{ l.key }}@{{ org_domain }}	{{ org_domain }}--{{ l.key }}@localhost.mlmmj
+{% for l in mailing_lists %}
+{{ l.name }}@{{ org_domain }}	{{ org_domain }}--{{ l.name }}@localhost.mlmmj
 {% endfor %}

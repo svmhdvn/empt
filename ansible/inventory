@@ -1,10 +1,10 @@
-jailhost     ansible_host=fdac::7af2:9eff:fe90:dbc4
+jailhost     ansible_host=fdef:eabc:6355::7af2:9eff:fe90:dbc4
 
 [jails]
-certauth     ansible_host=fdac::a8bb:ccff:fe60:7f75
-cifs         ansible_host=fdac::a8bb:ccff:fe92:12a7
-dns          ansible_host=fdac::a8bb:ccff:fed7:35b1
-kerberos     ansible_host=fdac::a8bb:ccff:fe6b:24f9
-mail         ansible_host=fdac::a8bb:ccff:fe7c:a812
-prometheus   ansible_host=fdac::a8bb:ccff:fe43:636f
-ssh          ansible_host=fdac::a8bb:ccff:fe59:884a
+certauth     ansible_host=fdef:eabc:6355::11
+cifs         ansible_host=fdef:eabc:6355::12
+dns          ansible_host=fdef:eabc:6355::13
+kerberos     ansible_host=fdef:eabc:6355::14
+mail         ansible_host=fdef:eabc:6355::15
+prometheus   ansible_host=fdef:eabc:6355::16
+ssh          ansible_host=fdef:eabc:6355::17

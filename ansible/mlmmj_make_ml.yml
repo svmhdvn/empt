@@ -1,3 +1,8 @@
+# Expects variable:
+# mailing_list:
+#   name: str
+#   recipients: [str]
+
 # TODO at some point, allow mlmmj-make-ml to create a mailinglist fully on the command line
 # to avoid this whole answer file thing.
 - name: Create mlmmj-make-ml answer file
@@ -17,14 +22,14 @@
 
 - name: Change relay host to local IPv6
   ansible.builtin.copy:
-    dest: '/var/spool/mlmmj/{{ org_domain }}/{{ setup_jail_mail_mailinglist_kv.key }}/control/relayhost'
+    dest: '/var/spool/mlmmj/{{ org_domain }}/{{ mailing_list.name }}/control/relayhost'
     content: '{{ ansible_host }}'
     mode: '0644'
     owner: mlmmj
     group: mlmmj
 
 - name: Subscribe all selected addresses
-  ansible.builtin.command: '/usr/local/bin/mlmmj-sub -L /var/spool/mlmmj/{{ org_domain }}/{{ setup_jail_mail_mailinglist_kv.key }} -a {{ item }}@{{ org_domain }} -c -f -s'
-  loop: '{{ setup_jail_mail_mailinglist_kv.value.recipients }}'
+  ansible.builtin.command: '/usr/local/bin/mlmmj-sub -L /var/spool/mlmmj/{{ org_domain }}/{{ mailing_list.name }} -a {{ item }}@{{ org_domain }} -c -f -s'
+  loop: '{{ mailing_list.recipients }}'
   register: mlmmj_sub_output
   changed_when: mlmmj_sub_output.rc == 0

@@ -1,15 +1,6 @@
 - name: Install samba port
-  ansible.builtin.command: 'pkg install -y {{ samba_package }}'
+  ansible.builtin.command: 'pkg install -y {{ setup_jail_cifs_samba_package }}'
   changed_when: true
-
-- name: Create a unix system user for each human
-  ansible.builtin.user:
-    name: '{{ item.key }}'
-    comment: '{{ item.value.fullname }}'
-    uid: '{{ item.value.uid }}'
-    home: '/home/{{ item.key }}'
-    shell: /usr/sbin/nologin
-  loop: '{{ humans | dict2items }}'
 
 - name: Configure samba
   ansible.builtin.template:

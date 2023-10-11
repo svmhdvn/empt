@@ -3,7 +3,7 @@
   hosts: jailhost
   remote_user: ansible
   become: true
-  become_method: doas
+  become_method: community.general.doas
   gather_facts: true
   roles:
     - update_poudriere

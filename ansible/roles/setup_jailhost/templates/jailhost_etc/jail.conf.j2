@@ -22,7 +22,7 @@ ip6.addr = "re0|fdef:eabc:6355::${ip_auto_id}/64";
 #ip6.addr = "lo0|fe80:2::${ip_auto_id}/64";
 
 # TODO temporary so that I can work away from home through wireguard VPN
-ip4.addr = "wg0|10.29.222.${ip_auto_id}/24";
+#ip4.addr = "wg0|10.29.222.${ip_auto_id}/24";
 
 # TODO waiting on resolution of FreeBSD bug 271069
 # See:
@@ -39,7 +39,7 @@ mount.fstab = "/etc/jail_fstabs/${name}.fstab";
 
 {% for jail in groups['jails'] %}
 {{ jail }} {
-	ip_auto_id = {{ loop.index + 10 }};
+	$ip_auto_id = {{ loop.index + 10 }};
 }
 
 {% endfor %}

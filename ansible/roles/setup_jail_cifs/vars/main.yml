@@ -1,1 +1,1 @@
-samba_package: 'samba416'
+setup_jail_cifs_samba_package: 'samba416'

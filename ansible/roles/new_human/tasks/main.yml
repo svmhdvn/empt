@@ -61,6 +61,7 @@
 # TODO a lot of bugs with Heimdal's `get` and `list` commands, fix them.
 - name: "Check which user principals are missing"
   ansible.builtin.command: '/usr/local/bin/kadmin --local get --short {{ human.username }}'
+  delegate_to: kerberos
   register: new_human_user_principal_exists
   failed_when: new_human_user_principal_exists.rc >= 2
   changed_when: false

@@ -7,4 +7,4 @@ tasks:
       ansible-galaxy install -r requirements.yml
   - ansible_lint: |
       cd empt/ansible
-      ansible-lint main.yml
+      find . -type f -name "*.yml" | xargs ansible-lint

@@ -2,8 +2,6 @@
   ansible.builtin.raw: pkg install -y heimdal
   changed_when: true
 
-# TODO determine whether we need this or not. It helps with organizing
-# new dataset creation under a different hierarchy for easy deletion
 - name: "Create ZFS top level dataset for empt"
   community.general.zfs:
     name: "zroot/empt"

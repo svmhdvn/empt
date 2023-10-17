@@ -1,4 +1,8 @@
+# cl100
 jailhost     ansible_host=fdef:eabc:6355::7af2:9eff:fe90:dbc4
+
+# dell wyse 7010
+jailhost     ansible_host=fdef:eabc:6355:0:280:64ff:febf:9d62
 
 [jails]
 certauth     ansible_host=fdef:eabc:6355::11

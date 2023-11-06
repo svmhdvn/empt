@@ -158,14 +158,13 @@
     exclusive: true
 
 - name: "Clone (thick) base jail to installed locations"
-  ansible.builtin.copy:
+  ansible.posix.synchronize:
     src: /tmp/base_jail/
-    remote_src: true
-    dest: '/empt/jails/{{ hostvars[item].inventory_hostname_short }}/'
-    mode: '0755'
-    owner: root
-    group: wheel
+    dest: '/empt/jails/{{ item }}/'
+    compress: false
+    delay_updates: false
   loop: '{{ groups["jails"] }}'
+  delegate_to: '{{ inventory_hostname }}'
 
 # TODO move these directory creation tasks to central location
 # or find better solution.

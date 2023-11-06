@@ -11,11 +11,14 @@
 - name: Generate ansible hosts for all known jails
   hosts: localhost
   gather_facts: false
+  vars_files:
+    - vars/shared.yml
   tasks:
     - name: Generate ansible host for each jail
       ansible.builtin.add_host:
         name: '{{ item }}'
-        ansible_host: '{{ ula_subnet }}::eeee:{{ jail_idx }}'
+        groups: jails
+        ansible_host: '{{ ula_prefix }}::eeee:{{ jail_idx + 1 }}'
       loop:
         - certauth
         - cifs

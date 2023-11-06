@@ -1,5 +1,6 @@
 freebsd_version: 13.2-RELEASE
 ula_subnet: '{{ hostvars["jailhost"].ansible_host | ansible.utils.ipsubnet(64) }}'
+ula_prefix: '{{ (ula_subnet | ansible.utils.ipaddr("network"))[:-2] }}'
 
 # TODO secure
 secret_ca_passphrase: cakey

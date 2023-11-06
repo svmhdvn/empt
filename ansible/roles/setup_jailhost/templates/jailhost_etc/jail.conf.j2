@@ -14,11 +14,8 @@ path = "/empt/jails/${name}";
 
 host.hostname = "${name}.{{ org_domain }}";
 
-# TODO find a way to programmatically find home LAN IPv6 ULA prefix
-# hardcoding it for now
-ip6.addr = "re0|fdef:eabc:6355::${ip_auto_id}/64";
-
-# TODO figure out a way to generate loopback ipv6. Not strictly necessary right now.
+# TODO figure out a way to generate link-local loopback ipv6 without the '2'.
+# Not strictly necessary right now.
 #ip6.addr = "lo0|fe80:2::${ip_auto_id}/64";
 
 # TODO temporary so that I can work away from home through wireguard VPN
@@ -37,9 +34,10 @@ exec.stop = "/bin/sh /etc/rc.shutdown";
 # Common fstab to share /usr/ports at a minimum
 mount.fstab = "/etc/jail_fstabs/${name}.fstab";
 
+# TODO use real ULA subnet prefix length instead of '64'
 {% for jail in groups['jails'] %}
 {{ jail }} {
-	$ip_auto_id = {{ loop.index + 10 }};
+	ip6.addr = "re0|{{ hostvars[jail].ansible_host }}/64";
 }
 
 {% endfor %}

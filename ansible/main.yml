@@ -1,12 +1,31 @@
 ---
 - name: Bootstrap jailhost
   hosts: jailhost
-  remote_user: siva
+  remote_user: '{{ fresh_install_user }}'
   become: true
   become_method: ansible.builtin.su
   gather_facts: false
   roles:
     - bootstrap
+
+- name: Generate ansible hosts for all known jails
+  hosts: localhost
+  gather_facts: false
+  tasks:
+    - name: Generate ansible host for each jail
+      ansible.builtin.add_host:
+        name: '{{ item }}'
+        ansible_host: '{{ ula_subnet }}::eeee:{{ jail_idx }}'
+      loop:
+        - certauth
+        - cifs
+        - dns
+        - kerberos
+        - mail
+        - prometheus
+        - ssh
+      loop_control:
+        index_var: jail_idx
 
 - name: Setup jailhost
   hosts: jailhost
@@ -19,7 +38,7 @@
   roles:
     - update_poudriere
       # TODO remove once everything is ready for production
-    - setup_siva_debug
+    - setup_convenience_tools
     - setup_jailhost
 
 - name: Bootstrap all jails

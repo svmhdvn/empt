@@ -109,7 +109,7 @@
 # - name: "Download FreeBSD base system archive to local filesystem"
 #   ansible.builtin.get_url:
 #     url: 'https://download.freebsd.org/ftp/releases/amd64/{{ freebsd_version }}/base.txz'
-#     dest: /tmp/base.tar.xz
+#     dest: /tmp/
 #     owner: root
 #     group: wheel
 #     mode: '0644'
@@ -117,7 +117,7 @@
 
 - name: "Unarchive (thick) base jail to temporary location"
   ansible.builtin.unarchive:
-    src: base.tar.xz
+    src: base.txz
     dest: /tmp/base_jail
   tags: initial
 
@@ -153,7 +153,7 @@
 - name: "Add control host's ssh key to base jail"
   ansible.posix.authorized_key:
     user: root
-    key: "{{ lookup('file', '/home/siva/.ssh/id_ed25519.pub') }}"
+    key: "{{ lookup('file', '~/.ssh/id_ed25519.pub') }}"
     path: /tmp/base_jail/root/.ssh/authorized_keys
     exclusive: true
 

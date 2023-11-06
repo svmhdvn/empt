@@ -1,0 +1,8 @@
+* Security auditing
+** https://github.com/jtesta/ssh-audit
+
+* Best practices and defaults
+** FreeBSD: a lesson in poor defaults
+*** https://news.ycombinator.com/item?id=32506675
+*** https://forums.freebsd.org/threads/freebsd-a-lesson-in-poor-defaults.55542/
+*** https://vez.mrsk.me/freebsd-defaults.html

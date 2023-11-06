@@ -10,6 +10,7 @@ mail/postfix
 net-mgmt/prometheus2
 net/samba416
 net/openntpd
+net/rsync
 ports-mgmt/pkg
 security/doas
 security/heimdal

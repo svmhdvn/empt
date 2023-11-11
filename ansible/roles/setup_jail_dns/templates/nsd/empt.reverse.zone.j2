@@ -1,0 +1,14 @@
+$TTL 1m
+
+@ IN SOA {{ ansible_fqdn }}. postmaster.{{ org_domain }}. (
+  1 ; serial
+  4h ; refresh
+  15m ; retry
+  8h ; expire
+  4m ) ; negative caching TTL
+
+  IN NS {{ ansible_fqdn }}.
+
+{% for host in groups['all'] %}
+{{ (hostvars[host].ansible_host | ansible.utils.ipaddr('revdns'))[:20 * 2 - 1] }} IN PTR {{ hostvars[host].ansible_fqdn }}.
+{% endfor %}

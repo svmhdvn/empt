@@ -58,6 +58,24 @@
       canmount: 'on'
   loop: '{{ special_zfs_datasets }}'
 
+- name: "Create unix system users mapped on both jailhost and jails"
+  ansible.builtin.user:
+    name: '{{ item.key }}'
+    comment: '{{ item.value.comment }}'
+    uid: '{{ item.value.uid }}'
+    home: '{{ item.value.host_home_dir }}'
+    shell: /usr/sbin/nologin
+  loop: '{{ host_jails_mapped_users | dict2items }}'
+
+- name: "Change ownership of special ZFS datasets"
+  ansible.builtin.file:
+    name: '{{ item.path }}'
+    state: directory
+    recurse: true
+    owner: '{{ item.owner }}'
+    group: '{{ item.owner }}'
+  loop: '{{ special_zfs_datasets }}'
+
 - name: "Create top level ZFS dataset for human unix account home directories"
   community.general.zfs:
     name: "zroot/empt/homes"
@@ -71,30 +89,6 @@
       setuid: 'off'
       exec: 'off'
       sharenfs: '-sec=krb5p'
-
-- name: "Create unix system users mapped on both jailhost and jails"
-  ansible.builtin.user:
-    name: '{{ item.key }}'
-    comment: '{{ item.value.comment }}'
-    uid: '{{ item.value.uid }}'
-    home: '{{ item.value.host_home_dir }}'
-    shell: /usr/sbin/nologin
-  loop: '{{ host_jails_mapped_users | dict2items }}'
-
-- name: "Create a ZFS dataset for each jail"
-  community.general.zfs:
-    name: 'zroot/empt/jails/{{ item }}'
-    state: present
-  loop: '{{ groups["jails"] }}'
-
-- name: "Change ownership of special ZFS datasets"
-  ansible.builtin.file:
-    name: '{{ item.path }}'
-    state: directory
-    recurse: true
-    owner: '{{ item.owner }}'
-    group: '{{ item.owner }}'
-  loop: '{{ special_zfs_datasets }}'
 
 - name: "Create all missing directories on jailhost"
   ansible.builtin.file:
@@ -204,29 +198,17 @@
     setup_jailhost_fstab_jail: '{{ item }}'
   loop: '{{ groups["jails"] }}'
 
-# TODO enable once everything is figured out
-# - name: "Enable jail service"
-#   ansible.builtin.service:
-#     name: "jail"
-#     enabled: true
-#
-# - name: "Set list of enabled jails"
-#   ansible.builtin.lineinfile:
-#     path: /etc/rc.conf
-#     line: 'jail_list="certauth"'
+#- name: "Set list of enabled jails"
+#  ansible.builtin.lineinfile:
+#    path: /etc/rc.conf
+#    line: 'jail_list="certauth dns kerberos mail" # TODO ssh, cifs, prometheus'
 
-# TODO unnecessary for now since we've hardcoded IP addresses.
-# Commenting out for now.
-# - name: "Add all jails to the inventory"
-#   ansible.builtin.add_host:
-#     name: 'jail_{{ item.name }}'
-#     ansible_host: '{{ item.ipaddr }}'
-#     groups:
-#       - jails
-#   loop: '{{ all_jails }}'
+# TODO no idea why this needs to be broken into two steps
+- name: "Enable jail service"
+  ansible.builtin.service:
+    name: "jail"
+    enabled: true
+    state: started
 
-# TODO file an ansible bug: ansible.builtin.service doesn't onerestart the jail
-# service
-- name: "Start all enabled jails"
-  ansible.builtin.command: 'service jail onerestart' # noqa: command-instead-of-module
-  changed_when: true
+- name: "Start all jails"
+  ansible.builtin.command: service jail restart

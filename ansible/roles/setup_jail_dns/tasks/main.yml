@@ -11,6 +11,7 @@
   when: item.state == 'file'
 
 - name: Enable nsd service
-  ansible.builtin.lineinfile:
-    path: '{{ jailroot }}/etc/rc.conf'
-    line: 'nsd_enable=YES'
+  ansible.builtin.service:
+    name: nsd
+    enabled: true
+    state: started

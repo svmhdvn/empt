@@ -1,5 +1,5 @@
 - name: Install prometheus, grafana, and exporters
-  ansible.builtin.command: 'pkg install prometheus2 grafana9'
+  ansible.builtin.command: 'pkg install prometheus grafana9'
   changed_when: true
 
 - name: Configure prometheus

@@ -8,13 +8,13 @@
   roles:
     - bootstrap
 
-- name: Generate ansible hosts for all known jails
+- name: Add all jails to ansible inventory
   hosts: localhost
   gather_facts: false
   vars_files:
     - vars/shared.yml
   tasks:
-    - name: Generate ansible host for each jail
+    - name: Generate IPv6 address for jail and add to ansible inventory
       ansible.builtin.add_host:
         name: '{{ item }}'
         groups: jails
@@ -40,8 +40,10 @@
     - vars/shared.yml
   roles:
     - update_poudriere
+
       # TODO remove once everything is ready for production
     - setup_convenience_tools
+
     - setup_jailhost
 
 - name: Bootstrap all jails
@@ -51,7 +53,21 @@
   roles:
     - bootstrap
 
-- name: Refresh /etc/hosts for each host in the inventory
+- name: Reboot to refresh hostnames and FQDNs
+  hosts: jailhost
+  remote_user: ansible
+  become: true
+  become_method: community.general.doas
+  gather_facts: false
+  tasks:
+    - name: Reboot
+      ansible.builtin.reboot:
+        # TODO there must be a cleaner way of doing this, but for now, this works
+        # NOTE this checks that ALL jails are active by checking the *number* of active jails
+        # against our known number
+        test_command: 'jls name | wc -l | xargs test {{ groups["jails"] | count }} ='
+
+- name: Gather ansible facts and refresh /etc/hosts
   hosts: all
   remote_user: ansible
   become: true
@@ -62,12 +78,30 @@
   roles:
     - refresh_etc_hosts
 
+- name: Setup DNS server jail
+  hosts: dns
+  remote_user: ansible
+  become: true
+  become_method: community.general.doas
+  gather_facts: false
+  vars_files:
+    - vars/shared.yml
+  roles:
+    - setup_jail_dns
+
+- name: Pause after dns setup
+  hosts: localhost
+  gather_facts: false
+  tasks:
+    - name: PAUSE AFTER
+      ansible.builtin.pause:
+
 - name: Setup samba CIFS jail
   hosts: cifs
   remote_user: ansible
   become: true
   become_method: community.general.doas
-  gather_facts: true
+  gather_facts: false
   vars_files:
     - vars/shared.yml
   roles:
@@ -141,7 +175,7 @@
   remote_user: ansible
   become: true
   become_method: community.general.doas
-  gather_facts: true
+  gather_facts: false
   vars_files:
     - vars/shared.yml
   roles:
@@ -163,6 +197,7 @@
 - name: Add all pre-configured humans
   hosts: jailhost
   remote_user: ansible
+  gather_facts: false
   become: true
   become_method: community.general.doas
   vars_files:
@@ -178,8 +213,10 @@
 - name: Reboot after successful run
   hosts: jailhost
   remote_user: ansible
+  gather_facts: false
   become: true
   become_method: community.general.doas
   tasks:
     - name: Reboot
       ansible.builtin.reboot:
+

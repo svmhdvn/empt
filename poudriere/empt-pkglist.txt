@@ -1,5 +1,6 @@
 dns/nsd
 irc/unreal
+irc/anope
 mail/dovecot
 mail/mlmmj
 mail/postfix

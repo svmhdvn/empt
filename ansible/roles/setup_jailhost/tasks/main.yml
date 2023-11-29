@@ -1,5 +1,7 @@
 - name: "Install jailhost required packages"
-  ansible.builtin.raw: pkg install -y heimdal
+  ansible.builtin.command: pkg install -y heimdal-devel
+  async: 60
+  poll: 0
   changed_when: true
 
 - name: "Create ZFS top level dataset for empt"
@@ -152,13 +154,8 @@
     exclusive: true
 
 - name: "Clone (thick) base jail to installed locations"
-  ansible.posix.synchronize:
-    src: /tmp/base_jail/
-    dest: '/empt/jails/{{ item }}/'
-    compress: false
-    delay_updates: false
+  ansible.builtin.command: 'cp -a /tmp/base_jail /empt/jails/{{ item }}'
   loop: '{{ groups["jails"] }}'
-  delegate_to: '{{ inventory_hostname }}'
 
 # TODO move these directory creation tasks to central location
 # or find better solution.

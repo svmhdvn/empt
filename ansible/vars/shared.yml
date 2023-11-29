@@ -29,22 +29,27 @@ special_zfs_datasets:
   - path: /empt/email/virtual_mail
     owner: vmail
 
+# TODO randomly generate the uids properly without collision
+# currently hardcoding "randomly" for now
 humans:
   - username: alice
     fullname: Alice Crypto
-    uid: '{{ 60000 | random(start=3000) }}'
+    uid: 4676
   - username: bob
     fullname: Bob Crypto
-    uid: '{{ 60000 | random(start=3000) }}'
+    uid: 11522
   - username: carol
     fullname: Carol Crypto
-    uid: '{{ 60000 | random(start=3000) }}'
+    uid: 23508
   - username: dan
     fullname: Dan Crypto
-    uid: '{{ 60000 | random(start=3000) }}'
+    uid: 39926
   - username: eve
     fullname: Eve Crypto
-    uid: '{{ 60000 | random(start=3000) }}'
+    uid: 7812
+  - username: siva
+    fullname: Siva Mahadevan
+    uid: 5097
 
 mailing_lists:
   - name: everyone
@@ -73,3 +78,6 @@ kerberos_service_principals:
   - service: nfs
     host: jailhost
     keytab_dest: /etc/krb5.keytab
+  - service: irc
+    host: irc
+    keytab_dest: /empt/jails/irc/etc/krb5.keytab

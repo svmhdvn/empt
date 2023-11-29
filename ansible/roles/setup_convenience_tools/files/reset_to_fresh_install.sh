@@ -1,5 +1,6 @@
 #!/bin/sh
 # must be run as root
+set -ex
 
 service jail onestop
 zfs destroy -Rf zroot/empt

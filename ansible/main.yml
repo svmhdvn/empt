@@ -23,6 +23,7 @@
         - certauth
         - cifs
         - dns
+        - irc
         - kerberos
         - mail
         - prometheus
@@ -48,6 +49,7 @@
 
 - name: Bootstrap all jails
   hosts: jails
+  strategy: free
   remote_user: root
   gather_facts: false
   roles:
@@ -78,46 +80,6 @@
   roles:
     - refresh_etc_hosts
 
-- name: Setup DNS server jail
-  hosts: dns
-  remote_user: ansible
-  become: true
-  become_method: community.general.doas
-  gather_facts: false
-  vars_files:
-    - vars/shared.yml
-  roles:
-    - setup_jail_dns
-
-- name: Pause after dns setup
-  hosts: localhost
-  gather_facts: false
-  tasks:
-    - name: PAUSE AFTER
-      ansible.builtin.pause:
-
-- name: Setup samba CIFS jail
-  hosts: cifs
-  remote_user: ansible
-  become: true
-  become_method: community.general.doas
-  gather_facts: false
-  vars_files:
-    - vars/shared.yml
-  roles:
-    - setup_jail_cifs
-
-- name: Setup ssh jail
-  hosts: ssh
-  remote_user: ansible
-  become: true
-  become_method: community.general.doas
-  gather_facts: false
-  vars_files:
-    - vars/shared.yml
-  roles:
-    - setup_jail_ssh
-
 - name: Setup certauth jail
   hosts: certauth
   remote_user: ansible
@@ -131,6 +93,7 @@
 
 - name: Generate host certs for each jail
   hosts: jails
+  strategy: free
   remote_user: ansible
   become: true
   become_method: community.general.doas
@@ -169,6 +132,50 @@
         owner: root
         group: wheel
       loop: '{{ kerberos_service_principals }}'
+
+- name: Setup IRC server jail
+  hosts: irc
+  remote_user: ansible
+  become: true
+  become_method: community.general.doas
+  gather_facts: false
+  vars_files:
+    - vars/shared.yml
+  roles:
+    - setup_jail_irc
+
+- name: Setup DNS server jail
+  hosts: dns
+  remote_user: ansible
+  become: true
+  become_method: community.general.doas
+  gather_facts: false
+  vars_files:
+    - vars/shared.yml
+  roles:
+    - setup_jail_dns
+
+- name: Setup samba CIFS jail
+  hosts: cifs
+  remote_user: ansible
+  become: true
+  become_method: community.general.doas
+  gather_facts: false
+  vars_files:
+    - vars/shared.yml
+  roles:
+    - setup_jail_cifs
+
+- name: Setup ssh jail
+  hosts: ssh
+  remote_user: ansible
+  become: true
+  become_method: community.general.doas
+  gather_facts: false
+  vars_files:
+    - vars/shared.yml
+  roles:
+    - setup_jail_ssh
 
 - name: Setup mail server jail
   hosts: mail

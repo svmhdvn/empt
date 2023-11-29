@@ -1,0 +1,384 @@
+/* UnrealIRCd makes heavy use of modules. Modules allow you to completely
+ * customize the featureset you wish to enable in UnrealIRCd.
+ * See: https://www.unrealircd.org/docs/Modules
+ *
+ * By using the include below we instruct the IRCd to read the file
+ * 'modules.default.conf' which will load more than 150 modules
+ * shipped with UnrealIRCd. In other words: this will simply load
+ * all the available features in UnrealIRCd.
+ * If you are setting up UnrealIRCd for the first time we suggest you
+ * use this. Then, when everything is up and running you can come
+ * back later to customize the list (if you wish).
+ */
+include "modules.default.conf";
+
+/* Now let's include some other files as well:
+ * - help/help.conf for our on-IRC /HELPOP system
+ * - badwords.conf for channel and user mode +G
+ * - spamfilter.conf as an example for spamfilter usage
+ *   (commented out)
+ * - operclass.default.conf contains some good operclasses which
+ *   you can use in your oper blocks.
+ */
+include "help/help.conf";
+include "badwords.conf";
+//include "spamfilter.conf";
+include "operclass.default.conf";
+include "snomasks.default.conf";
+
+/* Load the default cloaking module (2021 onwards): */
+loadmodule "cloak_sha256";
+/* Or load the old module from UnrealIRCd 3.2/4/5 instead: */
+//loadmodule "cloak_md5";
+
+/* This is the me { } block which basically says who we are.
+ * It defines our server name, some information line and an unique "sid".
+ * The server id (sid) must start with a digit followed by two digits or
+ * letters. The sid must be unique for your IRC network (each server should
+ * have it's own sid).
+ */
+me {
+	name "{{ ansible_fqdn }}";
+	info "{{ org_domain }} IRC chat server";
+	sid "001";
+}
+
+/* The admin { } block defines what users will see if they type /ADMIN.
+ * It normally contains information on how to contact the administrator.
+ */
+admin {
+	"it@{{ org_domain }}";
+	"help@empt.ca";
+}
+
+/* Clients and servers are put in class { } blocks, we define them here.
+ * Class blocks consist of the following items:
+ * - pingfreq: how often to ping a user / server (in seconds)
+ * - connfreq: how often we try to connect to this server (in seconds)
+ * - sendq: the maximum queue size for a connection
+ * - recvq: maximum receive queue from a connection (flood control)
+ */
+
+/* Client class with good defaults */
+class clients
+{
+	pingfreq 90;
+	maxclients 1000;
+	sendq 200k;
+	recvq 8000;
+}
+
+/* Special class for IRCOps with higher limits */
+class opers
+{
+	pingfreq 90;
+	maxclients 50;
+	sendq 1M;
+	recvq 8000;
+}
+
+/* Server class with good defaults */
+class servers
+{
+	pingfreq 60;
+	connfreq 15; /* try to connect every 15 seconds */
+	maxclients 10; /* max servers */
+	sendq 20M;
+}
+
+/* Allow blocks define which clients may connect to this server.
+ * This allows you to add a server password or restrict the server to
+ * specific IP's only. You also configure the maximum connections
+ * allowed per IP here.
+ * See also: https://www.unrealircd.org/docs/Allow_block
+ */
+
+/* Allow everyone in, but only 3 connections per IP */
+allow {
+	mask *;
+	class clients;
+	maxperip 3;
+}
+
+/* Oper blocks define your IRC Operators.
+ * IRC Operators are people who have "extra rights" compared to others,
+ * for example they may /KILL other people, initiate server linking,
+ * /JOIN channels even though they are banned, etc.
+ *
+ * For more information about becoming an IRCOp and how to do admin
+ * tasks, see: https://www.unrealircd.org/docs/IRCOp_guide
+ *
+ * For details regarding the oper { } block itself, see
+ * https://www.unrealircd.org/docs/Oper_block
+ */
+
+/* Here is an example oper block for 'bobsmith' with password 'test'.
+ * You MUST change this!!
+ */
+oper siva {
+	class opers;
+	mask *@*;
+	password "test";
+	/* Oper permissions are defined in an 'operclass' block.
+	 * See https://www.unrealircd.org/docs/Operclass_block
+	 * UnrealIRCd ships with a number of default blocks, see
+	 * the article for a full list. We choose 'netadmin' here.
+	 */
+	operclass netadmin;
+	swhois "is a Network Administrator";
+}
+
+/* Standard IRC port 6667 */
+listen {
+	ip *;
+	port 6667;
+}
+
+/* Standard IRC SSL/TLS port 6697 */
+listen {
+	ip *;
+	port 6697;
+	options { tls; }
+}
+
+/* NOTE: If you are on an IRCd shell with multiple IP's and you use
+ *       the above listen { } blocks then you will likely get an
+ *       'Address already in use' error and the ircd won't start.
+ *       This means you MUST bind to a specific IP instead of '*' like:
+ *       listen { ip 1.2.3.4; port 6667; }
+ *       Of course, replace the IP with the IP that was assigned to you.
+ */
+
+/* U-lines give other servers (even) more power/commands.
+ * If you use services you MUST add them here. You must add the
+ * services server name in ulines { } in the config file on
+ * every UnrealIRCd server on your network.
+ * IMPORTANT: Never put the name of an UnrealIRCd server here,
+ * it's only for Services!
+ */
+ulines {
+	{{ hostvars['ircservices'].ansible_fqdn }}
+}
+
+/* Here you can add a password for the IRCOp-only /DIE and /RESTART commands.
+ * This is mainly meant to provide a little protection against accidental
+ * restarts and server kills.
+ */
+drpass {
+	restart "restart";
+	die "die";
+}
+
+/* The log block defines what should be logged and to what file.
+ * See also https://www.unrealircd.org/docs/Log_block
+ */
+
+/* This is a good default, it logs everything except
+ * debug stuff and join/part/kick.
+ */
+log {
+	source {
+		all;
+		!debug;
+		!join.LOCAL_CLIENT_JOIN;
+		!join.REMOTE_CLIENT_JOIN;
+		!part.LOCAL_CLIENT_PART;
+		!part.REMOTE_CLIENT_PART;
+		!kick.LOCAL_CLIENT_KICK;
+		!kick.REMOTE_CLIENT_KICK;
+	}
+	destination {
+		file "ircd.log" { maxsize 100M; }
+	}
+}
+
+/* With "aliases" you can create an alias like /SOMETHING to send a message to
+ * some user or bot. They are usually used for services.
+ *
+ * We have a number of pre-set alias files, check out the alias/ directory.
+ * As an example, here we include all aliases used for anope services.
+ */
+include "aliases/anope.conf";
+
+/* Ban nick names so they cannot be used by regular users */
+ban nick {
+	mask "*C*h*a*n*S*e*r*v*";
+	reason "Reserved for Services";
+}
+
+/* DroneBL, probably the most popular blacklist used by IRC Servers.
+ * See https://dronebl.org/ for their documentation and the
+ * meaning of the reply types. At time of writing we use types:
+ * 3: IRC Drone, 5: Bottler, 6: Unknown spambot or drone,
+ * 7: DDoS Drone, 8: SOCKS Proxy, 9: HTTP Proxy, 10: ProxyChain,
+ * 11: Web Page Proxy, 12: Open DNS Resolver, 13: Brute force attackers,
+ * 14: Open Wingate Proxy, 15: Compromised router / gateway,
+ * 16: Autorooting worms.
+ */
+blacklist dronebl {
+        dns {
+                name dnsbl.dronebl.org;
+                type record;
+                reply { 3; 5; 6; 7; 8; 9; 10; 11; 12; 13; 14; 15; 16; }
+        }
+        action gline;
+        ban-time 24h;
+        reason "Proxy/Drone detected. Check https://dronebl.org/lookup?ip=$ip for details.";
+}
+
+/* You can include other configuration files */
+/* include "klines.conf"; */
+
+/* Network configuration */
+set {
+	network-name 		"EmptNET";
+	default-server 		"{{ ansible_fqdn }}";
+	services-server 	"{{ hostvars['ircservices'].ansible_fqdn }}";
+	stats-server 		"";
+	help-channel 		"#Help";
+	cloak-prefix		"Clk";
+	prefix-quit 		"Quit";
+
+	/* Cloak keys should be the same at all servers on the network.
+	 * They are used for generating masked hosts and should be kept secret.
+	 * The keys should be 3 random strings of 80 characters each (or more).
+	 * and must consist of lowcase (a-z), upcase (A-Z) and digits (0-9).
+	 * HINT: On *NIX, you can run './unrealircd gencloak' in your shell to let
+	 *       UnrealIRCd generate 3 random strings for you.
+	 */
+	cloak-keys {
+		"Oozahho1raezoh0iMee4ohvegaifahv5xaepeitaich9tahdiquaid0geecipahdauVaij3zieph4ahi";
+	}
+}
+
+/* Server specific configuration */
+
+set {
+	kline-address "it@{{ org_domain }}"; /* e-mail or URL shown when a user is banned */
+	modes-on-connect "+ixw"; /* when users connect, they will get these user modes */
+	modes-on-oper "+xws"; /* when someone becomes IRCOp they'll get these modes */
+	modes-on-join "+nt"; /* default channel modes when a new channel is created */
+	oper-auto-join "#opers"; /* IRCOps are auto-joined to this channel */
+	options {
+		hide-ulines; /* hide U-lines in /MAP and /LINKS */
+		show-connect-info; /* show "looking up your hostname" messages on connect */
+	}
+
+	maxchannelsperuser 100; /* maximum number of channels a user may /JOIN */
+
+	/* The minimum time a user must be connected before being allowed to
+	 * use a QUIT message. This will hopefully help stop spam.
+	 */
+	anti-spam-quit-message-time 10s;
+
+	/* Or simply set a static quit, meaning any /QUIT reason is ignored */
+	/* static-quit "Client quit";	*/
+
+	/* static-part does the same for /PART */
+	/* static-part yes; */
+
+	/* Flood protection:
+	 * There are lots of settings for this and most have good defaults.
+	 * See https://www.unrealircd.org/docs/Set_block#set::anti-flood
+	 */
+	anti-flood {
+	}
+
+	/* Settings for spam filter */
+	spamfilter {
+		ban-time 1d; /* default duration of a *LINE ban set by spamfilter */
+		ban-reason "Spam/Advertising"; /* default reason */
+		virus-help-channel "#help"; /* channel to use for 'viruschan' action */
+		/* except "#help"; channel to exempt from Spamfilter */
+	}
+
+	/* Restrict certain commands.
+	 * See https://www.unrealircd.org/docs/Set_block#set::restrict-commands
+	 */
+	restrict-commands {
+		list {
+			except {
+				connect-time 60; /* after 60 seconds you can use LIST */
+				identified yes; /* or immediately, if you are identified to services */
+				reputation-score 24; /* or if you have a reputation score of 24 or more */
+			}
+		}
+		invite {
+			except {
+				connect-time 120;
+				identified yes;
+				reputation-score 24;
+			}
+		}
+		/* In addition to the ability to restrict any command,
+		 * such as shown above. There are also 4 special types
+		 * that you can restrict. These are "private-message",
+		 * "private-notice", "channel-message" and "channel-notice".
+		 * They are commented out (disabled) in this example:
+		 */
+		//private-message {
+		//	except { connect-time 10; }
+		//}
+		//private-notice {
+		//	except { connect-time 10; }
+		//}
+	}
+}
+
+/*
+ * The following will configure connection throttling of "unknown users".
+ *
+ * When UnrealIRCd detects a high number of users connecting from IP addresses
+ * that have not been seen before, then connections from new IP's are rejected
+ * above the set rate. For example at 10:60 only 10 users per minute can connect
+ * that have not been seen before. Known IP addresses can always get in,
+ * regardless of the set rate. Same for users who login using SASL.
+ *
+ * See also https://www.unrealircd.org/docs/Connthrottle for details.
+ * Or just keep reading the default configuration settings below:
+ */
+
+set {
+	connthrottle {
+		/* First we configure which users are exempt from the
+		 * restrictions. These users are always allowed in!
+		 * By default these are users on IP addresses that have
+		 * a score of 24 or higher. A score of 24 means that the
+		 * IP was connected to this network for at least 2 hours
+		 * in the past month (or minimum 1 hour if registered).
+		 * We also allow users who are identified to services via
+		 * SASL to bypass the restrictions.
+		 */
+		except {
+			reputation-score 24;
+			identified yes;
+			/* for more options, see
+			 * https://www.unrealircd.org/docs/Mask_item
+			 */
+		}
+
+		/* New users are all users that do not belong in the
+		 * known-users group. They are considered "new" and in
+		 * case of a high number of such new users connecting
+		 * they are subject to connection rate limiting.
+		 * By default the rate is 20 new local users per minute
+		 * and 30 new global users per minute.
+		 */
+		new-users {
+			local-throttle 20:60;
+			global-throttle 30:60;
+		}
+
+		/* This configures when this module will NOT be active.
+		 * The default settings will disable the module when:
+		 * - The reputation module has been running for less than
+		 *   a week. If running less than 1 week then there is
+		 *   insufficient data to consider who is a "known user".
+		 * - The server has just been booted up (first 3 minutes).
+		 */
+		disabled-when {
+			reputation-gathering 1w;
+			start-delay 3m;
+		}
+	}
+}

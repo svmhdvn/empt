@@ -1,5 +1,6 @@
+# TODO change to stable heimdal once support for OpenSSL 3 is released
 - name: Install heimdal port from poudriere
-  ansible.builtin.command: 'pkg install -y heimdal'
+  ansible.builtin.command: 'pkg install -y heimdal-devel'
   changed_when: true
 
 - name: Configure heimdal
@@ -32,8 +33,7 @@
 
 - name: Initialize kerberos realm
   ansible.builtin.command: '/usr/local/bin/kadmin --local init --realm-max-ticket-life=1d --realm-max-renewable-life=1w {{ org_domain | upper }}'
-  # TODO waiting on https://github.com/heimdal/heimdal/pull/1160 to switch to stderr
-  when: "\"doesn't exist\" in setup_jail_kerberos_realm_exists.stdout"
+  when: "'does not exist' in setup_jail_kerberos_realm_exists.stderr"
   register: setup_jail_kerberos_init_realm_output
   changed_when: setup_jail_kerberos_init_realm_output.rc == 0
 

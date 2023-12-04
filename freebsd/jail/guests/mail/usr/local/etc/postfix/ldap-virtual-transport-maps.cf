@@ -1,6 +1,0 @@
-server_host = ldap://ldap.empt.siva
-search_base = dc=empt,dc=siva
-version = 3
-bind = no
-query_filter = (&(objectClass=inetLocalMailRecipient)(mailLocalAddress=%s))
-result_attribute = mailRoutingAddress

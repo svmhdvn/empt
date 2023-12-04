@@ -24,6 +24,7 @@
         - cifs
         - dns
         - irc
+        - ircservices
         - kerberos
         - mail
         - prometheus
@@ -132,6 +133,17 @@
         owner: root
         group: wheel
       loop: '{{ kerberos_service_principals }}'
+
+- name: Setup IRC services jail
+  hosts: ircservices
+  remote_user: ansible
+  become: true
+  become_method: community.general.doas
+  gather_facts: false
+  vars_files:
+    - vars/shared.yml
+  roles:
+    - setup_jail_ircservices
 
 - name: Setup IRC server jail
   hosts: irc

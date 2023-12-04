@@ -78,6 +78,6 @@ kerberos_service_principals:
   - service: nfs
     host: jailhost
     keytab_dest: /etc/krb5.keytab
-  - service: irc
-    host: irc
-    keytab_dest: /empt/jails/irc/etc/krb5.keytab
+  - service: ircservices
+    host: ircservices
+    keytab_dest: /empt/jails/ircservices/etc/krb5.keytab

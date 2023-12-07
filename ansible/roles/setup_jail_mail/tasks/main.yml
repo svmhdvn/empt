@@ -9,7 +9,6 @@
     mode: '0755'
     owner: root
     group: mail
-  tags: always
 
 - name: Add user to handle dovecot virtual mail
   ansible.builtin.user:
@@ -17,7 +16,6 @@
     comment: Virtual Mail Handler
     home: /var/mail/vhosts
     shell: /usr/sbin/nologin
-  tags: always
   register: setup_jail_mail_user_vmail
 
 - name: Create dovecot virtual mail destination directories
@@ -30,7 +28,6 @@
   loop:
     - vhosts
     - attachments
-  tags: always
 
 - name: Create dovecot conf.d/ directory
   ansible.builtin.file:
@@ -39,7 +36,6 @@
     mode: '0755'
     owner: root
     group: wheel
-  tags: always
 
 - name: Configure dovecot
   ansible.builtin.template:
@@ -48,7 +44,6 @@
     mode: '0644'
   with_community.general.filetree: '{{ "templates/dovecot" }}'
   when: item.state == 'file'
-  tags: always
 
 - name: Configure postfix
   ansible.builtin.template:

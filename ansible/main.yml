@@ -4,39 +4,14 @@
   remote_user: '{{ fresh_install_user }}'
   become: true
   become_method: ansible.builtin.su
-  gather_facts: false
   roles:
     - bootstrap
-
-- name: Add all jails to ansible inventory
-  hosts: localhost
-  gather_facts: false
-  vars_files:
-    - vars/shared.yml
-  tasks:
-    - name: Generate IPv6 address for jail and add to ansible inventory
-      ansible.builtin.add_host:
-        name: '{{ item }}'
-        groups: jails
-        ansible_host: '{{ ula_prefix }}::eeee:{{ jail_idx + 1 }}'
-      loop:
-        - certauth
-        - cifs
-        - dns
-        - irc
-        - kerberos
-        - mail
-        - prometheus
-        - ssh
-      loop_control:
-        index_var: jail_idx
 
 - name: Setup jailhost
   hosts: jailhost
   remote_user: ansible
   become: true
   become_method: community.general.doas
-  gather_facts: true
   vars_files:
     - vars/shared.yml
   roles:
@@ -51,32 +26,27 @@
   hosts: jails
   strategy: free
   remote_user: root
-  gather_facts: false
   roles:
     - bootstrap
 
-- name: Reboot to refresh hostnames and FQDNs
-  hosts: jailhost
-  remote_user: ansible
-  become: true
-  become_method: community.general.doas
-  gather_facts: false
-  tasks:
-    - name: Reboot
-      ansible.builtin.reboot:
-        # TODO there must be a cleaner way of doing this, but for now, this works
-        # NOTE this checks that ALL jails are active by checking the *number* of active jails
-        # against our known number
-        test_command: 'jls name | wc -l | xargs test {{ groups["jails"] | count }} ='
+#- name: Reboot to refresh hostnames and FQDNs
+#  hosts: jailhost
+#  remote_user: ansible
+#  become: true
+#  become_method: community.general.doas
+#  tasks:
+#    - name: Reboot
+#      ansible.builtin.reboot:
+#        # TODO there must be a cleaner way of doing this, but for now, this works
+#        # NOTE this checks that ALL jails are active by checking the *number* of active jails
+#        # against our known number
+#        test_command: 'jls name | wc -l | xargs test {{ groups["jails"] | count }} ='
 
-- name: Gather ansible facts and refresh /etc/hosts
+- name: Refresh /etc/hosts on all hosts
   hosts: all
   remote_user: ansible
   become: true
   become_method: community.general.doas
-  gather_facts: true
-  vars_files:
-    - vars/shared.yml
   roles:
     - refresh_etc_hosts
 
@@ -85,7 +55,6 @@
   remote_user: ansible
   become: true
   become_method: community.general.doas
-  gather_facts: false
   vars_files:
     - vars/shared.yml
   roles:
@@ -97,7 +66,6 @@
   remote_user: ansible
   become: true
   become_method: community.general.doas
-  gather_facts: false
   vars_files:
     - vars/shared.yml
   roles:
@@ -108,37 +76,16 @@
   remote_user: ansible
   become: true
   become_method: community.general.doas
-  gather_facts: false
   vars_files:
     - vars/shared.yml
   roles:
     - setup_jail_kerberos
-
-- name: Move all keytabs to their respective hosts
-  hosts: jailhost
-  remote_user: ansible
-  become: true
-  become_method: community.general.doas
-  gather_facts: false
-  vars_files:
-    - vars/shared.yml
-  tasks:
-    - name: Copy jail keytabs from jailhost to jail
-      ansible.builtin.copy:
-        src: '/empt/jails/kerberos/tmp/{{ hostvars[item.host].ansible_fqdn }}.keytab'
-        remote_src: true
-        dest: '{{ item.keytab_dest }}'
-        mode: '0600'
-        owner: root
-        group: wheel
-      loop: '{{ kerberos_service_principals }}'
 
 - name: Setup IRC jail
   hosts: irc
   remote_user: ansible
   become: true
   become_method: community.general.doas
-  gather_facts: false
   vars_files:
     - vars/shared.yml
   roles:
@@ -149,7 +96,6 @@
   remote_user: ansible
   become: true
   become_method: community.general.doas
-  gather_facts: false
   vars_files:
     - vars/shared.yml
   roles:
@@ -160,7 +106,6 @@
   remote_user: ansible
   become: true
   become_method: community.general.doas
-  gather_facts: false
   vars_files:
     - vars/shared.yml
   roles:
@@ -171,7 +116,6 @@
   remote_user: ansible
   become: true
   become_method: community.general.doas
-  gather_facts: false
   vars_files:
     - vars/shared.yml
   roles:
@@ -182,7 +126,6 @@
   remote_user: ansible
   become: true
   become_method: community.general.doas
-  gather_facts: false
   vars_files:
     - vars/shared.yml
   roles:
@@ -191,7 +134,6 @@
 - name: Create all pre-configured mailing lists
   hosts: mail
   remote_user: mlmmj
-  gather_facts: false
   vars_files:
     - vars/shared.yml
   tasks:
@@ -204,7 +146,6 @@
 - name: Add all pre-configured humans
   hosts: jailhost
   remote_user: ansible
-  gather_facts: false
   become: true
   become_method: community.general.doas
   vars_files:
@@ -220,10 +161,8 @@
 - name: Reboot after successful run
   hosts: jailhost
   remote_user: ansible
-  gather_facts: false
   become: true
   become_method: community.general.doas
   tasks:
     - name: Reboot
       ansible.builtin.reboot:
-

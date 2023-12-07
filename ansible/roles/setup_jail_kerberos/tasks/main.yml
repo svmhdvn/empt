@@ -38,24 +38,44 @@
   changed_when: setup_jail_kerberos_init_realm_output.rc == 0
 
 - name: Check which service principals are missing
-  ansible.builtin.command: '/usr/local/bin/kadmin --local get --short {{ item.service }}/{{ hostvars[item.host].ansible_fqdn }}'
+  ansible.builtin.command: '/usr/local/bin/kadmin --local get --short {{ item.service }}/{{ item.host }}.{{ org_domain }}'
   loop: '{{ kerberos_service_principals }}'
   register: setup_jail_kerberos_service_principal_exists
   failed_when: setup_jail_kerberos_service_principal_exists.rc >= 2
   changed_when: false
 
 - name: Add missing service principals
-  ansible.builtin.command: '/usr/local/bin/kadmin --local add --random-key --use-defaults {{ item.item.service }}/{{ hostvars[item.item.host].ansible_fqdn }}'
+  ansible.builtin.command: '/usr/local/bin/kadmin --local add --random-key --use-defaults {{ item.item.service }}/{{ item.item.host }}.{{ org_domain }}'
   when: '"Principal does not exist" in item.stderr'
   register: setup_jail_kerberos_add_service_principals_output
   changed_when: setup_jail_kerberos_add_service_principals_output.rc == 0
   loop: '{{ setup_jail_kerberos_service_principal_exists.results }}'
 
 - name: Extract service principals into their respective keytabs
-  ansible.builtin.command: '/usr/local/bin/kadmin --local ext_keytab --keytab=/tmp/{{ hostvars[item.host].ansible_fqdn }}.keytab {{ item.service }}/{{ hostvars[item.host].ansible_fqdn }}'
+  ansible.builtin.command: '/usr/local/bin/kadmin --local ext_keytab --keytab=/tmp/{{ item.host }}.keytab {{ item.service }}/{{ item.host }}.{{ org_domain }}'
   register: setup_jail_kerberos_extract_keytabs_output
   changed_when: setup_jail_kerberos_extract_keytabs_output.rc == 0
   loop: '{{ kerberos_service_principals }}'
+
+- name: Copy jailhost keytab to destination
+  ansible.builtin.copy:
+    src: '/empt/jails/kerberos/tmp/jailhost.keytab'
+    remote_src: true
+    dest: '/etc/krb5.keytab'
+    owner: root
+    group: wheel
+    mode: '0600'
+  delegate_to: jailhost
+
+- name: Copy jail keytabs to final destinations
+  ansible.builtin.copy:
+    src: '/empt/jails/kerberos/tmp/{{ item.host }}.keytab'
+    remote_src: true
+    dest: '/empt/jails/{{ item.host }}/etc/krb5.keytab'
+    owner: root
+    group: wheel
+    mode: '0600'
+  delegate_to: jailhost
 
 - name: Start the KDC
   ansible.builtin.service:

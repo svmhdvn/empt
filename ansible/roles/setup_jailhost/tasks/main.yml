@@ -1,7 +1,5 @@
 - name: "Install jailhost required packages"
   ansible.builtin.command: pkg install -y heimdal-devel
-  async: 60
-  poll: 0
   changed_when: true
 
 - name: "Create ZFS top level dataset for empt"
@@ -33,7 +31,7 @@
 
 - name: "Create log subdirectories for individual jail mounting"
   ansible.builtin.file:
-    path: '/empt/logs/{{ item }}'
+    path: '/empt/logs/{{ hostvars[item].inventory_hostname_short }}'
     state: directory
     mode: '0755'
   loop: '{{ groups["jails"] }}'
@@ -109,13 +107,11 @@
 #     owner: root
 #     group: wheel
 #     mode: '0644'
-#   tags: initial
 
 - name: "Unarchive (thick) base jail to temporary location"
   ansible.builtin.unarchive:
     src: base.txz
     dest: /tmp/base_jail
-  tags: initial
 
 - name: "Create all missing directories in base jail"
   ansible.builtin.file:
@@ -154,7 +150,7 @@
     exclusive: true
 
 - name: "Clone (thick) base jail to installed locations"
-  ansible.builtin.command: 'cp -a /tmp/base_jail /empt/jails/{{ item }}'
+  ansible.builtin.command: 'cp -a /tmp/base_jail /empt/jails/{{ hostvars[item].inventory_hostname_short }}'
   loop: '{{ groups["jails"] }}'
 
 # TODO move these directory creation tasks to central location
@@ -184,21 +180,17 @@
   with_community.general.filetree: '{{ "templates/jailhost_etc/" }}'
   when: item.state == 'file'
 
+# TODO move to /empt for better encapsulation
 - name: "Copy the common fstab for each jail"
   ansible.builtin.template:
-    src: 'jail_fstabs/{{ item }}.fstab'
-    dest: '/etc/jail_fstabs/{{ item }}.fstab'
+    src: 'jail_fstabs/{{ hostvars[item].inventory_hostname_short }}.fstab'
+    dest: '/etc/jail_fstabs/{{ hostvars[item].inventory_hostname_short }}.fstab'
     owner: root
     group: wheel
     mode: '0644'
   vars:
-    setup_jailhost_fstab_jail: '{{ item }}'
+    setup_jailhost_fstab_jail: '{{ hostvars[item].inventory_hostname_short }}'
   loop: '{{ groups["jails"] }}'
-
-#- name: "Set list of enabled jails"
-#  ansible.builtin.lineinfile:
-#    path: /etc/rc.conf
-#    line: 'jail_list="certauth dns kerberos mail" # TODO ssh, cifs, prometheus'
 
 # TODO no idea why this needs to be broken into two steps
 - name: "Enable jail service"

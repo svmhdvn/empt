@@ -6,7 +6,7 @@
 # generating P-256 keys in the meantime
 - name: Create CA private key with password protection
   community.crypto.openssl_privatekey:
-    path: '/etc/ssl/{{ ansible_fqdn }}.cakey'
+    path: '{{ cakey_path }}'
     backup: true
     passphrase: "{{ secret_ca_passphrase }}"
     type: ECC
@@ -15,9 +15,9 @@
 
 - name: Create CSR for CA certificate
   community.crypto.openssl_csr_pipe:
-    privatekey_path: '/etc/ssl/{{ ansible_fqdn }}.cakey'
+    privatekey_path: '{{ cakey_path }}'
     privatekey_passphrase: "{{ secret_ca_passphrase }}"
-    common_name: '{{ ansible_fqdn }} (CA)'
+    common_name: '{{ org_domain }} (CA)'
     use_common_name_for_san: false # since we do not specify SANs, don't use CN as a SAN
     basic_constraints:
       - 'CA:TRUE'
@@ -29,8 +29,8 @@
 
 - name: Create self-signed CA certificate from CSR
   community.crypto.x509_certificate:
-    path: '/etc/ssl/{{ ansible_fqdn }}.cacrt'
+    path: '{{ cacrt_path }}'
     csr_content: "{{ setup_jail_certauth_ca_csr.csr }}"
-    privatekey_path: '/etc/ssl/{{ ansible_fqdn }}.cakey'
+    privatekey_path: '{{ cakey_path }}'
     privatekey_passphrase: "{{ secret_ca_passphrase }}"
     provider: selfsigned

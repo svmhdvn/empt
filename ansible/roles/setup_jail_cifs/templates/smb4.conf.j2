@@ -3,7 +3,7 @@
 	logging = syslog
 
 	bind interfaces only = yes
-	interfaces = {{ ansible_fqdn }}
+	interfaces = {{ inventory_hostname }}
 
 	map to guest = never
 

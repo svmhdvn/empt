@@ -9,8 +9,8 @@
     state: present
     extra_zfs_properties:
       canmount: 'on'
-      quota: '4G'
-      reservation: '4G'
+      quota: '1G'
+      reservation: '1G'
 
 - name: "Create login-incapable system unix users in the required hosts"
   ansible.builtin.user:

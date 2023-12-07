@@ -12,7 +12,7 @@
 define
 {
 	name = "services.host"
-	value = "services.{{ ansible_fqdn }}"
+	value = "services.{{ inventory_hostname }}"
 }
 
 /*
@@ -209,7 +209,7 @@ networkinfo
 	/*
 	 * This is the name of the network that Services will be running on.
 	 */
-	networkname = "empt.siva IRC"
+	networkname = "EmptNET"
 
 	/*
 	 * Set this to the maximum allowed nick length on your network.

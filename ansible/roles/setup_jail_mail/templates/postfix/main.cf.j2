@@ -633,8 +633,6 @@ smtp_tls_CApath = /etc/ssl/certs
 meta_directory = /usr/local/libexec/postfix
 shlib_directory = /usr/local/lib/postfix
 
-# SIVA CONFIG
-
 # require properly formatted email addresses - prevents a lot of spam
 strict_rfc821_envelopes = yes
 
@@ -651,8 +649,8 @@ smtp_tls_CApath=/etc/ssl/certs
 
 smtpd_tls_auth_only = yes
 smtpd_tls_received_header = yes
-smtpd_tls_cert_file = /etc/ssl/{{ ansible_fqdn }}.crt
-smtpd_tls_key_file = /etc/ssl/{{ ansible_fqdn }}.key
+smtpd_tls_cert_file = /etc/ssl/{{ inventory_hostname }}.crt.pem
+smtpd_tls_key_file = /etc/ssl/{{ inventory_hostname }}.key.pem
 smtpd_tls_loglevel = 1
 smtpd_tls_received_header = yes
 

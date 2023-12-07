@@ -1,0 +1,2 @@
+crt_path: '/etc/ssl/{{ inventory_hostname }}.crt.pem'
+key_path: '/etc/ssl/{{ inventory_hostname }}.key.pem'

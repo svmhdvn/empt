@@ -9,12 +9,9 @@
     mode: '0644'
     owner: root
     group: wheel
-    validate: /usr/local/bin/testparm --suppress-prompt %s
+    validate: '/usr/local/bin/testparm --suppress-prompt %s'
 
 - name: Enable samba server
   ansible.builtin.service:
     name: samba_server
     enabled: true
-
-      # - name: SIVA PAUSE VERIFY
-      #   ansible.builtin.pause:

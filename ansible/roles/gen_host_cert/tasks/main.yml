@@ -39,7 +39,7 @@
     ownca_privatekey_passphrase: '{{ secret_ca_passphrase }}'
     ownca_not_after: '+365d'  # valid for one year
     ownca_not_before: '-1d'  # valid since yesterday
-  delegate_to: certauth
+  delegate_to: 'certauth.{{ org_domain }}'
   register: gen_host_cert_certificate
   notify:
     - Write new host certificate file

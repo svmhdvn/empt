@@ -1,6 +1,6 @@
 ---
 - name: Bootstrap jailhost
-  hosts: jailhost
+  hosts: 'jailhost.{{ org_domain }}'
   remote_user: '{{ fresh_install_user }}'
   become: true
   become_method: ansible.builtin.su
@@ -8,7 +8,7 @@
     - bootstrap
 
 - name: Setup jailhost
-  hosts: jailhost
+  hosts: 'jailhost.{{ org_domain }}'
   remote_user: ansible
   become: true
   become_method: community.general.doas
@@ -30,7 +30,7 @@
     - bootstrap
 
 #- name: Reboot to refresh hostnames and FQDNs
-#  hosts: jailhost
+#  hosts: 'jailhost.{{ org_domain }}'
 #  remote_user: ansible
 #  become: true
 #  become_method: community.general.doas
@@ -51,7 +51,7 @@
     - refresh_etc_hosts
 
 - name: Setup certauth jail
-  hosts: certauth
+  hosts: 'certauth.{{ org_domain }}'
   remote_user: ansible
   become: true
   become_method: community.general.doas
@@ -72,7 +72,7 @@
     - gen_host_cert
 
 - name: Setup kerberos KDC
-  hosts: kerberos
+  hosts: 'kerberos.{{ org_domain }}'
   remote_user: ansible
   become: true
   become_method: community.general.doas
@@ -82,7 +82,7 @@
     - setup_jail_kerberos
 
 - name: Setup IRC jail
-  hosts: irc
+  hosts: 'irc.{{ org_domain }}'
   remote_user: ansible
   become: true
   become_method: community.general.doas
@@ -92,7 +92,7 @@
     - setup_jail_irc
 
 - name: Setup DNS server jail
-  hosts: dns
+  hosts: 'dns.{{ org_domain }}'
   remote_user: ansible
   become: true
   become_method: community.general.doas
@@ -102,7 +102,7 @@
     - setup_jail_dns
 
 - name: Setup samba CIFS jail
-  hosts: cifs
+  hosts: 'cifs.{{ org_domain }}'
   remote_user: ansible
   become: true
   become_method: community.general.doas
@@ -112,7 +112,7 @@
     - setup_jail_cifs
 
 - name: Setup ssh jail
-  hosts: ssh
+  hosts: 'ssh.{{ org_domain }}'
   remote_user: ansible
   become: true
   become_method: community.general.doas
@@ -122,7 +122,7 @@
     - setup_jail_ssh
 
 - name: Setup mail server jail
-  hosts: mail
+  hosts: 'mail.{{ org_domain }}'
   remote_user: ansible
   become: true
   become_method: community.general.doas
@@ -132,7 +132,7 @@
     - setup_jail_mail
 
 - name: Create all pre-configured mailing lists
-  hosts: mail
+  hosts: 'mail.{{ org_domain }}'
   remote_user: mlmmj
   vars_files:
     - vars/shared.yml
@@ -144,7 +144,7 @@
         loop_var: mailing_list
 
 - name: Add all pre-configured humans
-  hosts: jailhost
+  hosts: 'jailhost.{{ org_domain }}'
   remote_user: ansible
   become: true
   become_method: community.general.doas
@@ -159,7 +159,7 @@
         loop_var: human
 
 - name: Reboot after successful run
-  hosts: jailhost
+  hosts: 'jailhost.{{ org_domain }}'
   remote_user: ansible
   become: true
   become_method: community.general.doas

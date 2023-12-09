@@ -1,1 +1,1 @@
-nameserver {{ hostvars['dns'].ansible_host }}
+nameserver {{ hostvars['dns.' + org_domain].ansible_host }}

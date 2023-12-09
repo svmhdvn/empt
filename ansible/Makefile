@@ -14,7 +14,7 @@ FRESH_INSTALL_USER = siva
 JAILHOST_IPV6_ULA = XXX
 
 # Parse the 48-bit ULA prefix to use for jail IPv6 address generation
-ULA_PREFIX != echo "$JAILHOST_IPV6_ULA" | sed 's/\([[:xdigit:]]\{1,4\}:[[:xdigit:]]\{1,4\}:[[:xdigit:]]\{1,4\}\):.*/\1/g'
+ULA_PREFIX != echo "$(JAILHOST_IPV6_ULA)" | sed 's/\([[:xdigit:]]\{1,4\}:[[:xdigit:]]\{1,4\}:[[:xdigit:]]\{1,4\}\):.*/\1/g'
 
 run: inventory.ini
 	ansible-playbook -k -K \
@@ -27,14 +27,14 @@ inventory.ini:
 
 # TODO loop through some central file and generate these in one line
 	echo '[jails]' >> $@
-	echo 'certauth.$(ORG_DOMAIN) ansible_host=$(ULA_PREFIX)::eeee:1" >> $@
-	echo 'cifs.$(ORG_DOMAIN) ansible_host=$(ULA_PREFIX)::eeee:2" >> $@
-	echo 'dns.$(ORG_DOMAIN) ansible_host=$(ULA_PREFIX)::eeee:3" >> $@
-	echo 'irc.$(ORG_DOMAIN) ansible_host=$(ULA_PREFIX)::eeee:4" >> $@
-	echo 'kerberos.$(ORG_DOMAIN) ansible_host=$(ULA_PREFIX)::eeee:5" >> $@
-	echo 'mail.$(ORG_DOMAIN) ansible_host=$(ULA_PREFIX)::eeee:6" >> $@
-	echo 'prometheus.$(ORG_DOMAIN) ansible_host=$(ULA_PREFIX)::eeee:7" >> $@
-	echo 'ssh.$(ORG_DOMAIN) ansible_host=$(ULA_PREFIX)::eeee:8" >> $@
+	echo 'certauth.$(ORG_DOMAIN) ansible_host=$(ULA_PREFIX)::eeee:1' >> $@
+	echo 'cifs.$(ORG_DOMAIN) ansible_host=$(ULA_PREFIX)::eeee:2' >> $@
+	echo 'dns.$(ORG_DOMAIN) ansible_host=$(ULA_PREFIX)::eeee:3' >> $@
+	echo 'irc.$(ORG_DOMAIN) ansible_host=$(ULA_PREFIX)::eeee:4' >> $@
+	echo 'kerberos.$(ORG_DOMAIN) ansible_host=$(ULA_PREFIX)::eeee:5' >> $@
+	echo 'mail.$(ORG_DOMAIN) ansible_host=$(ULA_PREFIX)::eeee:6' >> $@
+	echo 'prometheus.$(ORG_DOMAIN) ansible_host=$(ULA_PREFIX)::eeee:7' >> $@
+	echo 'ssh.$(ORG_DOMAIN) ansible_host=$(ULA_PREFIX)::eeee:8' >> $@
 
 help:
 	@echo "usage:"

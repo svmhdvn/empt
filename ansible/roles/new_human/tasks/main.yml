@@ -53,7 +53,7 @@
 - name: "Add new home directory nullfs mount to dependent service jail fstabs"
   ansible.builtin.lineinfile:
     path: '/etc/jail_fstabs/{{ item }}.fstab'
-    line: '/empt/homes/{{ human.username }} /empt/jails/{{ item }}/usr/home/{{ human.username }} nullfs rw 0 0'
+    line: '/empt/homes/{{ human.username }} /empt/jails/{{ item }}/home/{{ human.username }} nullfs rw 0 0'
   loop:
     - cifs
     - ssh

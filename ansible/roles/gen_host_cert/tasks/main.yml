@@ -1,5 +1,5 @@
 - name: Install ansible CA crypto dependencies
-  ansible.builtin.command: 'pkg install -y py39-cryptography'
+  ansible.builtin.command: 'pkg install -y py311-cryptography'
   changed_when: true
 
 # TODO waiting on https://bugzilla.mozilla.org/show_bug.cgi?id=1325335 for ED25519 support

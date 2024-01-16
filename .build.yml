@@ -7,4 +7,5 @@ tasks:
       ansible-galaxy install -r requirements.yml
   - ansible_lint: |
       cd empt/ansible
+      make JAILHOST_ULA=fd08:c684:6567::eeee:ffff ORG_DOMAIN=empt.test inventory.ini
       find . -type f -name "*.yml" | xargs ansible-lint

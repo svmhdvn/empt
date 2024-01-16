@@ -1,0 +1,17 @@
+[all:vars]
+org_domain=%ORG_DOMAIN%
+fresh_install_user=%FRESH_INSTALL_USER%
+
+[jailhosts]
+jailhost.%ORG_DOMAIN% ansible_host=%JAILHOST_IPV6_ULA%
+
+# TODO loop through some central file and generate these in one line
+[jails]
+certauth.%ORG_DOMAIN% ansible_host=%ULA_PREFIX%::eeee:1
+cifs.%ORG_DOMAIN% ansible_host=%ULA_PREFIX%::eeee:2
+dns.%ORG_DOMAIN% ansible_host=%ULA_PREFIX%::eeee:3
+irc.%ORG_DOMAIN% ansible_host=%ULA_PREFIX%::eeee:4
+kerberos.%ORG_DOMAIN% ansible_host=%ULA_PREFIX%::eeee:5
+mail.%ORG_DOMAIN% ansible_host=%ULA_PREFIX%::eeee:6
+prometheus.%ORG_DOMAIN% ansible_host=%ULA_PREFIX%::eeee:7
+ssh.%ORG_DOMAIN% ansible_host=%ULA_PREFIX%::eeee:8

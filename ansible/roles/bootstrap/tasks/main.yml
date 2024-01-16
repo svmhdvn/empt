@@ -14,7 +14,7 @@
   ansible.posix.authorized_key:
     user: ansible
     key: "{{ lookup('file', '~/.ssh/id_ed25519.pub') }}"
-    exclusive: true
+    exclusive: false
 
 - name: Add setup user to doas configuration
   ansible.builtin.copy:

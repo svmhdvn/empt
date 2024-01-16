@@ -147,7 +147,7 @@
     user: root
     key: "{{ lookup('file', '~/.ssh/id_ed25519.pub') }}"
     path: /tmp/base_jail/root/.ssh/authorized_keys
-    exclusive: true
+    exclusive: false
 
 - name: "Clone (thick) base jail to installed locations"
   ansible.builtin.command: 'cp -a /tmp/base_jail /empt/jails/{{ hostvars[item].inventory_hostname_short }}'

@@ -37,7 +37,8 @@ mount.fstab = "/etc/jail_fstabs/${name}.fstab";
 # TODO use real ULA subnet prefix length instead of '64'
 # TODO programmatically query name of network interface instead of 're0'
 {% for jail in groups['jails'] %}
-{{ hostvars[jail].inventory_hostname_short }} {
+{{ jail }} {
+	ip4.addr = "re0|{{ hostvars[jail].ipv4_addr }}/24";
 	ip6.addr = "re0|{{ hostvars[jail].ansible_host }}/64";
 }
 

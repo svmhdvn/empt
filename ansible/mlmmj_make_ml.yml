@@ -13,10 +13,8 @@
     owner: mlmmj
     group: mlmmj
 
-# TODO change to /usr/local/bin after mlmmj release 1.4.0
 - name: Create mailing list
-  # ansible.builtin.command: '/usr/local/bin/mlmmj-make-ml -f /var/spool/mlmmj/mlmmj-answers.txt'
-  ansible.builtin.command: '/var/spool/mlmmj/mymlmmj-make-ml -f /var/spool/mlmmj/mlmmj-answers.txt'
+  ansible.builtin.command: '/usr/local/bin/mlmmj-make-ml -f /var/spool/mlmmj/mlmmj-answers.txt'
   register: make_ml_output
   changed_when: make_ml_output.rc == 0
 

@@ -94,15 +94,6 @@
     - postfix
     - dovecot
 
-# TODO remove after mlmmj release 1.4.0
-- name: TMP copy prerelease mymlmmj-make-ml script
-  ansible.builtin.copy:
-    src: mlmmj-make-ml.sh
-    dest: /var/spool/mlmmj/mymlmmj-make-ml
-    mode: '0755'
-    owner: mlmmj
-    group: mlmmj
-
 - name: Add mlmmj maintenance task to cron
   ansible.builtin.lineinfile:
     path: /etc/crontab

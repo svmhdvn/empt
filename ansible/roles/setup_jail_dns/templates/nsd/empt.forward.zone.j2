@@ -12,7 +12,8 @@ $TTL 1m
   MX 10 mail
 
 {% for host in groups['all'] %}
-{{ hostvars[host].inventory_hostname_short }} IN AAAA {{ hostvars[host].ansible_host }}
+{{ hostvars[host].inventory_hostname }} IN A {{ hostvars[host].ipv4_addr }}
+{{ hostvars[host].inventory_hostname }} IN AAAA {{ hostvars[host].ansible_host }}
 {% endfor %}
 
 ; kerberos automatic discovery

@@ -4,10 +4,6 @@
 	allow-anonymous = false
 	default_etypes = aes128-cts-hmac-sha1-96 aes128-cts-hmac-sha256-128 aes256-cts-hmac-sha1-96 aes256-cts-hmac-sha384-192
 	default_keys = aes128-cts-hmac-sha1-96:pw-salt aes128-cts-hmac-sha256-128:pw-salt aes256-cts-hmac-sha1-96:pw-salt aes256-cts-hmac-sha384-192:pw-salt
-[realms]
-	{{ org_domain | upper }} = {
-		kdc = kerberos.{{ org_domain }}
-	}
 [kdc]
 	allow-anonymous = false
 [domain_realm]

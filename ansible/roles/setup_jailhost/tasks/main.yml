@@ -31,7 +31,7 @@
 
 - name: "Create log subdirectories for individual jail mounting"
   ansible.builtin.file:
-    path: '/empt/logs/{{ hostvars[item].inventory_hostname_short }}'
+    path: '/empt/logs/{{ hostvars[item].inventory_hostname }}'
     state: directory
     mode: '0755'
   loop: '{{ groups["jails"] }}'
@@ -150,8 +150,9 @@
     exclusive: false
 
 - name: "Clone (thick) base jail to installed locations"
-  ansible.builtin.command: 'cp -a /tmp/base_jail /empt/jails/{{ hostvars[item].inventory_hostname_short }}'
+  ansible.builtin.command: 'cp -a /tmp/base_jail /empt/jails/{{ hostvars[item].inventory_hostname }}'
   loop: '{{ groups["jails"] }}'
+  changed_when: true
 
 # TODO move these directory creation tasks to central location
 # or find better solution.
@@ -183,13 +184,13 @@
 # TODO move to /empt for better encapsulation
 - name: "Copy the common fstab for each jail"
   ansible.builtin.template:
-    src: 'jail_fstabs/{{ hostvars[item].inventory_hostname_short }}.fstab'
-    dest: '/etc/jail_fstabs/{{ hostvars[item].inventory_hostname_short }}.fstab'
+    src: 'jail_fstabs/{{ hostvars[item].inventory_hostname }}.fstab'
+    dest: '/etc/jail_fstabs/{{ hostvars[item].inventory_hostname }}.fstab'
     owner: root
     group: wheel
     mode: '0644'
   vars:
-    setup_jailhost_fstab_jail: '{{ hostvars[item].inventory_hostname_short }}'
+    setup_jailhost_fstab_jail: '{{ hostvars[item].inventory_hostname }}'
   loop: '{{ groups["jails"] }}'
 
 # TODO no idea why this needs to be broken into two steps
@@ -199,5 +200,7 @@
     enabled: true
     state: started
 
+# TODO file bug for service module not working here
 - name: "Start all jails"
-  ansible.builtin.command: service jail restart
+  ansible.builtin.command: service jail restart # noqa: command-instead-of-module
+  changed_when: false

@@ -3,15 +3,15 @@ org_domain=%ORG_DOMAIN%
 fresh_install_user=%FRESH_INSTALL_USER%
 
 [jailhosts]
-jailhost.%ORG_DOMAIN% ansible_host=%JAILHOST_IPV6_ULA%
+jailhost ansible_host=%JAILHOST_IPV6_ULA% ipv4_addr=%IPV4_PREFIX%.200 fqdn=jailhost.%ORG_DOMAIN%
 
 # TODO loop through some central file and generate these in one line
 [jails]
-certauth.%ORG_DOMAIN% ansible_host=%ULA_PREFIX%::eeee:1
-cifs.%ORG_DOMAIN% ansible_host=%ULA_PREFIX%::eeee:2
-dns.%ORG_DOMAIN% ansible_host=%ULA_PREFIX%::eeee:3
-irc.%ORG_DOMAIN% ansible_host=%ULA_PREFIX%::eeee:4
-kerberos.%ORG_DOMAIN% ansible_host=%ULA_PREFIX%::eeee:5
-mail.%ORG_DOMAIN% ansible_host=%ULA_PREFIX%::eeee:6
-prometheus.%ORG_DOMAIN% ansible_host=%ULA_PREFIX%::eeee:7
-ssh.%ORG_DOMAIN% ansible_host=%ULA_PREFIX%::eeee:8
+certauth ansible_host=%ULA_PREFIX%::eeee:1 ipv4_addr=%IPV4_PREFIX%.201 fqdn=certauth.%ORG_DOMAIN%
+cifs ansible_host=%ULA_PREFIX%::eeee:2 ipv4_addr=%IPV4_PREFIX%.202 fqdn=cifs.%ORG_DOMAIN%
+dns ansible_host=%ULA_PREFIX%::eeee:3 ipv4_addr=%IPV4_PREFIX%.203 fqdn=dns.%ORG_DOMAIN%
+irc ansible_host=%ULA_PREFIX%::eeee:4 ipv4_addr=%IPV4_PREFIX%.204 fqdn=irc.%ORG_DOMAIN%
+kerberos ansible_host=%ULA_PREFIX%::eeee:5 ipv4_addr=%IPV4_PREFIX%.205 fqdn=kerberos.%ORG_DOMAIN%
+mail ansible_host=%ULA_PREFIX%::eeee:6 ipv4_addr=%IPV4_PREFIX%.206 fqdn=mail.%ORG_DOMAIN%
+prometheus ansible_host=%ULA_PREFIX%::eeee:7 ipv4_addr=%IPV4_PREFIX%.207 fqdn=prometheus.%ORG_DOMAIN%
+ssh ansible_host=%ULA_PREFIX%::eeee:8 ipv4_addr=%IPV4_PREFIX%.208 fqdn=ssh.%ORG_DOMAIN%

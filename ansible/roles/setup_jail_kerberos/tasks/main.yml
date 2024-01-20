@@ -65,7 +65,7 @@
     owner: root
     group: wheel
     mode: '0600'
-  delegate_to: 'jailhost.{{ org_domain }}'
+  delegate_to: jailhost
 
 - name: Copy keytabs to final destinations
   ansible.builtin.copy:
@@ -75,7 +75,7 @@
     owner: root
     group: wheel
     mode: '0600'
-  delegate_to: 'jailhost.{{ org_domain }}'
+  delegate_to: jailhost
   loop: '{{ kerberos_service_principals }}'
 
 - name: Start the KDC

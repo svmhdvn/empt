@@ -1,0 +1,25 @@
+#!/bin/sh
+#
+#
+
+# PROVIDE: kdc
+# REQUIRE: NETWORKING
+# BEFORE: SERVERS
+# KEYWORD: shutdown
+
+. /etc/rc.subr
+
+name=kdc
+desc="Kerberos 5 server"
+rcvar=${name}_enable
+
+set_rcvar_obsolete kerberos5_server_enable kdc_enable
+set_rcvar_obsolete kerberos5_server kdc_program
+set_rcvar_obsolete kerberos5_server_flags kdc_flags
+
+load_rc_config $name
+if [ "${kdc_program}" = /usr/libexec/kdc -o \
+     "${kdc_program}" = /usr/local/libexec/kdc ]; then
+	command_args="$command_args --detach"
+fi
+run_rc_command "$1"

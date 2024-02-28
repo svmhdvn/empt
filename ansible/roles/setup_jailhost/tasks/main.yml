@@ -111,7 +111,7 @@
 
 - name: "Unarchive (thick) base jail to temporary location"
   ansible.builtin.unarchive:
-    src: base.txz
+    src: wyse-base.txz
     dest: /tmp/base_jail
 
 - name: "Create all missing directories in base jail"
@@ -121,7 +121,7 @@
     mode: '0755'
   loop:
     - /tmp/base_jail/usr/local/etc/pkg/repos
-    - /tmp/base_jail/usr/local/poudriere_repo
+    - /tmp/base_jail/usr/local/poudriere_repos
     - /tmp/base_jail/root/.ssh
 
 - name: "Populate common /etc files into base jail"

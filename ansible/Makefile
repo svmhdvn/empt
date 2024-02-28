@@ -10,7 +10,7 @@
 # through fact gathering.
 ORG_DOMAIN = empt.siva
 
-FRESH_INSTALL_USER = siva
+FRESH_INSTALL_USER = tester
 JAILHOST_IPV6_ULA = XXX
 
 # Parse the 48-bit ULA prefix to use for jail IPv6 address generation
@@ -32,6 +32,12 @@ inventory.ini: inventory.ini.template
 		-e 's/%ULA_PREFIX%/$(ULA_PREFIX)/g' \
 		-e 's/%IPV4_PREFIX%/$(IPV4_PREFIX)/g' \
 		$< > $@
+
+reset:
+	ansible-playbook -k -K factory_reset.yml
+
+clean:
+	rm -f inventory.ini
 
 help:
 	@echo "usage:"

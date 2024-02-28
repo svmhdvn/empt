@@ -11,7 +11,7 @@
     group: wheel
     validate: '/usr/local/bin/testparm --suppress-prompt %s'
 
-# TODO modify the cifs/cifs.empt.siva kerberos credential to avoid sending a 
+# TODO modify the cifs/cifs.empt.siva kerberos credential to avoid sending a
 # PAC to samba with the 'no-auth-data-reqd' attribute
 
 - name: Enable samba server

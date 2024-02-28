@@ -5,18 +5,24 @@
     mode: '0755'
   loop:
     - /usr/local/etc/pkg/repos
-    - /usr/local/poudriere_repo
+    - /usr/local/poudriere_repos/pkgbase
+    - /usr/local/poudriere_repos/ports
 
 - name: Configure pkg to use Poudriere repo
   ansible.builtin.copy:
     content: |
-      Poudriere: {
-        url: "file:///usr/local/poudriere_repo"
+      PoudrierePkgbase: {
+        url: "file:///usr/local/poudriere_repos/pkgbase"
+        enabled: yes
+      }
+
+      PoudrierePorts: {
+        url: "file:///usr/local/poudriere_repos/ports"
         enabled: yes
       }
 
       FreeBSD: {
-        url: "pkg+http://pkg.FreeBSD.org/${ABI}/latest",
+        url: "pkg+https://pkg.FreeBSD.org/${ABI}/latest",
         mirror_type: "srv",
         signature_type: "fingerprints",
         fingerprints: "/usr/share/keys/pkg",
@@ -27,11 +33,32 @@
     group: wheel
     mode: '0644'
 
-- name: Extract poudriere repo archive
+- name: Extract poudriere pkgbase repo
   ansible.builtin.unarchive:
-    src: 'poudriere.tar.zst'
-    dest: /usr/local/poudriere_repo
+    src: wyse-PoudrierePkgbase.tar.zst
+    dest: /usr/local/poudriere_repos/pkgbase
 
-- name: Reinstall all previously upstream mirror installed packages from poudriere
-  ansible.builtin.command: 'pkg upgrade -f -y'
+- name: Extract poudriere ports repo
+  ansible.builtin.unarchive:
+    src: wyse-PoudrierePorts.tar.zst
+    dest: /usr/local/poudriere_repos/ports
+
+# See https://wiki.freebsd.org/PkgBase for .pkgsave fixes
+- name: Upgrade whole system to new pkgbase while preserving passwd db
+  ansible.builtin.shell: >
+    pkg install -y -r PoudrierePkgbase -g 'FreeBSD-*' && {
+      cp /etc/master.passwd.pkgsave /etc/master.passwd ;
+      cp /etc/group.pkgsave /etc/group ;
+      cp /etc/sysctl.conf.pkgsave /etc/sysctl.conf ;
+      pwd_mkdb -p /etc/master.passwd
+    }
+  environment:
+    IGNORE_OSVERSION: yes
+  changed_when: true
+
+- name: Reboot to new Pkgbase kernel
+  ansible.builtin.reboot:
+
+- name: Upgrade all ports on host system
+  ansible.builtin.command: pkg upgrade -y -f -r PoudrierePorts
   changed_when: true

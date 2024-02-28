@@ -11,6 +11,23 @@
     group: wheel
     mode: '0644'
 
+# TODO upstream this instead
+# ============================================
+- name: Create missing local rc.d directory
+  ansible.builtin.file:
+    path: /usr/local/etc/rc.d
+    state: directory
+    mode: '0755'
+
+- name: TODO SIVA configure kdc rc service file
+  ansible.builtin.template:
+    src: kdc.j2
+    dest: /usr/local/etc/rc.d/kdc
+    owner: root
+    group: wheel
+    mode: '0755'
+# ============================================
+
 - name: Use the Poudriere-installed heimdal RC services
   ansible.builtin.lineinfile:
     path: /etc/rc.conf

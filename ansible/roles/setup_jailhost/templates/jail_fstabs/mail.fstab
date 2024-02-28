@@ -1,5 +1,5 @@
 # Device        Mountpoint        FStype        Options        Dump        Pass#
-/usr/local/poudriere_repo			/empt/jails/{{ setup_jailhost_fstab_jail }}/usr/local/poudriere_repo	nullfs	ro	0	0
+/usr/local/poudriere_repos			/empt/jails/{{ setup_jailhost_fstab_jail }}/usr/local/poudriere_repos	nullfs	ro	0	0
 /empt/logs/{{ setup_jailhost_fstab_jail }}	/empt/jails/{{ setup_jailhost_fstab_jail }}/var/log			nullfs	rw	0	0
 /empt/email/virtual_attachments			/empt/jails/{{ setup_jailhost_fstab_jail }}/var/mail/attachments	nullfs	rw	0	0
 /empt/email/virtual_mail			/empt/jails/{{ setup_jailhost_fstab_jail }}/var/mail/vhosts		nullfs	rw	0	0

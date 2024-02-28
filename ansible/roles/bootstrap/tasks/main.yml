@@ -1,5 +1,5 @@
 - name: Install basic ansible dependencies
-  ansible.builtin.raw: pkg install -y python doas gtar unzip rsync
+  ansible.builtin.raw: pkg install -y python doas gtar unzip
   changed_when: true
 
 # TODO deal with properly setting password

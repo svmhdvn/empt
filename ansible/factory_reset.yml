@@ -1,0 +1,8 @@
+---
+- name: Factory reset
+  hosts: jailhost
+  remote_user: '{{ fresh_install_user }}'
+  become: true
+  become_method: ansible.builtin.su
+  roles:
+    - factory_reset

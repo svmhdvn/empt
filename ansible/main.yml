@@ -8,6 +8,7 @@
   tasks:
     - name: Install python
       ansible.builtin.raw: pkg install -y python
+      changed_when: true
 
 - name: Setup boot environment for EMPT installation
   hosts: jailhost

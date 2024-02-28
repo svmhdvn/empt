@@ -12,4 +12,4 @@
 - name: Destroy EMPT ZFS datasets
   ansible.builtin.raw: zfs destroy -Rf zroot/empt
   changed_when: true
-  ignore_errors: true
+  failed_when: false

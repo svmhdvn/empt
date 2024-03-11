@@ -1,20 +1,14 @@
 hostname="{{ fqdn }}"
 
-ifconfig_re0="DHCP"
-ifconfig_re0_ipv6="inet6 accept_rtadv"
+dhcpcd_enable="YES"
 
 ntpd_enable="YES"
 ntpdate_enable="YES"
 powerd_enable="YES"
 sshd_enable="YES"
-
-dumpdev="AUTO"
 zfs_enable="YES"
 
-sendmail_enable="NO"
-sendmail_msp_queue_enable="NO"
-sendmail_outbound_enable="NO"
-sendmail_submit_enable="NO"
+dumpdev="AUTO"
 
 syslogd_enable="YES"
 syslogd_flags="-8 -O syslog -N -s -s"
@@ -25,6 +19,3 @@ nfsuserd_enable="YES"
 nfsuserd_flags="-verbose"
 gssd_enable="YES"
 gssd_flags="-h"
-
-# needed for samba
-kld_list="fdescfs"

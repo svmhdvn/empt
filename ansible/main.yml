@@ -54,7 +54,6 @@
   roles:
       # TODO remove once everything is ready for production
     - setup_convenience_tools
-
     - setup_jailhost
 
 - name: Bootstrap all jails
@@ -194,6 +193,16 @@
       loop: '{{ humans }}'
       loop_control:
         loop_var: human
+
+- name: Setup cron monitoring jail
+  hosts: cronmonitor
+  remote_user: ansible
+  become: true
+  become_method: community.general.doas
+  vars_files:
+    - vars/shared.yml
+  roles:
+    - setup_jail_cronmonitor
 
 - name: Reboot after successful run
   hosts: jailhost

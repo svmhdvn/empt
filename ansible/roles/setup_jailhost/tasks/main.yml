@@ -1,5 +1,5 @@
 - name: "Install jailhost required packages"
-  ansible.builtin.command: pkg install -y heimdal-devel
+  ansible.builtin.command: pkg install -y dhcpcd nagios-plugins heimdal-devel
   changed_when: true
 
 - name: "Create ZFS top level dataset for empt"
@@ -109,6 +109,16 @@
 #     group: wheel
 #     mode: '0644'
 
+- name: "Populate jailhost /etc files"
+  ansible.builtin.template:
+    src: '{{ item.src }}'
+    dest: '/etc/{{ item.path | replace(".j2", "") }}'
+    mode: '0644'
+    owner: root
+    group: wheel
+  with_community.general.filetree: '{{ "templates/jailhost_etc/" }}'
+  when: item.state == 'file'
+
 - name: "Unarchive (thick) base jail to temporary location"
   ansible.builtin.unarchive:
     src: wyse-base.txz
@@ -171,16 +181,6 @@
     - /empt/jails/mail/var/spool/mlmmj
 
 # =====================
-
-- name: "Populate jailhost /etc files"
-  ansible.builtin.template:
-    src: '{{ item.src }}'
-    dest: '/etc/{{ item.path | replace(".j2", "") }}'
-    mode: '0644'
-    owner: root
-    group: wheel
-  with_community.general.filetree: '{{ "templates/jailhost_etc/" }}'
-  when: item.state == 'file'
 
 # TODO move to /empt for better encapsulation
 - name: "Copy the common fstab for each jail"

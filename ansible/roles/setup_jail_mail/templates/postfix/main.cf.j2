@@ -231,7 +231,8 @@ mynetworks_style = host
 #mynetworks = 168.100.3.0/28, 127.0.0.0/8
 #mynetworks = $config_directory/mynetworks
 #mynetworks = hash:$config_directory/network_table
-
+mynetworks =
+  [{{ ansible_host }}]/128
 # The relay_domains parameter restricts what destinations this system will
 # relay mail to.  See the smtpd_relay_restrictions and
 # smtpd_recipient_restrictions descriptions in  postconf(5) for detailed
@@ -626,7 +627,8 @@ sample_directory = /usr/local/etc/postfix
 #
 readme_directory = /usr/local/share/doc/postfix
 
-inet_protocols = ipv6
+# TODO force IPv6 only
+#inet_protocols = ipv6
 
 # smtp CA path (default to system-wide location)
 smtp_tls_CApath = /etc/ssl/certs
@@ -642,10 +644,13 @@ virtual_transport = lmtp:unix:private/dovecot-lmtp
 tls_append_default_CA = no
 tls_preempt_cipherlist = yes
 
+smtp_sasl_auth_enable = yes
+smtp_sasl_password_maps = hash:/usr/local/etc/postfix/sasl_passwd
+smtp_sasl_tls_security_options = noanonymous
 smtp_tls_loglevel = 1
-smtp_tls_security_level = may
+smtp_tls_security_level = encrypt
 smtp_tls_session_cache_database = btree:${data_directory}/smtp_scache
-smtp_tls_CApath=/etc/ssl/certs
+smtp_tls_wrappermode = yes
 
 smtpd_tls_auth_only = yes
 smtpd_tls_received_header = yes
@@ -664,9 +669,11 @@ smtpd_sasl_type = dovecot
 smtpd_sasl_local_domain = $mydomain
 
 # pre-restrictions for recipients
-smtpd_relay_restrictions =
-  # this server must the final destination
-  reject_unauth_destination
+# TODO figure this out to only allow sasl authenticated access
+#smtpd_relay_restrictions =
+#  # this server must the final destination
+#  permit_sasl_authenticated
+#  reject_unauth_destination
 
 # don't allow plaintext auth methods on unencrypted connections
 smtpd_sasl_security_options = noanonymous, noplaintext
@@ -684,3 +691,9 @@ virtual_alias_maps = hash:/usr/local/etc/postfix/virtual
 
 # A map to forward local mail to mlmmj transport
 transport_maps = hash:/usr/local/etc/postfix/transport
+
+smtp_generic_maps = hash:/usr/local/etc/postfix/generic
+
+# TODO change to a secret later
+#default_transport = smtp:[smtp.migadu.com]:465
+default_transport = smtp:[smtp.gmail.com]:465

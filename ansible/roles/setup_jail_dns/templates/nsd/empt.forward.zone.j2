@@ -11,7 +11,7 @@ $TTL 1m
   IN NS dns
   MX 10 mail
 
-{% for host in groups['all'] %}
+{% for host in groups['jails'] %}
 {{ hostvars[host].inventory_hostname }} IN A {{ hostvars[host].ipv4_addr }}
 {{ hostvars[host].inventory_hostname }} IN AAAA {{ hostvars[host].ansible_host }}
 {% endfor %}

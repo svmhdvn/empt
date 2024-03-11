@@ -14,15 +14,7 @@ path = "/empt/jails/${name}";
 
 host.hostname = "${name}.{{ org_domain }}";
 
-# TODO figure out a way to generate link-local loopback ipv6 without the '2'.
-# Not strictly necessary right now.
-#ip6.addr = "lo0|fe80:2::${ip_auto_id}/64";
-
-# TODO temporary so that I can work away from home through wireguard VPN
-#ip4.addr = "wg0|10.29.222.${ip_auto_id}/24";
-
-# TODO waiting on resolution of FreeBSD bug 271069
-# See:
+# TODO See:
 # * https://bugs.freebsd.org/bugzilla/show_bug.cgi?id=271069
 # * https://dan.langille.org/2023/03/10/is-your-jail-not-getting-an-ipv6-address-soon-enough-blame-dad/
 #exec.start = "/bin/sh /etc/rc";
@@ -38,8 +30,12 @@ mount.fstab = "/etc/jail_fstabs/${name}.fstab";
 # TODO programmatically query name of network interface instead of 're0'
 {% for jail in groups['jails'] %}
 {{ jail }} {
-	ip4.addr = "re0|{{ hostvars[jail].ipv4_addr }}/24";
-	ip6.addr = "re0|{{ hostvars[jail].ansible_host }}/64";
+    ip4.addr = "re0|{{ hostvars[jail].ipv4_addr }}/24";
+    ip6.addr = "re0|{{ hostvars[jail].ansible_host }}/64";
+
+    # TODO figure out a way to generate link-local loopback ipv6 without the '2' scope identifier.
+    # Waiting on https://bugs.freebsd.org/bugzilla/show_bug.cgi?id=206012
+    ip6.addr += "lo0|fe80:2::{{ hostvars[jail].ipv6_loopback_suffix }}/64";
 }
 
 {% endfor %}

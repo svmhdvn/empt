@@ -60,6 +60,10 @@ mailing_lists:
       - carol
       - dan
       - eve
+  - name: it
+    recipients:
+      - dan
+      - eve
 
 kerberos_service_principals:
   - service: cifs

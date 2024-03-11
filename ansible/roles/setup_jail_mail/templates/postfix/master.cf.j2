@@ -11,7 +11,7 @@
 # ==========================================================================
 smtp      inet  n       -       n       -       -       smtpd
  -o syslog_name=postfix/smtp
- -o smtpd_client_restrictions=permit_inet_interfaces,reject
+ -o smtpd_client_restrictions=permit_mynetworks,reject
 #smtp      inet  n       -       n       -       1       postscreen
 #smtpd     pass  -       -       n       -       -       smtpd
 #dnsblog   unix  -       -       n       -       0       dnsblog

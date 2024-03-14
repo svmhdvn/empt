@@ -12,7 +12,7 @@
 
 - name: Copy TLS certificate to UnrealIRCd conf folder
   ansible.builtin.copy:
-    src: '/etc/ssl/{{ fqdn }}.crt.pem'
+    src: '/etc/ssl/{{ inventory_hostname }}.crt.pem'
     remote_src: true
     dest: /usr/local/etc/unreal/tls/server.cert.pem
     owner: ircd
@@ -21,7 +21,7 @@
 
 - name: Copy TLS private key to UnrealIRCd conf folder
   ansible.builtin.copy:
-    src: '/etc/ssl/{{ fqdn }}.key.pem'
+    src: '/etc/ssl/{{ inventory_hostname }}.key.pem'
     remote_src: true
     dest: /usr/local/etc/unreal/tls/server.key.pem
     owner: ircd

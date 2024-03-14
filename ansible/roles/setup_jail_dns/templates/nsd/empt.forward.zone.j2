@@ -11,9 +11,9 @@ $TTL 1m
   IN NS dns
   MX 10 mail
 
-{% for host in groups['jails'] %}
-{{ hostvars[host].inventory_hostname }} IN A {{ hostvars[host].ipv4_addr }}
-{{ hostvars[host].inventory_hostname }} IN AAAA {{ hostvars[host].ansible_host }}
+{% for jail in groups['jails'] %}
+{{ hostvars[jail].inventory_hostname }} IN A {{ ipv4_prefix }}.{{ hostvars[jail].jid }}
+{{ hostvars[jail].inventory_hostname }} IN AAAA {{ ula_prefix }}::eeee:{{ hostvars[jail].jid }}
 {% endfor %}
 
 ; kerberos automatic discovery

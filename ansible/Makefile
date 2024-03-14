@@ -21,23 +21,27 @@ ULA_PREFIX != echo "$(JAILHOST_IPV6_ULA)" | sed 's/\([[:xdigit:]]\{1,4\}:[[:xdig
 # out.
 IPV4_PREFIX != ifconfig | sed -n 's/.*[ \t]inet[ \t][^1]*\(10\.[[:digit:]]*\.[[:digit:]]*\).*/\1/p'
 
-run: inventory.ini
-	ansible-playbook -k -K main.yml
-
-inventory.ini: inventory.ini.template
-	sed \
-		-e 's/%ORG_DOMAIN%/$(ORG_DOMAIN)/g' \
-		-e 's/%FRESH_INSTALL_USER%/$(FRESH_INSTALL_USER)/g' \
-		-e 's/%JAILHOST_IPV6_ULA%/$(JAILHOST_IPV6_ULA)/g' \
-		-e 's/%ULA_PREFIX%/$(ULA_PREFIX)/g' \
-		-e 's/%IPV4_PREFIX%/$(IPV4_PREFIX)/g' \
-		$< > $@
+fresh_start:
+	ansible-playbook \
+		-u $(FRESH_INSTALL_USER) \
+		-i remote_inventory.ini \
+		-K fresh_start.yml
+	scp -r . $(FRESH_INSTALL_USER)@[$(JAILHOST_IPV6_ULA)]:~
+	ssh $(FRESH_INSTALL_USER)@$(JAILHOST_IPV6_ULA) doas ansible-playbook \
+		-i local_inventory.ini \
+		-e org_domain=$(ORG_DOMAIN) \
+		-e fresh_install_user=$(FRESH_INSTALL_USER) \
+		-e ula_prefix=$(ULA_PREFIX) \
+		-e ipv4_prefix=$(IPV4_PREFIX) \
+		main.yml
 
 reset:
-	ansible-playbook -k -K factory_reset.yml
-
-clean:
-	rm -f inventory.ini
+	ansible \
+		-u $(FRESH_INSTALL_USER) \
+		-b -K --become-method ansible.builtin.su \
+		-m import_role -a name=factory_reset \
+		-i remote_inventory.ini \
+		jailhost
 
 help:
 	@echo "usage:"
@@ -47,4 +51,4 @@ help:
 	@echo
 	@echo "    ipv6_addr: the jailhost's IPv6 Unique Local Address (ULA) on your network. REQUIRED"
 	@echo "    your_domain: your organization's Fully Qualified Domain Name (FQDN). Default = empt.siva"
-	@echo "    your_user: the user you added during the FreeBSD fresh install onto the jailhost. Default = siva"
+	@echo "    your_user: the user you added during the FreeBSD fresh install onto the jailhost. Default = tester"

@@ -15,7 +15,7 @@
 - name: Create CSR for new server certificate
   community.crypto.openssl_csr_pipe:
     privatekey_path: '{{ gen_host_cert_key_path }}'
-    common_name: '{{ fqdn }}'
+    common_name: '{{ inventory_hostname }}.{{ org_domain }}'
   register: gen_host_cert_csr
 
 - name: Check whether certificate already exists

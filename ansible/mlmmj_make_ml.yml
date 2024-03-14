@@ -21,7 +21,7 @@
 - name: Change relay host to local IPv6
   ansible.builtin.copy:
     dest: '/var/spool/mlmmj/{{ org_domain }}/{{ mailing_list.name }}/control/relayhost'
-    content: "{{ ansible_host }}\n"
+    content: "fe80::eeee:{{ jid }}%lo0\n"
     mode: '0644'
     owner: mlmmj
     group: mlmmj

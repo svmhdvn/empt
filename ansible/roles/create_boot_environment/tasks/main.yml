@@ -1,0 +1,10 @@
+- name: Create EMPT boot environment
+  ansible.builtin.raw: bectl create empt_fresh
+  changed_when: true
+
+- name: Activate EMPT boot environment
+  ansible.builtin.raw: bectl activate empt_fresh
+  changed_when: true
+
+- name: Reboot into EMPT boot environment
+  ansible.builtin.reboot:

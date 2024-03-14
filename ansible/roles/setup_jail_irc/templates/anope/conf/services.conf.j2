@@ -12,7 +12,7 @@
 define
 {
 	name = "services.host"
-	value = "services.{{ fqdn }}"
+	value = "services.{{ inventory_hostname }}.{{ org_domain }}"
 }
 
 /*

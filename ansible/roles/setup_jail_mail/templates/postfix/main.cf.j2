@@ -232,7 +232,7 @@ mynetworks_style = host
 #mynetworks = $config_directory/mynetworks
 #mynetworks = hash:$config_directory/network_table
 mynetworks =
-  [{{ ansible_host }}]/128
+  [fe80::eeee:{{ jid }}%lo0]/128
 # The relay_domains parameter restricts what destinations this system will
 # relay mail to.  See the smtpd_relay_restrictions and
 # smtpd_recipient_restrictions descriptions in  postconf(5) for detailed
@@ -654,8 +654,8 @@ smtp_tls_wrappermode = yes
 
 smtpd_tls_auth_only = yes
 smtpd_tls_received_header = yes
-smtpd_tls_cert_file = /etc/ssl/{{ fqdn }}.crt.pem
-smtpd_tls_key_file = /etc/ssl/{{ fqdn }}.key.pem
+smtpd_tls_cert_file = /etc/ssl/{{ inventory_hostname }}.crt.pem
+smtpd_tls_key_file = /etc/ssl/{{ inventory_hostname }}.key.pem
 smtpd_tls_loglevel = 1
 smtpd_tls_received_header = yes
 

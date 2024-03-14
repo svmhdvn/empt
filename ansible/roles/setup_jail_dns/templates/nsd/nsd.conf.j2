@@ -495,5 +495,5 @@ zone:
   # RRLend
 
 zone:
-  name: "{{ (ula_subnet | ansible.utils.ipaddr('revdns'))[20 * 2:] }}"
+  name: "{{ (ula_prefix + "::" | ansible.utils.ipaddr('revdns'))[20 * 2:] }}"
   zonefile: "empt.reverse.zone"

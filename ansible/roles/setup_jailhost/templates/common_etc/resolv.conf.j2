@@ -1,1 +1,3 @@
-nameserver {{ hostvars['dns'].ansible_host }}
+# TODO only enable dns server for publically facing jails
+#search {{ org_domain }}
+#nameserver fe80::eeee:{{ hostvars['dns'].jid }}%lo0

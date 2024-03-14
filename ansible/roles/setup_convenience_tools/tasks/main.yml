@@ -2,29 +2,10 @@
   ansible.builtin.command: 'pkg install -y tmux wget htop tree'
   changed_when: true
 
-- name: "Create tester user"
-  ansible.builtin.user:
-    name: tester
-    append: true
-    groups: wheel
-
-- name: "Add control host's ssh key"
-  ansible.posix.authorized_key:
-    user: tester
-    key: "{{ lookup('file', '~/.ssh/id_ed25519.pub') }}"
-
 - name: "Configure tmux"
   ansible.builtin.copy:
     src: tmux.conf
-    dest: /home/tester/.tmux.conf
+    dest: '/home/{{ fresh_install_user }}/.tmux.conf'
     mode: '0644'
-    owner: tester
-    group: tester
-
-- name: "Install script to reset to fresh install"
-  ansible.builtin.copy:
-    src: reset_to_fresh_install.sh
-    dest: /home/tester/reset_to_fresh_install.sh
-    mode: '0755'
-    owner: tester
-    group: tester
+    owner: '{{ fresh_install_user }}'
+    group: '{{ fresh_install_user }}'

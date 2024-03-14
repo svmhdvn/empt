@@ -1,0 +1,18 @@
+---
+- name: Start a fresh EMPT installation
+  hosts: jailhost
+  roles:
+    - factory_reset
+    - create_boot_environment
+    - bootstrap
+
+# NOTE Needs to 'become' root with 'su' to avoid
+# /etc/master.passwd pkgbase troubles
+    - update_poudriere
+
+- name: Install ansible on jailhost
+  hosts: jailhost
+  tasks:
+    - name: Install ansible and its dependencies
+      ansible.builtin.command: pkg install -y py311-ansible py311-cryptography py311-netaddr
+      changed_when: true

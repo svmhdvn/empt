@@ -1,2 +1,2 @@
-gen_host_cert_crt_path: '/etc/ssl/{{ fqdn }}.crt.pem'
-gen_host_cert_key_path: '/etc/ssl/{{ fqdn }}.key.pem'
+gen_host_cert_crt_path: '/etc/ssl/{{ inventory_hostname }}.crt.pem'
+gen_host_cert_key_path: '/etc/ssl/{{ inventory_hostname }}.key.pem'

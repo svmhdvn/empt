@@ -100,15 +100,6 @@
     - /etc/jail_fstabs
     - /tmp/base_jail
 
-# TODO move back to downloading from freebsd.org once fully tested
-# - name: "Download FreeBSD base system archive to local filesystem"
-#   ansible.builtin.get_url:
-#     url: 'https://download.freebsd.org/ftp/releases/amd64/{{ freebsd_version }}/base.txz'
-#     dest: /tmp/
-#     owner: root
-#     group: wheel
-#     mode: '0644'
-
 - name: "Populate jailhost /etc files"
   ansible.builtin.template:
     src: '{{ item.src }}'
@@ -118,6 +109,15 @@
     group: wheel
   with_community.general.filetree: '{{ "templates/jailhost_etc/" }}'
   when: item.state == 'file'
+
+# TODO organize better
+- name: Configure dhcpcd
+  ansible.builtin.template:
+    src: dhcpcd.conf.j2
+    dest: /usr/local/etc/dhcpcd.conf
+    mode: '0644'
+    owner: root
+    group: wheel
 
 - name: "Unarchive (thick) base jail to temporary location"
   ansible.builtin.unarchive:
@@ -152,13 +152,6 @@
     mode: '0644'
     owner: root
     group: wheel
-
-- name: "Add control host's ssh key to base jail"
-  ansible.posix.authorized_key:
-    user: root
-    key: "{{ lookup('file', '~/.ssh/id_ed25519.pub') }}"
-    path: /tmp/base_jail/root/.ssh/authorized_keys
-    exclusive: false
 
 - name: "Clone (thick) base jail to installed locations"
   ansible.builtin.command: 'cp -a /tmp/base_jail /empt/jails/{{ hostvars[item].inventory_hostname }}'

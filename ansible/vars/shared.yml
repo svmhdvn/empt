@@ -1,12 +1,5 @@
-freebsd_version: 14.0-RELEASE
-ula_subnet: '{{ ansible_host | ansible.utils.ipsubnet(64) }}'
-
 # TODO secure
 secret_ca_passphrase: cakey
-
-# TODO determine if we should use DHCPv6 instead of random mac + SLAAC for each jail's IP
-# TODO automate/loop the individual jail IP generation, especially the random_mac seeds
-# TODO currently hardcoding the _random_ IPv6 addresses for convenience
 
 host_jails_mapped_users:
   mlmmj:

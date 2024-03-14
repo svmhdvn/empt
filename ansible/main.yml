@@ -1,54 +1,6 @@
 ---
-- name: Install python for ansible to work
-  hosts: jailhost
-  remote_user: '{{ fresh_install_user }}'
-  become: true
-  become_method: ansible.builtin.su
-  gather_facts: false
-  tasks:
-    - name: Install python
-      ansible.builtin.raw: pkg install -y python
-      changed_when: true
-
-- name: Setup boot environment for EMPT installation
-  hosts: jailhost
-  remote_user: '{{ fresh_install_user }}'
-  become: true
-  become_method: ansible.builtin.su
-  tasks:
-    - name: Create EMPT boot environment
-      ansible.builtin.command: bectl create empt_fresh
-      changed_when: true
-
-    - name: Activate EMPT boot environment
-      ansible.builtin.command: bectl activate empt_fresh
-      changed_when: true
-
-    - name: Reboot into EMPT boot environment
-      ansible.builtin.reboot:
-
-- name: Bootstrap jailhost
-  hosts: jailhost
-  remote_user: '{{ fresh_install_user }}'
-  become: true
-  become_method: ansible.builtin.su
-  roles:
-    - bootstrap
-
-# Needs to 'become' root with 'su' to avoid /etc/master.passwd pkgbase troubles
-- name: Upgrade to latest FreeBSD stable pkgbase and ports from Poudriere repos
-  hosts: jailhost
-  remote_user: ansible
-  become: true
-  become_method: ansible.builtin.su
-  roles:
-    - update_poudriere
-
 - name: Setup jailhost
   hosts: jailhost
-  remote_user: ansible
-  become: true
-  become_method: community.general.doas
   vars_files:
     - vars/shared.yml
   roles:
@@ -58,36 +10,16 @@
 
 - name: Bootstrap all jails
   hosts: jails
-  remote_user: root
   roles:
     - bootstrap
 
-# - name: Reboot to refresh hostnames and FQDNs
-#  hosts: jailhost
-#  remote_user: ansible
-#  become: true
-#  become_method: community.general.doas
-#  tasks:
-#    - name: Reboot
-#      ansible.builtin.reboot:
-#        # TODO there must be a cleaner way of doing this, but for now, this works
-#        # NOTE this checks that ALL jails are active by checking the *number* of active jails
-#        # against our known number
-#        test_command: 'jls name | wc -l | xargs test {{ groups["jails"] | count }} ='
-
 - name: Refresh /etc/hosts on all hosts
   hosts: all
-  remote_user: ansible
-  become: true
-  become_method: community.general.doas
   roles:
     - refresh_etc_hosts
 
 - name: Setup certauth jail
   hosts: certauth
-  remote_user: ansible
-  become: true
-  become_method: community.general.doas
   environment:
     CRYPTOGRAPHY_OPENSSL_NO_LEGACY: "1"
   vars_files:
@@ -97,9 +29,6 @@
 
 - name: Generate host certs for each jail
   hosts: jails
-  remote_user: ansible
-  become: true
-  become_method: community.general.doas
   environment:
     CRYPTOGRAPHY_OPENSSL_NO_LEGACY: "1"
   vars_files:
@@ -109,29 +38,21 @@
 
 - name: Setup kerberos KDC
   hosts: kerberos
-  remote_user: ansible
-  become: true
-  become_method: community.general.doas
   vars_files:
     - vars/shared.yml
   roles:
     - setup_jail_kerberos
 
-- name: Setup IRC jail
-  hosts: irc
-  remote_user: ansible
-  become: true
-  become_method: community.general.doas
-  vars_files:
-    - vars/shared.yml
-  roles:
-    - setup_jail_irc
+# TODO re-enable after figuring out template failure
+# - name: Setup IRC jail
+#   hosts: irc
+#   vars_files:
+#     - vars/shared.yml
+#   roles:
+#     - setup_jail_irc
 
 - name: Setup DNS server jail
   hosts: dns
-  remote_user: ansible
-  become: true
-  become_method: community.general.doas
   vars_files:
     - vars/shared.yml
   roles:
@@ -139,9 +60,6 @@
 
 - name: Setup samba CIFS jail
   hosts: cifs
-  remote_user: ansible
-  become: true
-  become_method: community.general.doas
   vars_files:
     - vars/shared.yml
   roles:
@@ -149,9 +67,6 @@
 
 - name: Setup ssh jail
   hosts: ssh
-  remote_user: ansible
-  become: true
-  become_method: community.general.doas
   vars_files:
     - vars/shared.yml
   roles:
@@ -159,9 +74,6 @@
 
 - name: Setup mail server jail
   hosts: mail
-  remote_user: ansible
-  become: true
-  become_method: community.general.doas
   vars_files:
     - vars/shared.yml
   roles:
@@ -181,9 +93,6 @@
 
 - name: Add all pre-configured humans
   hosts: jailhost
-  remote_user: ansible
-  become: true
-  become_method: community.general.doas
   vars_files:
     - vars/shared.yml
   tasks:
@@ -196,19 +105,7 @@
 
 - name: Setup cron monitoring jail
   hosts: cronmonitor
-  remote_user: ansible
-  become: true
-  become_method: community.general.doas
   vars_files:
     - vars/shared.yml
   roles:
     - setup_jail_cronmonitor
-
-- name: Reboot after successful run
-  hosts: jailhost
-  remote_user: ansible
-  become: true
-  become_method: community.general.doas
-  tasks:
-    - name: Reboot
-      ansible.builtin.reboot:

@@ -8,6 +8,7 @@
 - name: Destroy EMPT installation boot environment
   ansible.builtin.raw: bectl destroy empt_fresh
   changed_when: true
+  failed_when: false
 
 - name: Destroy EMPT ZFS datasets
   ansible.builtin.raw: zfs destroy -Rf zroot/empt

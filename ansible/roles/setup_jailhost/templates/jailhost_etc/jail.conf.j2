@@ -26,16 +26,18 @@ exec.stop = "/bin/sh /etc/rc.shutdown";
 # Common fstab to share /usr/ports at a minimum
 mount.fstab = "/etc/jail_fstabs/${name}.fstab";
 
-# TODO use real ULA subnet prefix length instead of '64'
 # TODO programmatically query name of network interface instead of 're0'
+# TODO fix the implied upper limit of 10 jails in the 20<jid>
+ip4.addr = "re0|{{ ipv4_prefix }}.20${jid}/24";
+# TODO use real ULA subnet prefix length instead of '64'
+ip6.addr = "re0|{{ ula_prefix }}::eeee:${jid}/64";
+# TODO figure out a way to generate link-local loopback ipv6 without the '2' scope identifier.
+# Waiting on https://bugs.freebsd.org/bugzilla/show_bug.cgi?id=206012
+ip6.addr += "lo0|fe80:2::eeee:${jid}/64";
+
 {% for jail in groups['jails'] %}
 {{ jail }} {
-    ip4.addr = "re0|{{ hostvars[jail].ipv4_addr }}/24";
-    ip6.addr = "re0|{{ hostvars[jail].ansible_host }}/64";
-
-    # TODO figure out a way to generate link-local loopback ipv6 without the '2' scope identifier.
-    # Waiting on https://bugs.freebsd.org/bugzilla/show_bug.cgi?id=206012
-    ip6.addr += "lo0|fe80:2::{{ hostvars[jail].ipv6_loopback_suffix }}/64";
+    jid = {{ hostvars[jail].jid }};
 }
 
 {% endfor %}

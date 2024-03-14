@@ -1,9 +1,0 @@
----
-# Needs to 'become' root with 'su' to avoid /etc/master.passwd pkgbase troubles
-- name: Upgrade to latest FreeBSD stable pkgbase and ports from Poudriere repos
-  hosts: jailhost
-  remote_user: ansible
-  become: true
-  become_method: ansible.builtin.su
-  roles:
-    - update_poudriere

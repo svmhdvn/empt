@@ -1,25 +1,12 @@
 - name: Install basic ansible dependencies
-  ansible.builtin.raw: pkg install -y python doas gtar unzip
+  ansible.builtin.raw: pkg install -y python doas gtar unzip rsync
   changed_when: true
 
-# TODO deal with properly setting password
-- name: Create ansible bootstrapping setup user
-  ansible.builtin.user:
-    name: ansible
-    append: true
-    groups: wheel
-
-# local key just for testing
-- name: Add control host's ssh key to setup user's authorized keys
-  ansible.posix.authorized_key:
-    user: ansible
-    key: "{{ lookup('file', '~/.ssh/id_ed25519.pub') }}"
-    exclusive: false
-
-- name: Add setup user to doas configuration
-  ansible.builtin.copy:
-    content: "permit nopass :wheel\n"
-    dest: /usr/local/etc/doas.conf
+- name: Temporarily setup doas.conf for :wheel
+  ansible.builtin.lineinfile:
+    line: permit nopass :wheel
+    path: /usr/local/etc/doas.conf
+    create: true
     owner: root
     group: wheel
     mode: '0600'

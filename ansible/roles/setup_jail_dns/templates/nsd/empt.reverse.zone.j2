@@ -10,5 +10,5 @@ $TTL 1m
   IN NS {{ inventory_hostname }}.{{ org_domain }}.
 
 {% for jail in groups['jails'] %}
-{{ (ula_prefix + "::eeee:" + hostvars[jail].jid | ansible.utils.ipaddr('revdns'))[:20 * 2 - 1] }} IN PTR {{ jail }}.{{ org_domain }}.
+{{ ("%s::eeee:%d" | format(ula_prefix, hostvars[jail].jid) | ansible.utils.ipaddr('revdns'))[:20 * 2 - 1] }} IN PTR {{ jail }}.{{ org_domain }}.
 {% endfor %}

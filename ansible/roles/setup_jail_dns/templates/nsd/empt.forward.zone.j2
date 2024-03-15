@@ -12,7 +12,7 @@ $TTL 1m
   MX 10 mail
 
 {% for jail in groups['jails'] %}
-{{ hostvars[jail].inventory_hostname }} IN A {{ ipv4_prefix }}.{{ hostvars[jail].jid }}
+{{ hostvars[jail].inventory_hostname }} IN A {{ ipv4_prefix }}.20{{ hostvars[jail].jid }}
 {{ hostvars[jail].inventory_hostname }} IN AAAA {{ ula_prefix }}::eeee:{{ hostvars[jail].jid }}
 {% endfor %}
 

@@ -43,13 +43,12 @@
   roles:
     - setup_jail_kerberos
 
-# TODO re-enable after figuring out template failure
-# - name: Setup IRC jail
-#   hosts: irc
-#   vars_files:
-#     - vars/shared.yml
-#   roles:
-#     - setup_jail_irc
+- name: Setup IRC jail
+  hosts: irc
+  vars_files:
+    - vars/shared.yml
+  roles:
+    - setup_jail_irc
 
 - name: Setup DNS server jail
   hosts: dns

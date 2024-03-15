@@ -29,15 +29,18 @@ mount.fstab = "/etc/jail_fstabs/${name}.fstab";
 # TODO programmatically query name of network interface instead of 're0'
 # TODO fix the implied upper limit of 10 jails in the 20<jid>
 ip4.addr = "re0|{{ ipv4_prefix }}.20${jid}/24";
-# TODO use real ULA subnet prefix length instead of '64'
-ip6.addr = "re0|{{ ula_prefix }}::eeee:${jid}/64";
 # TODO figure out a way to generate link-local loopback ipv6 without the '2' scope identifier.
 # Waiting on https://bugs.freebsd.org/bugzilla/show_bug.cgi?id=206012
-ip6.addr += "lo0|fe80:2::eeee:${jid}/64";
+# TODO narrow down fe80:: subnet
+ip6.addr = "lo0|fe80:2::eeee:${jid}/64";
 
+# TODO use real ULA subnet prefix length instead of '64'
 {% for jail in groups['jails'] %}
 {{ jail }} {
     jid = {{ hostvars[jail].jid }};
+{% if hostvars[jail].ula %}
+    ip6.addr += "re0|{{ ula_prefix }}::eeee:${jid}/64";
+{% endif %}
 }
 
 {% endfor %}

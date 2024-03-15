@@ -16,12 +16,12 @@
   ansible.builtin.user:
     name: '{{ human.username }}'
     comment: '{{ human.fullname }}'
-    home: '/empt/homes/{{ human.username }}'
+    home: '/home/{{ human.username }}'
     uid: '{{ human.uid }}'
     shell: /usr/sbin/nologin
   delegate_to: '{{ item }}'
   loop:
-    - jailhost
+#    - jailhost
     - cifs
 
 - name: "Create a login-capable unix user for the human in the ssh jail"
@@ -32,7 +32,7 @@
     uid: '{{ human.uid }}'
   delegate_to: ssh
 
-- name: "Change ownership of home to narrow strictly to human"
+- name: "Change ownership of home strictly narrowed down to human"
   ansible.builtin.file:
     name: '/empt/homes/{{ human.username }}'
     state: directory

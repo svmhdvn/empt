@@ -11,8 +11,10 @@
     group: wheel
     validate: '/usr/local/bin/testparm --suppress-prompt %s'
 
-# TODO modify the cifs/cifs.empt.siva kerberos credential to avoid sending a
-# PAC to samba with the 'no-auth-data-reqd' attribute
+- name: Allow KDC to accept auth requests from samba with no PAC
+  ansible.builtin.command: 'kadmin --local modify --attributes=no-auth-data-reqd cifs/cifs.{{ org_domain }}'
+  delegate_to: kerberos
+  changed_when: true
 
 - name: Enable samba server
   ansible.builtin.service:

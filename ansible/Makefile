@@ -34,13 +34,19 @@ fresh_start:
 		-e ula_prefix=$(ULA_PREFIX) \
 		-e ipv4_prefix=$(IPV4_PREFIX) \
 		main.yml
+	ansible \
+		-u $(FRESH_INSTALL_USER) \
+		-b -K --become-method ansible.builtin.su \
+		-i remote_inventory.ini \
+		-m reboot \
+		jailhost
 
 reset:
 	ansible \
 		-u $(FRESH_INSTALL_USER) \
 		-b -K --become-method ansible.builtin.su \
-		-m import_role -a name=factory_reset \
 		-i remote_inventory.ini \
+		-m import_role -a name=factory_reset \
 		jailhost
 
 help:

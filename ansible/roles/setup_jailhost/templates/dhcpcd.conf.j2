@@ -51,4 +51,8 @@ slaac hwaddr
 noipv6rs
 interface re0
   ipv6rs
-  ia_na {{ hostvars['mail'].jid }}
+{% for jail in groups['jails'] %}
+{% if hostvars[jail].public_ipv6 %}
+  ia_na {{ hostvars[jail].jid }}
+{% endif %}
+{% endfor %}

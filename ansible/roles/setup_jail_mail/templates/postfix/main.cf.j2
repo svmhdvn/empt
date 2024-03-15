@@ -232,7 +232,9 @@ mynetworks_style = host
 #mynetworks = $config_directory/mynetworks
 #mynetworks = hash:$config_directory/network_table
 mynetworks =
-  [fe80::eeee:{{ jid }}%lo0]/128
+  [fe80::eeee:{{ jid }}]/128
+  [fe80::eeee:{{ hostvars['cronmonitor'].jid }}]/128
+
 # The relay_domains parameter restricts what destinations this system will
 # relay mail to.  See the smtpd_relay_restrictions and
 # smtpd_recipient_restrictions descriptions in  postconf(5) for detailed

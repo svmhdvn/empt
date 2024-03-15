@@ -1,6 +1,14 @@
 - name: "Install jailhost required packages"
-  ansible.builtin.command: pkg install -y dhcpcd nagios-plugins heimdal-devel
+  ansible.builtin.command: pkg install -y cpu-microcode dhcpcd nagios-plugins heimdal-devel
   changed_when: true
+
+# TODO query intel or AMD, currently hardcoding for wyse
+- name: Enable early CPU microcode update at boot
+  ansible.builtin.blockinfile:
+    path: /boot/loader.conf
+    block: |
+      cpu_microcode_load="YES"
+      cpu_microcode_name="/boot/firmware/amd-ucode.bin"
 
 - name: "Create ZFS top level dataset for empt"
   community.general.zfs:

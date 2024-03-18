@@ -3,7 +3,7 @@
 #   username: "str"
 #   fullname: "str"
 
-- name: "Create home directory in jailhost"
+- name: "Create empt home directory in jailhost"
   community.general.zfs:
     name: 'zroot/empt/homes/{{ human.username }}'
     state: present
@@ -12,43 +12,34 @@
       quota: '1G'
       reservation: '1G'
 
-- name: "Create login-incapable system unix users in the required hosts"
-  ansible.builtin.user:
-    name: '{{ human.username }}'
-    comment: '{{ human.fullname }}'
-    home: '/home/{{ human.username }}'
-    uid: '{{ human.uid }}'
-    shell: /usr/sbin/nologin
-  delegate_to: '{{ item }}'
-  loop:
-#    - jailhost
-    - cifs
-
-- name: "Create a login-capable unix user for the human in the ssh jail"
-  ansible.builtin.user:
-    name: '{{ human.username }}'
-    comment: '{{ human.fullname }}'
-    home: '/home/{{ human.username }}'
-    uid: '{{ human.uid }}'
-  delegate_to: ssh
-
 - name: "Change ownership of home strictly narrowed down to human"
   ansible.builtin.file:
     name: '/empt/homes/{{ human.username }}'
     state: directory
     recurse: true
     mode: '1700'
-    owner: '{{ human.username }}'
-    group: '{{ human.username }}'
+    owner: '{{ human.uid }}'
+    group: '{{ human.uid }}'
 
-- name: "Create dependent service jail's missing nullfs mount destinations"
-  ansible.builtin.file:
-    path: '/empt/jails/{{ item }}/home/{{ human.username }}'
-    state: directory
-    mode: '0755'
-  loop:
-    - cifs
-    - ssh
+- name: "Create login-incapable system unix users in the required hosts"
+  ansible.builtin.user:
+    name: '{{ human.username }}'
+    comment: '{{ human.fullname }}'
+    home: '/home/{{ human.username }}'
+    create_home: false
+    uid: '{{ human.uid }}'
+    shell: /usr/sbin/nologin
+  delegate_to: cifs
+
+- name: "Create a login-capable unix user for the human in the ssh jail"
+  ansible.builtin.user:
+    name: '{{ human.username }}'
+    comment: '{{ human.fullname }}'
+    home: '/home/{{ human.username }}'
+    create_home: false
+    uid: '{{ human.uid }}'
+  delegate_to: ssh
+
 
 - name: "Add new home directory nullfs mount to dependent service jail fstabs"
   ansible.builtin.lineinfile:

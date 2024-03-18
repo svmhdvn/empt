@@ -41,6 +41,14 @@ fresh_start:
 		-m reboot \
 		jailhost
 
+update_poudriere:
+	ansible \
+		-u $(FRESH_INSTALL_USER) \
+		-b -K --become-method ansible.builtin.su \
+		-i remote_inventory.ini \
+		-m import_role -a name=update_poudriere \
+		jailhost
+
 reset:
 	ansible \
 		-u $(FRESH_INSTALL_USER) \

@@ -96,8 +96,6 @@
       # encryption: 'on'
       setuid: 'off'
       exec: 'off'
-      # TODO remove krb5i after https://bugs.freebsd.org/bugzilla/show_bug.cgi?id=270592 is resolved
-      sharenfs: '-sec=krb5p:krb5i'
 
 - name: "Create all missing directories on jailhost"
   ansible.builtin.file:

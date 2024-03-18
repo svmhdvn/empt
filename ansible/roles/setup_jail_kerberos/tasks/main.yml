@@ -88,7 +88,7 @@
   ansible.builtin.copy:
     src: '/empt/jails/kerberos/tmp/{{ item.host }}.keytab'
     remote_src: true
-    dest: '{{ item.keytab_path }}'
+    dest: '/empt/jails/{{ item.host }}/etc/krb5.keytab'
     owner: root
     group: wheel
     mode: '0600'

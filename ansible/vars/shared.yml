@@ -61,19 +61,11 @@ mailing_lists:
 kerberos_service_principals:
   - service: cifs
     host: cifs
-    keytab_path: /empt/jails/cifs/etc/krb5.keytab
   - service: host
     host: ssh
-    keytab_path: /empt/jails/ssh/etc/krb5.keytab
   - service: imap
     host: mail
-    keytab_path: /empt/jails/mail/etc/krb5.keytab
   - service: smtp
     host: mail
-    keytab_path: /empt/jails/mail/etc/krb5.keytab
-  - service: nfs
-    host: jailhost
-    keytab_path: /etc/krb5.keytab
   - service: host
     host: irc
-    keytab_path: /empt/jails/irc/etc/krb5.keytab

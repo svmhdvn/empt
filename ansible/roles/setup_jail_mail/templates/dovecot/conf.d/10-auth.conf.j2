@@ -66,7 +66,7 @@ auth_default_realm = {{ org_domain | upper }}
 # the standard variables here, eg. %Lu would lowercase the username, %n would
 # drop away the domain if it was given, or "%n-AT-%d" would change the '@' into
 # "-AT-". This translation is done after auth_username_translation changes.
-#auth_username_format = %u
+auth_username_format = %Ln
 
 # If you want to allow master users to log in by specifying the master
 # username within the normal username string (ie. not using SASL mechanism's
@@ -122,8 +122,8 @@ auth_default_realm = {{ org_domain | upper }}
 #!include auth-master.conf.ext
 
 userdb {
-	driver = static
-	args = uid=vmail gid=vmail home=/var/mail/vhosts/%d/%n
+	driver = passwd
+	args = blocking=no
 }
 
 passdb {

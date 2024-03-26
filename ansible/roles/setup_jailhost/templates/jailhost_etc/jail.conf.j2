@@ -1,6 +1,8 @@
+# TODO choose a devfs_ruleset
 mount.devfs;
 
 # Needed for ping, traceroute, etc.
+# TODO only allow this for certain jails that need it
 allow.raw_sockets;
 
 # Maintain a clean ENV before starting each jail
@@ -24,23 +26,17 @@ exec.start += "/bin/sh /etc/rc";
 exec.stop = "/bin/sh /etc/rc.shutdown";
 
 # Common fstab to share /usr/ports at a minimum
-mount.fstab = "/etc/jail_fstabs/${name}.fstab";
-
-# TODO programmatically query name of network interface instead of 're0'
-# TODO fix the implied upper limit of 10 jails in the 20<jid>
-ip4.addr = "re0|{{ ipv4_prefix }}.20${jid}/24";
-# TODO figure out a way to generate link-local loopback ipv6 without the '2' scope identifier.
-# Waiting on https://bugs.freebsd.org/bugzilla/show_bug.cgi?id=206012
-# TODO narrow down fe80:: subnet
-ip6.addr = "lo0|fe80:2::eeee:${jid}/64";
+mount.fstab = "/empt/etc/jail_fstabs/${name}.fstab";
 
 # TODO use real ULA subnet prefix length instead of '64'
-{% for jail in groups['jails'] %}
-{{ jail }} {
-    jid = {{ hostvars[jail].jid }};
-{% if hostvars[jail].ula %}
-    ip6.addr += "re0|{{ ula_prefix }}::eeee:${jid}/64";
-{% endif %}
-}
+# TODO programmatically query name of network interface instead of 're0'
+# TODO fix the implied upper limit of 10 jails in the 20<jid>
+# TODO figure out a way to generate link-local loopback ipv6 without the '2' scope identifier.
+# Waiting on https://bugs.freebsd.org/bugzilla/show_bug.cgi?id=206012
+# TODO narrow down fe80:: subnet range
+# TODO currently hardcoding the _random_ IPv6 addresses for convenience
+ip6.addr = "lo0|fe80:2::eeee:${jid}/64";
 
+{% for jail in groups['jails'] %}
+.include /empt/etc/jail.conf.d/{{ jail }}.jail.conf
 {% endfor %}

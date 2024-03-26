@@ -17,6 +17,15 @@
     extra_zfs_properties:
       mountpoint: '/empt'
 
+- name: "Create ZFS dataset for EMPT miscellaneous configuration files"
+  community.general.zfs:
+    name: "zroot/empt/etc"
+    state: present
+    extra_zfs_properties:
+      compression: 'zstd'
+      exec: 'off'
+      setuid: 'off'
+
 - name: "Create ZFS dataset for the top level jails filesystem"
   community.general.zfs:
     name: "zroot/empt/jails"
@@ -39,7 +48,7 @@
 
 - name: "Create log subdirectories for individual jail mounting"
   ansible.builtin.file:
-    path: '/empt/logs/{{ hostvars[item].inventory_hostname }}'
+    path: '/empt/logs/{{ item }}'
     state: directory
     mode: '0755'
   loop: '{{ groups["jails"] }}'
@@ -57,32 +66,6 @@
       # encryption: 'on'
       exec: 'off'
       setuid: 'off'
-
-- name: "Create ZFS datasets for all email-related filesystems"
-  community.general.zfs:
-    name: 'zroot{{ item.path }}'
-    state: present
-    extra_zfs_properties:
-      canmount: 'on'
-  loop: '{{ special_zfs_datasets }}'
-
-- name: "Create unix system users mapped on both jailhost and jails"
-  ansible.builtin.user:
-    name: '{{ item.key }}'
-    comment: '{{ item.value.comment }}'
-    uid: '{{ item.value.uid }}'
-    home: '{{ item.value.host_home_dir }}'
-    shell: /usr/sbin/nologin
-  loop: '{{ host_jails_mapped_users | dict2items }}'
-
-- name: "Change ownership of special ZFS datasets"
-  ansible.builtin.file:
-    name: '{{ item.path }}'
-    state: directory
-    recurse: true
-    owner: '{{ item.owner }}'
-    group: '{{ item.owner }}'
-  loop: '{{ special_zfs_datasets }}'
 
 - name: "Create top level ZFS dataset for human unix account home directories"
   community.general.zfs:
@@ -103,9 +86,10 @@
     state: directory
     mode: '0755'
   loop:
-    - /etc/jail_fstabs
+    - /empt/etc/jail_fstabs
     - /tmp/base_jail
 
+# TODO audit file permissions one by one
 - name: "Populate jailhost /etc files"
   ansible.builtin.template:
     src: '{{ item.src }}'
@@ -116,14 +100,33 @@
   with_community.general.filetree: '{{ "templates/jailhost_etc/" }}'
   when: item.state == 'file'
 
-# TODO organize better
-- name: Configure dhcpcd
+- name: "Populate jailhost /usr/local/etc files"
   ansible.builtin.template:
-    src: dhcpcd.conf.j2
-    dest: /usr/local/etc/dhcpcd.conf
+    src: '{{ item.src }}'
+    dest: '/usr/local/etc/{{ item.path | replace(".j2", "") }}'
     mode: '0644'
     owner: root
     group: wheel
+  with_community.general.filetree: '{{ "templates/jailhost_usr_local_etc/" }}'
+  when: item.state == 'file'
+
+- name: Create missing jail.conf.d directory
+  ansible.builtin.file:
+    path: /empt/etc/jail.conf.d
+    state: directory
+    mode: '0700'
+    owner: root
+    group: wheel
+
+- name: Configure individual jails
+  ansible.builtin.template:
+    src: '{{ item.src }}'
+    dest: '/empt/etc/jail.conf.d/{{ item.path | replace(".j2", "") }}'
+    mode: '0600'
+    owner: root
+    group: wheel
+  with_community.general.filetree: '{{ "templates/jail.conf.d" }}'
+  when: item.state == 'file'
 
 - name: "Unarchive (thick) base jail to temporary location"
   ansible.builtin.unarchive:
@@ -160,37 +163,17 @@
     group: wheel
 
 - name: "Clone (thick) base jail to installed locations"
-  ansible.builtin.command: 'cp -a /tmp/base_jail /empt/jails/{{ hostvars[item].inventory_hostname }}'
+  ansible.builtin.command: 'cp -a /tmp/base_jail /empt/jails/{{ item }}'
   loop: '{{ groups["jails"] }}'
   changed_when: true
 
-# TODO move these directory creation tasks to central location
-# or find better solution.
-# I don't think these belong in this file
-# =====================
-- name: "Create mail jail's missing nullfs mount destinations"
-  ansible.builtin.file:
-    path: '{{ item }}'
-    state: directory
-    mode: '0755'
-  loop:
-    - /empt/jails/mail/var/mail/attachments
-    - /empt/jails/mail/var/mail/local
-    - /empt/jails/mail/var/mail/vhosts
-    - /empt/jails/mail/var/spool/mlmmj
-
-# =====================
-
-# TODO move to /empt for better encapsulation
-- name: "Copy the common fstab for each jail"
+- name: Copy the common fstab for each jail
   ansible.builtin.template:
-    src: 'jail_fstabs/{{ hostvars[item].inventory_hostname }}.fstab'
-    dest: '/etc/jail_fstabs/{{ hostvars[item].inventory_hostname }}.fstab'
+    src: 'jail_fstabs/{{ item }}.fstab'
+    dest: '/empt/etc/jail_fstabs/{{ item }}.fstab'
     owner: root
     group: wheel
     mode: '0644'
-  vars:
-    setup_jailhost_fstab_jail: '{{ hostvars[item].inventory_hostname }}'
   loop: '{{ groups["jails"] }}'
 
 # TODO no idea why this needs to be broken into two steps

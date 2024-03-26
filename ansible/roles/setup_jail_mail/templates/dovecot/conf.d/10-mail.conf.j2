@@ -27,8 +27,8 @@
 #
 # <doc/wiki/MailLocation.txt>
 #
-mail_home = /var/mail/vhosts/%d/%n
-mail_location = mdbox:~/mdbox
+mail_home = /var/mail/mail_home
+mail_location = maildir:/home/%n/Mail
 
 # If you need to set multiple mailbox locations or want to change default
 # namespace settings, you can do it by defining namespace sections.
@@ -51,7 +51,7 @@ namespace inbox {
 
   # Prefix required to access this namespace. This needs to be different for
   # all namespaces. For example "Public/".
-  #prefix = 
+  #prefix =
 
   # Physical location of the mailbox. This is in same format as
   # mail_location, which is also the default for it.
@@ -112,7 +112,7 @@ namespace inbox {
 # Group to enable temporarily for privileged operations. Currently this is
 # used only with INBOX when either its initial creation or dotlocking fails.
 # Typically this is set to "mail" to give access to /var/mail.
-mail_privileged_group = vmail
+#mail_privileged_group = vmail
 
 # Grant access to these supplementary groups for mail processes. Typically
 # these are used to set up access to shared mailboxes. Note that it may be
@@ -176,8 +176,8 @@ mail_privileged_group = vmail
 # to make sure that users can't log in as daemons or other system users.
 # Note that denying root logins is hardcoded to dovecot binary and can't
 # be done even if first_valid_uid is set to 0.
-first_valid_uid = {{ setup_jail_mail_user_vmail.uid }}
-last_valid_uid = {{ setup_jail_mail_user_vmail.uid }}
+#first_valid_uid = 500
+#last_valid_uid = 0
 
 # Valid GID range for users, defaults to non-root/wheel. Users having
 # non-valid GID as primary group ID aren't allowed to log in. If user
@@ -387,11 +387,11 @@ protocol !indexer-worker {
 # this for now.
 
 # Directory root where to store mail attachments. Disabled, if empty.
-mail_attachment_dir = /var/mail/attachments
+#mail_attachment_dir = /var/mail/attachments
 
 # Attachments smaller than this aren't saved externally. It's also possible to
 # write a plugin to disable saving specific attachments externally.
-mail_attachment_min_size = 64k
+#mail_attachment_min_size = 64k
 
 # Filesystem backend to use for saving attachments:
 #  posix : No SiS done by Dovecot (but this might help FS's own deduplication)

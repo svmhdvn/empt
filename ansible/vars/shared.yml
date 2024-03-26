@@ -1,26 +1,6 @@
 # TODO secure
 secret_ca_passphrase: cakey
 
-host_jails_mapped_users:
-  mlmmj:
-    comment: Mlmmj Owner
-    uid: 2000
-    host_home_dir: /empt/email/mailing_lists
-    guest_home_dir: /var/spool/mlmmj
-  vmail:
-    comment: Virtual Mail Handler
-    uid: 2001
-    host_home_dir: /empt/email/virtual_mail
-    guest_home_dir: /var/mail/vhosts
-
-special_zfs_datasets:
-  - path: /empt/email/mailing_lists
-    owner: mlmmj
-  - path: /empt/email/virtual_attachments
-    owner: vmail
-  - path: /empt/email/virtual_mail
-    owner: vmail
-
 # TODO randomly generate the uids properly without collision
 # currently hardcoding "randomly" for now
 humans:

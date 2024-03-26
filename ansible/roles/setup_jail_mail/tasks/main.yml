@@ -1,37 +1,31 @@
+# TODO should I move the it-helpdesk (and python deps) to another jail?
 - name: Install required packages from poudriere
-  ansible.builtin.command: 'pkg install -y postfix dovecot mlmmj'
+  ansible.builtin.command: pkg install -y postfix dovecot mlmmj python
   changed_when: true
 
-- name: Create local (unix account) mail directory
-  ansible.builtin.file:
-    path: /var/mail/local
-    state: directory
-    mode: '0755'
-    owner: root
-    group: mail
+- name: Configure postfix
+  ansible.builtin.template:
+    src: '{{ item.src }}'
+    dest: '/usr/local/etc/postfix/{{ item.path | replace(".j2", "") }}'
+    mode: '0644'
+  with_community.general.filetree: '{{ "templates/postfix" }}'
+  when: item.state == 'file'
 
-- name: Add user to handle dovecot virtual mail
-  ansible.builtin.user:
-    name: vmail
-    comment: Virtual Mail Handler
-    home: /var/mail/vhosts
-    shell: /usr/sbin/nologin
-  register: setup_jail_mail_user_vmail
-
-- name: Create dovecot virtual mail destination directories
-  ansible.builtin.file:
-    path: '/var/mail/{{ item }}'
-    state: directory
-    mode: '0770'
-    owner: vmail
-    group: vmail
+- name: Generate postfix maps
+  ansible.builtin.command: 'postmap /usr/local/etc/postfix/{{ item }}'
   loop:
-    - vhosts
-    - attachments
+    - mlmmj_transport
+    - mlmmj_aliases
+  register: setup_jail_mail_postmap
+  changed_when: setup_jail_mail_postmap.rc == 0
+
+- name: Generate aliases database
+  ansible.builtin.command: newaliases
+  changed_when: true
 
 - name: Create dovecot conf.d/ directory
   ansible.builtin.file:
-    path: '/usr/local/etc/dovecot/conf.d'
+    path: /usr/local/etc/dovecot/conf.d
     state: directory
     mode: '0755'
     owner: root
@@ -45,37 +39,27 @@
   with_community.general.filetree: '{{ "templates/dovecot" }}'
   when: item.state == 'file'
 
-- name: Configure postfix
-  ansible.builtin.template:
-    src: '{{ item.src }}'
-    dest: '/usr/local/etc/postfix/{{ item.path | replace(".j2", "") }}'
-    mode: '0644'
-  with_community.general.filetree: '{{ "templates/postfix" }}'
-  when: item.state == 'file'
+- name: Create missing nullfs mount for user home directories to contain Maildirs
+  ansible.builtin.file:
+    path: /home
+    state: directory
+    mode: '0755'
+    owner: root
+    group: wheel
 
-- name: Generate postfix maps
-  ansible.builtin.command: 'postmap /usr/local/etc/postfix/{{ item }}'
-  loop:
-    - transport
-    - virtual
-    - vmailbox
-  register: setup_jail_mail_postmap
-  changed_when: setup_jail_mail_postmap.rc == 0
-
-- name: Add user to handle mlmmj postfix transport
+- name: Add mlmmj user for postfix transport
   ansible.builtin.user:
     name: mlmmj
-    comment: mlmmj transport user
-    uid: '{{ host_jails_mapped_users["mlmmj"].uid }}'
+    comment: Mlmmj Transport
     home: /var/spool/mlmmj
-      # TODO find a way to get this back, since this is a system user
-      # shell: /usr/sbin/nologin
+    shell: /usr/sbin/nologin
+    create_home: false
 
-- name: Create mlmmj spool directory
+- name: Create empty mlmmj spool directory
   ansible.builtin.file:
-    path: '/var/spool/mlmmj/{{ org_domain }}'
+    path: /var/spool/mlmmj
     state: directory
-    mode: '0775'
+    mode: '0700'
     owner: mlmmj
     group: mlmmj
 
@@ -91,4 +75,4 @@
 - name: Add mlmmj maintenance task to cron
   ansible.builtin.lineinfile:
     path: /etc/crontab
-    line: '*/2 * * * * mlmmj /usr/local/bin/mlmmj-maintd -F -d /var/spool/mlmmj/{{ org_domain }}'
+    line: '*/2 * * * * mlmmj /usr/local/bin/mlmmj-maintd -F -d /var/spool/mlmmj'

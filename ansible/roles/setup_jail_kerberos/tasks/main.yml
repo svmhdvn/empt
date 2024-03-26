@@ -74,16 +74,6 @@
   changed_when: setup_jail_kerberos_extract_keytabs_output.rc == 0
   loop: '{{ kerberos_service_principals }}'
 
-- name: Copy jailhost keytab to destination
-  ansible.builtin.copy:
-    src: '/empt/jails/kerberos/tmp/jailhost.keytab'
-    remote_src: true
-    dest: '/etc/krb5.keytab'
-    owner: root
-    group: wheel
-    mode: '0600'
-  delegate_to: jailhost
-
 - name: Copy keytabs to final destinations
   ansible.builtin.copy:
     src: '/empt/jails/kerberos/tmp/{{ item.host }}.keytab'

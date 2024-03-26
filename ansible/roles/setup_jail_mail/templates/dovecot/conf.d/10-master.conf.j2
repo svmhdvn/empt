@@ -52,20 +52,20 @@ service submission-login {
   }
 }
 
-service lmtp {
-  unix_listener /var/spool/postfix/private/dovecot-lmtp {
-    mode = 0600
-    user = postfix
-    group = postfix
-  }
-
-  # Create inet listener only if you can't use the above UNIX socket
-  #inet_listener lmtp {
-    # Avoid making LMTP visible for the entire internet
-    #address =
-    #port = 
-  #}
-}
+#service lmtp {
+#  unix_listener /var/spool/postfix/private/dovecot-lmtp {
+#    mode = 0600
+#    user = postfix
+#    group = postfix
+#  }
+#
+#  # Create inet listener only if you can't use the above UNIX socket
+#  #inet_listener lmtp {
+#    # Avoid making LMTP visible for the entire internet
+#    #address =
+#    #port = 
+#  #}
+#}
 
 service imap {
   # Most of the memory goes to mmap()ing files. You may need to increase this
@@ -122,7 +122,7 @@ service auth-worker {
   # Auth worker process is run as root by default, so that it can access
   # /etc/shadow. If this isn't necessary, the user should be changed to
   # $default_internal_user.
-  user = vmail
+  user = $default_internal_user
 }
 
 service dict {

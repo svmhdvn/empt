@@ -11,7 +11,9 @@
 	dedicated keytab file = /etc/krb5.keytab
 
 	realm = {{ org_domain | upper }}
-	workgroup = {{ org_domain | upper }}
+	# TODO see if a different workgroup name is necessary
+	workgroup = EMPT
+	disable netbios = yes
 
 	client use kerberos = required
 	ntlm auth = disabled

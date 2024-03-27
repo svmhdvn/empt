@@ -6,7 +6,7 @@
   ansible.builtin.template:
     src: smb4.conf.j2
     dest: /usr/local/etc/smb4.conf
-    mode: '0644'
+    mode: '0600'
     owner: root
     group: wheel
     validate: '/usr/local/bin/testparm --suppress-prompt %s'
@@ -20,3 +20,8 @@
   ansible.builtin.service:
     name: samba_server
     enabled: true
+
+- name: Disable nmbd
+  ansible.builtin.service:
+    name: nmbd
+    enabled: false

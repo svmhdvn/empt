@@ -20,14 +20,14 @@
 
 - name: Change relay host to local IPv6
   ansible.builtin.copy:
-    dest: '/var/spool/mlmmj/{{ org_domain }}/{{ mailing_list.name }}/control/relayhost'
+    dest: '/var/spool/mlmmj/{{ mailing_list.name }}/control/relayhost'
     content: "fe80::eeee:{{ jid }}%lo0\n"
     mode: '0644'
     owner: mlmmj
     group: mlmmj
 
 - name: Subscribe all selected addresses
-  ansible.builtin.command: '/usr/local/bin/mlmmj-sub -L /var/spool/mlmmj/{{ org_domain }}/{{ mailing_list.name }} -a {{ item }}@{{ org_domain }} -c -f -s'
+  ansible.builtin.command: '/usr/local/bin/mlmmj-sub -L /var/spool/mlmmj/{{ mailing_list.name }} -a {{ item }}@{{ org_domain }} -c -f -s'
   loop: '{{ mailing_list.recipients }}'
   register: mlmmj_sub_output
   changed_when: mlmmj_sub_output.rc == 0

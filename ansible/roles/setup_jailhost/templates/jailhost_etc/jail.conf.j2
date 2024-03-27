@@ -38,5 +38,5 @@ mount.fstab = "/empt/etc/jail_fstabs/${name}.fstab";
 ip6.addr = "lo0|fe80:2::eeee:${jid}/64";
 
 {% for jail in groups['jails'] %}
-.include /empt/etc/jail.conf.d/{{ jail }}.jail.conf
+.include "/empt/etc/jail.conf.d/{{ jail }}.jail.conf";
 {% endfor %}

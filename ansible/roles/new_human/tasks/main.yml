@@ -106,7 +106,7 @@
   changed_when: setup_jail_kerberos_add_user_principals_output.rc == 0
 
 - name: "Subscribe to full organization mailing list"
-  ansible.builtin.command: '/usr/local/bin/mlmmj-sub -L /var/spool/mlmmj/{{ org_domain }}/everyone -a {{ human.username }}@{{ org_domain }} -c -f -s'
+  ansible.builtin.command: '/usr/local/bin/mlmmj-sub -L /var/spool/mlmmj/everyone -a {{ human.username }}@{{ org_domain }} -c -f -s'
   delegate_to: mail
   register: mlmmj_sub_output
   changed_when: mlmmj_sub_output.rc == 0

@@ -22,6 +22,6 @@
     enabled: true
 
 - name: Disable nmbd
-  ansible.builtin.service:
-    name: nmbd
-    enabled: false
+  ansible.builtin.lineinfile:
+    path: /etc/rc.conf
+    line: 'nmbd_enable="NO"'

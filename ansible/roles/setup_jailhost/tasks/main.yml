@@ -139,6 +139,7 @@
     state: directory
     mode: '0755'
   loop:
+    - /tmp/base_jail/home
     - /tmp/base_jail/usr/local/etc/pkg/repos
     - /tmp/base_jail/usr/local/poudriere_repos
     - /tmp/base_jail/root/.ssh

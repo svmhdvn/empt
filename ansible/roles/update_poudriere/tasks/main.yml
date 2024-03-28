@@ -43,22 +43,27 @@
     group: wheel
     mode: '0644'
 
-- name: Upgrade all ports on host system
-  ansible.builtin.command: pkg upgrade -y -f -r PoudrierePorts
-  changed_when: true
-
 # NOTE See https://wiki.freebsd.org/PkgBase for .pkgsave fixes
 - name: Upgrade whole system to new pkgbase while preserving passwd db
   ansible.builtin.shell: >
-    pkg install -y -r PoudrierePkgbase -g 'FreeBSD-*' && {
+    pkg-static install -y -r PoudrierePkgbase -g 'FreeBSD-*' && {
       cp /etc/master.passwd.pkgsave /etc/master.passwd ;
       cp /etc/group.pkgsave /etc/group ;
       cp /etc/sysctl.conf.pkgsave /etc/sysctl.conf ;
       pwd_mkdb -p /etc/master.passwd
     }
   environment:
+    # TODO don't hardcode this here
+    ABI: "FreeBSD:15:amd64"
     IGNORE_OSVERSION: "yes"
   changed_when: true
 
-- name: Reboot to new Pkgbase kernel and ports userland
+- name: Reboot to new Pkgbase base system and (possibly) ABI
+  ansible.builtin.reboot:
+
+- name: Upgrade all ports on host system
+  ansible.builtin.command: pkg upgrade -y -f -r PoudrierePorts
+  changed_when: true
+
+- name: Reboot to new ports userland
   ansible.builtin.reboot:

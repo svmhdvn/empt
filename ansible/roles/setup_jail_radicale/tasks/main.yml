@@ -1,0 +1,20 @@
+- name: Install required packages from poudriere
+  ansible.builtin.command: pkg install -y py311-gunicorn py311-radicale
+  changed_when: true
+
+- name: Create radicale data storage directory
+  ansible.builtin.file:
+    path: /var/lib/radicale
+    state: directory
+    mode: '0700'
+    owner: radicale
+    group: radicale
+
+# TODO add upstream /usr/local/etc default config directory
+- name: Configure radicale
+  ansible.builtin.template:
+    src: radicale_config.ini.j2
+    dest: /usr/local/etc/radicale/config
+    mode: '0600'
+    owner: radicale
+    group: radicale

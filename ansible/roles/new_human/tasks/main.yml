@@ -110,3 +110,25 @@
   delegate_to: mail
   register: mlmmj_sub_output
   changed_when: mlmmj_sub_output.rc == 0
+
+# TODO perform these under flock
+# ==============================
+- name: Create empty radicale collections for human
+  ansible.builtin.file:
+    name: '/usr/local/share/radicale/collections/{{ human.username }}/{{ item.src }}'
+    state: directory
+    mode: '0700'
+    owner: radicale
+    group: radicale
+  delegate_to: radicale
+  with_community.general.filetree: '{{ "templates/radicale" }}'
+  when: item.state == 'directory'
+
+- name: Initialize radicale properties for each new collection
+  ansible.builtin.template:
+    src: '{{ item.src }}/Radicale.props.json.j2'
+    dest: '/usr/local/share/radicale/collections/{{ human.username }}/{{ item.src }}/.Radicale.props'
+    mode: '0644'
+  with_community.general.filetree: '{{ "templates/radicale" }}'
+  when: item.state == 'directory'
+# ==============================

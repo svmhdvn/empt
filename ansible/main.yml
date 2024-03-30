@@ -64,19 +64,26 @@
   roles:
     - setup_jail_cifs
 
-- name: Setup ssh jail
-  hosts: ssh
-  vars_files:
-    - vars/shared.yml
-  roles:
-    - setup_jail_ssh
-
 - name: Setup mail server jail
   hosts: mail
   vars_files:
     - vars/shared.yml
   roles:
     - setup_jail_mail
+
+- name: Setup radicale jail
+  hosts: radicale
+  vars_files:
+    - vars/shared.yml
+  roles:
+    - setup_jail_radicale
+
+- name: Setup ssh jail
+  hosts: ssh
+  vars_files:
+    - vars/shared.yml
+  roles:
+    - setup_jail_ssh
 
 - name: Create all pre-configured mailing lists
   hosts: mail

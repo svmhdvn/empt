@@ -1,0 +1,3 @@
+# Device        Mountpoint        FStype        Options        Dump        Pass#
+/usr/local/poudriere_repos	/empt/jails/radicale/usr/local/poudriere_repos	nullfs	ro	0	0
+/empt/logs/radicale		/empt/jails/radicale/var/log			nullfs	rw	0	0

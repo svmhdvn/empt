@@ -1,3 +1,3 @@
 # Device        Mountpoint        FStype        Options        Dump        Pass#
 /usr/local/poudriere_repos	/empt/jails/cifs/usr/local/poudriere_repos	nullfs	ro	0	0
-/empt/logs/cifs			/empt/jails/cifs/var/log			nullfs	rw	0	0
+/empt/logs/cifs.syslog.log	/empt/jails/cifs/var/log/syslog.log		nullfs	rw	0	0

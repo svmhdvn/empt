@@ -3,21 +3,29 @@
 #   username: "str"
 #   fullname: "str"
 
-- name: "Create empt home directory in jailhost"
+- name: Create storage dataset for human
   community.general.zfs:
-    name: 'zroot/empt/homes/{{ human.username }}'
+    name: 'zroot/empt/human_storage/{{ human.username }}'
     state: present
     extra_zfs_properties:
       canmount: 'on'
       quota: '1G'
       reservation: '1G'
 
-- name: Create empty Maildir for the human
+- name: Set owner and group permissions for the new storage dataset
   ansible.builtin.file:
-    name: '/empt/homes/{{ human.username }}/Mail/{{ item }}'
+    name: '/empt/human_storage/{{ human.username }}'
+    state: directory
+    mode: '1700'
+    owner: '{{ human.uid }}'
+    group: '{{ human.uid }}'
+
+- name: Populate human Maildir directories
+  ansible.builtin.file:
+    name: '/empt/human_storage/{{ human.username }}/mail/{{ item }}'
     state: directory
     recurse: true
-    mode: '0700'
+    mode: '1700'
     owner: '{{ human.uid }}'
     group: '{{ human.uid }}'
   loop:
@@ -25,16 +33,21 @@
     - new
     - tmp
 
-- name: "Change ownership of home strictly narrowed down to human"
+- name: Populate human calendar/contacts directories
   ansible.builtin.file:
-    name: '/empt/homes/{{ human.username }}'
+    name: '/empt/human_storage/{{ human.username }}/diary/{{ item }}'
     state: directory
     recurse: true
     mode: '1700'
-    owner: '{{ human.uid }}'
-    group: '{{ human.uid }}'
+    owner: '{{ setup_jail_radicale_system_account.uid }}'
+    group: '{{ setup_jail_radicale_system_account.uid }}'
+  loop:
+    - calendar
+    - contacts
+    - journal
+    - todo
 
-- name: "Create login-incapable system unix users in the required hosts"
+- name: Create login-incapable unix accounts for the human in the required hosts
   ansible.builtin.user:
     name: '{{ human.username }}'
     comment: '{{ human.fullname }}'
@@ -44,100 +57,70 @@
     shell: /usr/sbin/nologin
   delegate_to: '{{ item }}'
   loop:
+    # TODO do I need cifs here?
     - cifs
     - mail
 
-- name: "Create a login-capable unix user for the human in the ssh jail"
-  ansible.builtin.user:
-    name: '{{ human.username }}'
-    comment: '{{ human.fullname }}'
-    home: '/home/{{ human.username }}'
-    create_home: false
-    uid: '{{ human.uid }}'
-  delegate_to: ssh
+- name: Create missing nullfs mountpoint for the home directory in cifs
+  ansible.builtin.file:
+    name: '/home/{{ human.username }}'
+    state: directory
+    recurse: true
+    mode: '1700'
+    owner: '{{ human.uid }}'
+    group: '{{ human.uid }}'
+  delegate_to: cifs
 
-- name: "Add new home directory nullfs mount to dependent service jail fstabs"
+- name: Create missing nullfs mountpoint for Maildir
+  ansible.builtin.file:
+    name: '/home/{{ human.username }}/mail'
+    state: directory
+    recurse: true
+    mode: '1700'
+    owner: '{{ human.uid }}'
+    group: '{{ human.uid }}'
+  delegate_to: mail
+
+- name: Add human home directory nullfs mount to cifs jail
   ansible.builtin.lineinfile:
-    path: '/empt/etc/jail_fstabs/{{ item }}.fstab'
-    line: '/empt/homes/{{ human.username }} /empt/jails/{{ item }}/home/{{ human.username }} nullfs rw 0 0'
-  loop:
-    - cifs
-    - ssh
+    path: /empt/etc/jail_fstabs/cifs.fstab
+    line: '/empt/human_storage/{{ human.username }}/home /empt/jails/cifs/home/{{ human.username }} nullfs rw 0 0'
 
 - name: Add Maildir nullfs mount to mail jail
   ansible.builtin.lineinfile:
     path: /empt/etc/jail_fstabs/mail.fstab
-    line: '/empt/homes/{{ human.username }}/Mail /empt/jails/mail/home/{{ human.username }}/Mail nullfs rw 0 0'
-
-- name: Create missing nullfs mountpoint for user home directories in corresponding jails
-  ansible.builtin.file:
-    name: '/empt/jails/{{ item }}/home/{{ human.username }}'
-    state: directory
-    recurse: true
-    mode: '0700'
-    owner: '{{ human.uid }}'
-    group: '{{ human.uid }}'
-  loop:
-    - cifs
-    - ssh
-
-- name: Create missing nullfs mountpoint for Maildir
-  ansible.builtin.file:
-    name: '/empt/jails/mail/home/{{ human.username }}/Mail'
-    state: directory
-    recurse: true
-    mode: '0700'
-    owner: '{{ human.uid }}'
-    group: '{{ human.uid }}'
+    line: '/empt/human_storage/{{ human.username }}/mail /empt/jails/mail/home/{{ human.username }}/mail nullfs rw 0 0'
 
 # TODO a lot of bugs with Heimdal's `get` and `list` commands, fix them.
-- name: "Check which user principals are missing"
+- name: Check which user principals are missing
   ansible.builtin.command: '/usr/local/bin/kadmin --local get --short {{ human.username }}'
   delegate_to: kerberos
   register: new_human_user_principal_exists
   failed_when: new_human_user_principal_exists.rc >= 2
   changed_when: false
 
-- name: "Add new kerberos principal"
+- name: Add new kerberos principal
   ansible.builtin.command: '/usr/local/bin/kadmin --local add --password={{ human.username }} --use-defaults {{ human.username }}'
   delegate_to: kerberos
   when: '"Principal does not exist" in new_human_user_principal_exists.stderr'
   register: setup_jail_kerberos_add_user_principals_output
   changed_when: setup_jail_kerberos_add_user_principals_output.rc == 0
 
-- name: "Subscribe to full organization mailing list"
+- name: Subscribe to full organization mailing list
   ansible.builtin.command: '/usr/local/bin/mlmmj-sub -L /var/spool/mlmmj/everyone -a {{ human.username }}@{{ org_domain }} -c -f -s'
   delegate_to: mail
   register: mlmmj_sub_output
   changed_when: mlmmj_sub_output.rc == 0
 
-# TODO perform these under flock
-# ==============================
-- name: Create empty radicale collections for human
-  ansible.builtin.file:
-    name: '/usr/local/share/radicale/collections/{{ human.username }}/{{ item }}'
-    state: directory
-    mode: '0700'
-    owner: radicale
-    group: radicale
-  delegate_to: radicale
-  loop:
-    - calendar
-    - contacts
-    - journal
-    - todo
-
 - name: Initialize radicale properties for each new collection
   ansible.builtin.template:
     src: 'radicale/{{ item }}/Radicale.props.json.j2'
-    dest: '/usr/local/share/radicale/collections/{{ human.username }}/{{ item }}/.Radicale.props'
+    dest: '/empt/human_storage/{{ human.username }}/diary/{{ item }}/.Radicale.props'
     mode: '0600'
     owner: radicale
     group: radicale
-  delegate_to: radicale
   loop:
     - calendar
     - contacts
     - journal
     - todo
-# ==============================

@@ -1,3 +1,3 @@
 # Device        Mountpoint        FStype        Options        Dump        Pass#
 /usr/local/poudriere_repos	/empt/jails/certauth/usr/local/poudriere_repos	nullfs	ro	0	0
-/empt/logs/certauth		/empt/jails/certauth/var/log			nullfs	rw	0	0
+/empt/logs/certauth.syslog.log	/empt/jails/certauth/var/log/syslog.log		nullfs	rw	0	0

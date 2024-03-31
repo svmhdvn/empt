@@ -41,8 +41,6 @@ mailing_lists:
 kerberos_service_principals:
   - service: cifs
     host: cifs
-  - service: host
-    host: ssh
   - service: imap
     host: mail
   - service: smtp

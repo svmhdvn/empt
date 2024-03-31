@@ -2,13 +2,11 @@
   ansible.builtin.command: pkg install -y py311-gunicorn py311-radicale
   changed_when: true
 
-- name: Create radicale data storage directory
-  ansible.builtin.file:
-    path: /var/lib/radicale
-    state: directory
-    mode: '0700'
-    owner: radicale
-    group: radicale
+- name: Query radicale UNIX system account UID
+  ansible.builtin.user:
+    name: radicale
+  delegate_to: radicale
+  register: setup_jail_radicale_system_account
 
 # TODO add upstream /usr/local/etc default config directory
 - name: Configure radicale

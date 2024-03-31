@@ -31,7 +31,8 @@
     name: "zroot/empt/jails"
     state: present
     extra_zfs_properties:
-      compression: 'off'
+      # TODO benchmark lz4 vs zstd
+      compression: 'lz4'
 
 - name: "Create ZFS dataset for log storage"
   community.general.zfs:
@@ -40,9 +41,6 @@
     extra_zfs_properties:
       atime: 'off'
       compression: 'zstd'
-      # TODO figure out how to enable encryption properly
-      # turning off for now
-      # encryption: 'on'
       exec: 'off'
       setuid: 'off'
 
@@ -53,32 +51,15 @@
     mode: '0755'
   loop: '{{ groups["jails"] }}'
 
-- name: "Create ZFS dataset for top level container for email-related filesystems"
+- name: "Create top level ZFS dataset for storing data for humans"
   community.general.zfs:
-    name: "zroot/empt/email"
-    state: present
-    extra_zfs_properties:
-      atime: 'off'
-      canmount: 'off'
-      compression: 'zstd'
-      # TODO figure out how to enable encryption properly
-      # turning off for now
-      # encryption: 'on'
-      exec: 'off'
-      setuid: 'off'
-
-- name: "Create top level ZFS dataset for human unix account home directories"
-  community.general.zfs:
-    name: "zroot/empt/homes"
+    name: "zroot/empt/human_storage"
     state: present
     extra_zfs_properties:
       canmount: 'off'
       compression: 'zstd'
-      # TODO figure out how to enable encryption properly
-      # turning off for now
-      # encryption: 'on'
-      setuid: 'off'
       exec: 'off'
+      setuid: 'off'
 
 - name: "Create all missing directories on jailhost"
   ansible.builtin.file:

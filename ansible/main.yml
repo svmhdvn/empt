@@ -78,13 +78,6 @@
   roles:
     - setup_jail_radicale
 
-- name: Setup ssh jail
-  hosts: ssh
-  vars_files:
-    - vars/shared.yml
-  roles:
-    - setup_jail_ssh
-
 - name: Create all pre-configured mailing lists
   hosts: mail
   remote_user: mlmmj

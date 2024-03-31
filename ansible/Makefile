@@ -23,14 +23,15 @@ fresh_start:
 		-i remote_inventory.ini \
 		-b -K --become-method ansible.builtin.su \
 		-K fresh_start.yml
-	scp -r . $(FRESH_INSTALL_USER)@jailhost.$(ORG_DOMAIN):~
-	ssh $(FRESH_INSTALL_USER)@jailhost.$(ORG_DOMAIN) doas ansible-playbook \
+	scp -r . $(FRESH_INSTALL_USER)@jailhost.$(ORG_DOMAIN):/tmp/empt-ansible
+	ssh $(FRESH_INSTALL_USER)@jailhost.$(ORG_DOMAIN) 'cd /tmp/empt-ansible && \
+		doas ansible-playbook \
 		-i local_inventory.ini \
 		-e org_domain=$(ORG_DOMAIN) \
 		-e fresh_install_user=$(FRESH_INSTALL_USER) \
 		-e ula_prefix=$(ULA_PREFIX) \
 		-e ipv4_prefix=$(IPV4_PREFIX) \
-		main.yml
+		main.yml'
 	ansible \
 		-u $(FRESH_INSTALL_USER) \
 		-b -K --become-method ansible.builtin.su \

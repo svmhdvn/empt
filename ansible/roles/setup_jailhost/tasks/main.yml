@@ -44,11 +44,13 @@
       exec: 'off'
       setuid: 'off'
 
-- name: "Create log subdirectories for individual jail mounting"
+- name: Create empty syslog files for each jail
   ansible.builtin.file:
-    path: '/empt/logs/{{ item }}'
-    state: directory
-    mode: '0755'
+    path: '/empt/logs/{{ item }}.syslog.log'
+    state: touch
+    mode: '0700'
+    owner: root
+    group: wheel
   loop: '{{ groups["jails"] }}'
 
 - name: "Create top level ZFS dataset for storing data for humans"
@@ -125,7 +127,15 @@
     - /tmp/base_jail/usr/local/poudriere_repos
     - /tmp/base_jail/root/.ssh
 
-- name: "Populate common /etc files into base jail"
+- name: Create empty syslog nullfs mount file in base jail
+  ansible.builtin.file:
+    path: /tmp/base_jail/var/log/syslog.log
+    state: touch
+    mode: '0700'
+    owner: root
+    group: wheel
+
+- name: Populate common /etc files into base jail
   ansible.builtin.template:
     src: '{{ item.src }}'
     dest: '/tmp/base_jail/etc/{{ item.path | replace(".j2", "") }}'
@@ -135,7 +145,7 @@
   with_community.general.filetree: '{{ "templates/common_etc/" }}'
   when: item.state == 'file'
 
-- name: "Copy pkg repo config to base jail"
+- name: Copy pkg repo config to base jail
   ansible.builtin.copy:
     src: /usr/local/etc/pkg/repos/FreeBSD.conf
     remote_src: true
@@ -144,10 +154,15 @@
     owner: root
     group: wheel
 
-- name: "Clone (thick) base jail to installed locations"
+- name: Clone (thick) base jail to installed locations
   ansible.builtin.command: 'cp -a /tmp/base_jail /empt/jails/{{ item }}'
   loop: '{{ groups["jails"] }}'
   changed_when: true
+
+- name: Remove temporary base jail
+  ansible.builtin.file:
+    path: /tmp/base_jail
+    state: absent
 
 - name: Copy the common fstab for each jail
   ansible.builtin.template:
@@ -159,13 +174,13 @@
   loop: '{{ groups["jails"] }}'
 
 # TODO no idea why this needs to be broken into two steps
-- name: "Enable jail service"
+- name: Enable jail service
   ansible.builtin.service:
     name: "jail"
     enabled: true
     state: started
 
 # TODO file bug for service module not working here
-- name: "Start all jails"
+- name: Start all jails
   ansible.builtin.command: service jail restart # noqa: command-instead-of-module
   changed_when: false

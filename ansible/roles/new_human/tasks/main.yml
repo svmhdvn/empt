@@ -20,18 +20,25 @@
     owner: '{{ human.uid }}'
     group: '{{ human.uid }}'
 
-- name: Populate human Maildir directories
+- name: Populate human-owned storage directories
   ansible.builtin.file:
-    name: '/empt/human_storage/{{ human.username }}/mail/{{ item }}'
+    name: '/empt/human_storage/{{ human.username }}/{{ item }}'
     state: directory
     recurse: true
     mode: '1700'
     owner: '{{ human.uid }}'
     group: '{{ human.uid }}'
   loop:
-    - cur
-    - new
-    - tmp
+    - home
+    - mail/cur
+    - mail/new
+    - mail/tmp
+
+- name: Query radicale UNIX system account UID
+  ansible.builtin.user:
+    name: radicale
+  delegate_to: radicale
+  register: new_human_radicale_system_account
 
 - name: Populate human calendar/contacts directories
   ansible.builtin.file:
@@ -39,8 +46,21 @@
     state: directory
     recurse: true
     mode: '1700'
-    owner: '{{ setup_jail_radicale_system_account.uid }}'
-    group: '{{ setup_jail_radicale_system_account.uid }}'
+    owner: '{{ new_human_radicale_system_account.uid }}'
+    group: '{{ new_human_radicale_system_account.uid }}'
+  loop:
+    - calendar
+    - contacts
+    - journal
+    - todo
+
+- name: Initialize radicale properties for each new collection
+  ansible.builtin.template:
+    src: 'radicale/{{ item }}/Radicale.props.json.j2'
+    dest: '/empt/human_storage/{{ human.username }}/diary/{{ item }}/.Radicale.props'
+    mode: '0600'
+    owner: '{{ new_human_radicale_system_account.uid }}'
+    group: '{{ new_human_radicale_system_account.uid }}'
   loop:
     - calendar
     - contacts
@@ -81,6 +101,16 @@
     group: '{{ human.uid }}'
   delegate_to: mail
 
+- name: Create missing nullfs mountpoint for radicale collections
+  ansible.builtin.file:
+    name: '/usr/local/share/radicale/collection-root/{{ human.username }}'
+    state: directory
+    recurse: true
+    mode: '1700'
+    owner: '{{ new_human_radicale_system_account.uid }}'
+    group: '{{ new_human_radicale_system_account.uid }}'
+  delegate_to: radicale
+
 - name: Add human home directory nullfs mount to cifs jail
   ansible.builtin.lineinfile:
     path: /empt/etc/jail_fstabs/cifs.fstab
@@ -90,6 +120,11 @@
   ansible.builtin.lineinfile:
     path: /empt/etc/jail_fstabs/mail.fstab
     line: '/empt/human_storage/{{ human.username }}/mail /empt/jails/mail/home/{{ human.username }}/mail nullfs rw 0 0'
+
+- name: Add diary collections nullfs mount to radicale jail
+  ansible.builtin.lineinfile:
+    path: /empt/etc/jail_fstabs/radicale.fstab
+    line: '/empt/human_storage/{{ human.username }}/diary /empt/jails/radicale/usr/local/share/radicale/collection-root/{{ human.username }} nullfs rw 0 0'
 
 # TODO a lot of bugs with Heimdal's `get` and `list` commands, fix them.
 - name: Check which user principals are missing
@@ -112,15 +147,3 @@
   register: mlmmj_sub_output
   changed_when: mlmmj_sub_output.rc == 0
 
-- name: Initialize radicale properties for each new collection
-  ansible.builtin.template:
-    src: 'radicale/{{ item }}/Radicale.props.json.j2'
-    dest: '/empt/human_storage/{{ human.username }}/diary/{{ item }}/.Radicale.props'
-    mode: '0600'
-    owner: radicale
-    group: radicale
-  loop:
-    - calendar
-    - contacts
-    - journal
-    - todo

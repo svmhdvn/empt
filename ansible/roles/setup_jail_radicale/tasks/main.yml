@@ -2,12 +2,6 @@
   ansible.builtin.command: pkg install -y py311-gunicorn py311-radicale
   changed_when: true
 
-- name: Query radicale UNIX system account UID
-  ansible.builtin.user:
-    name: radicale
-  delegate_to: radicale
-  register: setup_jail_radicale_system_account
-
 # TODO add upstream /usr/local/etc default config directory
 - name: Configure radicale
   ansible.builtin.template:

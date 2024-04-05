@@ -1,5 +1,5 @@
-- name: Install basic ansible dependencies
-  ansible.builtin.raw: pkg install -y python doas gtar unzip rsync
+- name: Install basic dependencies for ansible builtin modules
+  ansible.builtin.raw: pkg install -y python doas gtar unzip
   changed_when: true
 
 - name: Temporarily setup doas.conf for :wheel

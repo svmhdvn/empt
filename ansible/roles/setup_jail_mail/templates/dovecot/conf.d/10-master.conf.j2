@@ -19,7 +19,7 @@ service imap-login {
     port = 0
   }
   inet_listener imaps {
-    address = ::
+    address = * ::
   }
 
   # Number of connections to handle before starting a new process. Typically
@@ -63,7 +63,7 @@ service submission-login {
 #  #inet_listener lmtp {
 #    # Avoid making LMTP visible for the entire internet
 #    #address =
-#    #port = 
+#    #port =
 #  #}
 #}
 
@@ -102,8 +102,8 @@ service auth {
   # permissions (e.g. 0777 allows everyone full permissions).
   #unix_listener auth-userdb {
     #mode = 0666
-    #user = 
-    #group = 
+    #user =
+    #group =
   #}
 
   # Postfix smtp-auth
@@ -130,7 +130,7 @@ service dict {
   # For example: mode=0660, group=vmail and global mail_access_groups=vmail
   unix_listener dict {
     #mode = 0600
-    #user = 
-    #group = 
+    #user =
+    #group =
   }
 }

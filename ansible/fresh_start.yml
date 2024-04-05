@@ -4,11 +4,12 @@
   roles:
     - factory_reset
     - create_boot_environment
-    - bootstrap
 
 # NOTE Needs to 'become' root with 'su' to avoid
 # /etc/master.passwd pkgbase troubles
     - update_poudriere
+
+    - bootstrap
 
 - name: Install ansible on jailhost
   hosts: jailhost

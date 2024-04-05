@@ -1,3 +1,11 @@
+- name: Cleanup stale poudriere repos
+  ansible.builtin.file:
+    path: '{{ item }}'
+    state: absent
+  loop:
+    - /usr/local/poudriere_repos/pkgbase
+    - /usr/local/poudriere_repos/ports
+
 - name: Create all missing directories on jailhost
   ansible.builtin.file:
     path: '{{ item }}'
@@ -8,15 +16,21 @@
     - /usr/local/poudriere_repos/pkgbase
     - /usr/local/poudriere_repos/ports
 
+- name: Copy poudriere repos to jailhost /tmp
+  ansible.builtin.copy:
+    src: '{{ item }}'
+    dest: /tmp
+  loop:
+    - wyse-PoudrierePkgbase.tar.zst
+    - wyse-PoudrierePorts.tar.zst
+
 - name: Extract poudriere pkgbase repo
-  ansible.builtin.unarchive:
-    src: wyse-PoudrierePkgbase.tar.zst
-    dest: /usr/local/poudriere_repos/pkgbase
+  ansible.builtin.command: tar -C /usr/local/poudriere_repos/pkgbase -xf /tmp/wyse-PoudrierePkgbase.tar.zst
+  changed_when: true
 
 - name: Extract poudriere ports repo
-  ansible.builtin.unarchive:
-    src: wyse-PoudrierePorts.tar.zst
-    dest: /usr/local/poudriere_repos/ports
+  ansible.builtin.command: tar -C /usr/local/poudriere_repos/ports -xf /tmp/wyse-PoudrierePorts.tar.zst
+  changed_when: true
 
 - name: Configure pkg to use Poudriere repo
   ansible.builtin.copy:

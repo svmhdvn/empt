@@ -1,4 +1,4 @@
-- name: Activate fresh FreeBSD RELEASE boot environment
+- name: Activate fresh install FreeBSD boot environment
   ansible.builtin.command: bectl activate default
   changed_when: true
 
@@ -6,11 +6,11 @@
   ansible.builtin.reboot:
 
 - name: Destroy EMPT installation boot environment
-  ansible.builtin.raw: bectl destroy empt_fresh
+  ansible.builtin.command: bectl destroy empt_fresh
   changed_when: true
   failed_when: false
 
 - name: Destroy EMPT ZFS datasets
-  ansible.builtin.raw: zfs destroy -Rf zroot/empt
+  ansible.builtin.command: zfs destroy -Rf zroot/empt
   changed_when: true
   failed_when: false

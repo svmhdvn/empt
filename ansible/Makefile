@@ -15,16 +15,17 @@ JAILHOST_IPV4 = XXX
 JAILHOST_IPV6 = XXX
 
 IPV4_PREFIX != echo "$(JAILHOST_IPV4)" | sed 's/\..\{1,3\}$$//'
-ULA_PREFIX != echo "$(JAILHOST_IPV6)" | sed 's/\([[:xdigit:]]\{1,4\}:[[:xdigit:]]\{1,4\}:[[:xdigit:]]\{1,4\}\):.*/\1/g'
+ULA_PREFIX != echo "$(JAILHOST_IPV6)" | sed 's/\(.*\):[0:].*/\1/'
 
 fresh_start:
+	echo jailhost ansible_host=$(JAILHOST_IPV6) > remote_inventory.ini
 	ansible-playbook \
 		-u $(FRESH_INSTALL_USER) \
 		-i remote_inventory.ini \
 		-b -K --become-method ansible.builtin.su \
 		-K fresh_start.yml
-	scp -r . $(FRESH_INSTALL_USER)@jailhost.$(ORG_DOMAIN):/tmp/empt-ansible
-	ssh $(FRESH_INSTALL_USER)@jailhost.$(ORG_DOMAIN) 'cd /tmp/empt-ansible && \
+	scp -r . $(FRESH_INSTALL_USER)@[$(JAILHOST_IPV6)]:/tmp/empt-ansible
+	ssh $(FRESH_INSTALL_USER)@$(JAILHOST_IPV6) 'cd /tmp/empt-ansible && \
 		doas ansible-playbook \
 		-i local_inventory.ini \
 		-e org_domain=$(ORG_DOMAIN) \
@@ -54,6 +55,9 @@ reset:
 		-b -K --become-method ansible.builtin.su \
 		-m import_role -a name=factory_reset \
 		jailhost
+
+clean:
+	rm -f remote_inventory.ini
 
 help:
 	@echo "usage:"

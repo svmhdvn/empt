@@ -174,13 +174,13 @@
   loop: '{{ groups["jails"] }}'
 
 # TODO no idea why this needs to be broken into two steps
-- name: Enable jail service
-  ansible.builtin.service:
-    name: "jail"
-    enabled: true
-    state: started
+# - name: Enable jail service
+#   ansible.builtin.service:
+#     name: "jail"
+#     enabled: true
+#     state: started
 
 # TODO file bug for service module not working here
 - name: Start all jails
-  ansible.builtin.command: service jail restart # noqa: command-instead-of-module
+  ansible.builtin.command: service jail onerestart # noqa: command-instead-of-module
   changed_when: false

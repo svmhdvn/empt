@@ -126,6 +126,8 @@
     path: /empt/etc/jail_fstabs/radicale.fstab
     line: '/empt/human_storage/{{ human.username }}/diary /empt/jails/radicale/usr/local/share/radicale/collection-root/{{ human.username }} nullfs rw 0 0'
 
+# TODO actually mount all these directories
+
 # TODO a lot of bugs with Heimdal's `get` and `list` commands, fix them.
 - name: Check which user principals are missing
   ansible.builtin.command: '/usr/local/bin/kadmin --local get --short {{ human.username }}'

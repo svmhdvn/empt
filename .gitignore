@@ -1,5 +1,8 @@
 *.tar.*
-*.txz
+*.tbz
 *.tgz
-ansible/inventory.ini
+*.txz
+*.tzst
+ansible/org_vars.yml
+ansible/remote_inventory.ini
 playground/

@@ -1,6 +1,6 @@
 ---
 - name: Start a fresh EMPT installation
-  hosts: jailhost
+  hosts: jailhosts
   roles:
     - factory_reset
     - create_boot_environment
@@ -11,9 +11,14 @@
 
     - bootstrap
 
-- name: Install ansible on jailhost
-  hosts: jailhost
+- name: Install ansible with dependencies and copy EMPT ansible setup
+  hosts: jailhosts
   tasks:
     - name: Install ansible and its dependencies
-      ansible.builtin.command: pkg install -y py311-ansible py311-cryptography py311-netaddr
+      ansible.builtin.command: pkg install -y py311-ansible py311-cryptography py311-netaddr rsync
       changed_when: true
+
+    - name: Copy EMPT ansible setup directory to tmp
+      ansible.posix.synchronize:
+        src: .
+        dest: /tmp/empt-ansible

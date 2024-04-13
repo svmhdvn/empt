@@ -25,13 +25,13 @@ service imap-login {
   # Number of connections to handle before starting a new process. Typically
   # the only useful values are 0 (unlimited) or 1. 1 is more secure, but 0
   # is faster. <doc/wiki/LoginProcess.txt>
-  service_count = 0
+  #service_count = 0
 
   # Number of processes to always keep waiting for more connections.
-  process_min_avail = 4
+  #process_min_avail = 4
 
   # If you set service_count=0, you probably need to grow this.
-  vsz_limit = 1G
+  #vsz_limit = 1G
 }
 
 service pop3-login {
@@ -67,24 +67,24 @@ service submission-login {
 #  #}
 #}
 
-service imap {
-  # Most of the memory goes to mmap()ing files. You may need to increase this
-  # limit if you have huge mailboxes.
-  #vsz_limit = $default_vsz_limit
+#service imap {
+#  # Most of the memory goes to mmap()ing files. You may need to increase this
+#  # limit if you have huge mailboxes.
+#  #vsz_limit = $default_vsz_limit
+#
+#  # Max. number of IMAP processes (connections)
+#  #process_limit = 1024
+#}
 
-  # Max. number of IMAP processes (connections)
-  #process_limit = 1024
-}
+#service pop3 {
+#  # Max. number of POP3 processes (connections)
+#  #process_limit = 1024
+#}
 
-service pop3 {
-  # Max. number of POP3 processes (connections)
-  #process_limit = 1024
-}
-
-service submission {
-  # Max. number of SMTP Submission processes (connections)
-  #process_limit = 1024
-}
+#service submission {
+#  # Max. number of SMTP Submission processes (connections)
+#  #process_limit = 1024
+#}
 
 service auth {
   # auth_socket_path points to this userdb socket by default. It's typically

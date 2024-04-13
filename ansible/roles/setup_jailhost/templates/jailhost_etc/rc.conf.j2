@@ -1,6 +1,7 @@
 hostname="{{ inventory_hostname }}.{{ org_domain }}"
 
-dhcpcd_enable="YES"
+ifconfig_re0="DHCP"
+ifconfig_re0_ipv6="inet6 accept_rtadv"
 
 ntpd_enable="YES"
 ntpdate_enable="YES"

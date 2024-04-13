@@ -1,0 +1,5 @@
+---
+- name: Update poudriere repos and jailhost packages
+  hosts: jailhosts
+  roles:
+    - update_poudriere

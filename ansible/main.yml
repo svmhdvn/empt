@@ -8,14 +8,10 @@
     - setup_convenience_tools
     - setup_jailhost
 
-- name: Bootstrap all jails
+- name: Bootstrap all jails and refresh hosts
   hosts: jails
   roles:
     - bootstrap
-
-- name: Refresh /etc/hosts on all hosts
-  hosts: all
-  roles:
     - refresh_etc_hosts
 
 - name: Setup certauth jail

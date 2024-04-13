@@ -495,5 +495,9 @@ zone:
   # RRLend
 
 zone:
-  name: "{{ (ula_prefix + "::" | ansible.utils.ipaddr('revdns'))[20 * 2:] }}"
-  zonefile: "empt.reverse.zone"
+  name: "{{ ((ipv4_prefix + '.0') | ansible.utils.ipaddr('revdns'))[2:] }}"
+  zonefile: "empt.ipv4.reverse.zone"
+
+zone:
+  name: "{{ ((ula_prefix + '::eeee:0') | ansible.utils.ipaddr('revdns'))[8:] }}"
+  zonefile: "empt.ipv6.reverse.zone"

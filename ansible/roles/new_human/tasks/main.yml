@@ -148,4 +148,3 @@
   delegate_to: mail
   register: mlmmj_sub_output
   changed_when: mlmmj_sub_output.rc == 0
-

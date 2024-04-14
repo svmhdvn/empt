@@ -1,3 +1,14 @@
+- name: Create ZFS dataset for backed-up kerberos database storage
+  community.general.zfs:
+    name: zroot/empt/jails/kerberos/krb5data
+    state: present
+    extra_zfs_properties:
+      mountpoint: /empt/jails/kerberos/var/heimdal
+      exec: 'off'
+      setuid: 'off'
+      atime: 'off'
+  delegate_to: jailhost
+
 # TODO change to stable heimdal once support for OpenSSL 3 is released
 - name: Install heimdal port from poudriere
   ansible.builtin.command: 'pkg install -y heimdal-devel'
@@ -28,7 +39,7 @@
     mode: '0755'
 # ============================================
 
-- name: Use the Poudriere-installed heimdal RC services
+- name: Use the rc services from ports heimdal
   ansible.builtin.lineinfile:
     path: /etc/rc.conf
     line: '{{ item }}_program="/usr/local/libexec/{{ item }}"'

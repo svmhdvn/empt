@@ -20,6 +20,9 @@
   ansible.builtin.copy:
     src: '{{ item }}'
     dest: /tmp
+    mode: '0600'
+    owner: root
+    group: wheel
   loop:
     - wyse-PoudrierePkgbase.tar.zst
     - wyse-PoudrierePorts.tar.zst

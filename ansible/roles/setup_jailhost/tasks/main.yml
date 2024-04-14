@@ -1,5 +1,5 @@
-- name: "Install jailhost required packages"
-  ansible.builtin.command: pkg install -y cpu-microcode dhcpcd nagios-plugins heimdal-devel
+- name: Install jailhost required packages
+  ansible.builtin.command: pkg install -y cpu-microcode nagios-plugins rsync
   changed_when: true
 
 # TODO query intel or AMD, currently hardcoding for wyse
@@ -10,60 +10,61 @@
       cpu_microcode_load="YES"
       cpu_microcode_name="/boot/firmware/amd-ucode.bin"
 
-- name: "Create ZFS top level dataset for empt"
+- name: Create ZFS top level dataset for empt
   community.general.zfs:
-    name: "zroot/empt"
+    name: zroot/empt
     state: present
     extra_zfs_properties:
-      mountpoint: '/empt'
+      canmount: 'off'
+      compression: 'on'
+      mountpoint: /empt
 
-- name: "Create ZFS dataset for EMPT miscellaneous configuration files"
+- name: Create ZFS dataset for the top level jails filesystem
   community.general.zfs:
-    name: "zroot/empt/etc"
+    name: zroot/empt/jails
+    state: present
+
+- name: Create parent dataset for each jail
+  community.general.zfs:
+    name: 'zroot/empt/jails/{{ item }}'
     state: present
     extra_zfs_properties:
-      compression: 'zstd'
-      exec: 'off'
-      setuid: 'off'
-
-- name: "Create ZFS dataset for the top level jails filesystem"
-  community.general.zfs:
-    name: "zroot/empt/jails"
-    state: present
-    extra_zfs_properties:
-      # TODO benchmark lz4 vs zstd
-      compression: 'lz4'
-
-- name: "Create ZFS dataset for log storage"
-  community.general.zfs:
-    name: "zroot/empt/logs"
-    state: present
-    extra_zfs_properties:
-      atime: 'off'
-      compression: 'zstd'
-      exec: 'off'
-      setuid: 'off'
-
-- name: Create empty syslog files for each jail
-  ansible.builtin.file:
-    path: '/empt/logs/{{ item }}.syslog.log'
-    state: touch
-    mode: '0700'
-    owner: root
-    group: wheel
+      canmount: 'on'
   loop: '{{ groups["jails"] }}'
 
-- name: "Create top level ZFS dataset for storing data for humans"
+- name: Create dataset for backed-up etc files for each jail
+  community.general.zfs:
+    name: 'zroot/empt/jails/{{ item }}/etc'
+    state: present
+    extra_zfs_properties:
+      exec: 'off'
+      setuid: 'off'
+      atime: 'off'
+      compression: zstd
+  loop: '{{ groups["jails"] }}'
+
+- name: Create ZFS dataset for log storage inside each jail
+  community.general.zfs:
+    name: 'zroot/empt/jails/{{ item }}/logs'
+    state: present
+    extra_zfs_properties:
+      mountpoint: '/empt/jails/{{ item }}/var/log'
+      atime: 'off'
+      exec: 'off'
+      setuid: 'off'
+      compression: zstd
+  loop: '{{ groups["jails"] }}'
+
+- name: Create top level ZFS dataset for storing data for humans
   community.general.zfs:
     name: "zroot/empt/human_storage"
     state: present
     extra_zfs_properties:
-      canmount: 'off'
-      compression: 'zstd'
       exec: 'off'
       setuid: 'off'
+      compression: zstd
 
-- name: "Create all missing directories on jailhost"
+- name: Create all missing directories on jailhost
   ansible.builtin.file:
     path: '{{ item }}'
     state: directory
@@ -93,22 +94,24 @@
   with_community.general.filetree: '{{ "templates/jailhost_usr_local_etc/" }}'
   when: item.state == 'file'
 
-- name: Create missing jail.conf.d directory
+- name: Create missing /empt/etc subdirectories
   ansible.builtin.file:
-    path: /empt/etc/jail.conf.d
+    path: '/empt/etc/{{ item.path }}'
     state: directory
     mode: '0700'
     owner: root
     group: wheel
+  with_community.general.filetree: '{{ "templates/empt_etc" }}'
+  when: item.state == 'directory'
 
-- name: Configure individual jails
+- name: Configure EMPT backed-up jail-specific etc files
   ansible.builtin.template:
     src: '{{ item.src }}'
-    dest: '/empt/etc/jail.conf.d/{{ item.path | replace(".j2", "") }}'
+    dest: '/empt/etc/{{ item.path | replace(".j2", "") }}'
     mode: '0600'
     owner: root
     group: wheel
-  with_community.general.filetree: '{{ "templates/jail.conf.d" }}'
+  with_community.general.filetree: '{{ "templates/empt_etc" }}'
   when: item.state == 'file'
 
 - name: "Unarchive (thick) base jail to temporary location"
@@ -116,7 +119,7 @@
     src: wyse-base.txz
     dest: /tmp/base_jail
 
-- name: "Create all missing directories in base jail"
+- name: Create all missing directories in base jail
   ansible.builtin.file:
     path: '{{ item }}'
     state: directory
@@ -126,14 +129,6 @@
     - /tmp/base_jail/usr/local/etc/pkg/repos
     - /tmp/base_jail/usr/local/poudriere_repos
     - /tmp/base_jail/root/.ssh
-
-- name: Create empty syslog nullfs mount file in base jail
-  ansible.builtin.file:
-    path: /tmp/base_jail/var/log/syslog.log
-    state: touch
-    mode: '0700'
-    owner: root
-    group: wheel
 
 - name: Populate common /etc files into base jail
   ansible.builtin.template:
@@ -155,7 +150,7 @@
     group: wheel
 
 - name: Clone (thick) base jail to installed locations
-  ansible.builtin.command: 'cp -a /tmp/base_jail /empt/jails/{{ item }}'
+  ansible.builtin.command: 'cp -a /tmp/base_jail/ /empt/jails/{{ item }}'
   loop: '{{ groups["jails"] }}'
   changed_when: true
 
@@ -163,15 +158,6 @@
   ansible.builtin.file:
     path: /tmp/base_jail
     state: absent
-
-- name: Copy the common fstab for each jail
-  ansible.builtin.template:
-    src: 'jail_fstabs/{{ item }}.fstab'
-    dest: '/empt/etc/jail_fstabs/{{ item }}.fstab'
-    owner: root
-    group: wheel
-    mode: '0644'
-  loop: '{{ groups["jails"] }}'
 
 # TODO no idea why this needs to be broken into two steps
 # - name: Enable jail service

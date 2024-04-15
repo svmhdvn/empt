@@ -113,17 +113,17 @@
 
 - name: Add human home directory nullfs mount to cifs jail
   ansible.builtin.lineinfile:
-    path: /empt/etc/jail_fstabs/cifs.fstab
+    path: /empt/etc/cifs/fstab
     line: '/empt/human_storage/{{ human.username }}/home /empt/jails/cifs/home/{{ human.username }} nullfs rw 0 0'
 
 - name: Add Maildir nullfs mount to mail jail
   ansible.builtin.lineinfile:
-    path: /empt/etc/jail_fstabs/mail.fstab
+    path: /empt/etc/mail/fstab
     line: '/empt/human_storage/{{ human.username }}/mail /empt/jails/mail/home/{{ human.username }}/mail nullfs rw 0 0'
 
 - name: Add diary collections nullfs mount to radicale jail
   ansible.builtin.lineinfile:
-    path: /empt/etc/jail_fstabs/radicale.fstab
+    path: /empt/etc/radicale/fstab
     line: '/empt/human_storage/{{ human.username }}/diary /empt/jails/radicale/usr/local/share/radicale/collection-root/{{ human.username }} nullfs rw 0 0'
 
 # TODO actually mount all these directories

@@ -14,7 +14,7 @@ fresh_start:
 		-b -K --become-method ansible.builtin.su \
 		-K fresh_start.yml
 	ssh $(FRESH_INSTALL_USER)@$(TARGET).home.arpa 'cd /tmp/empt-ansible/ansible && \
-		doas ansible-playbook \
+		doas env CRYPTOGRAPHY_OPENSSL_NO_LEGACY=1 ansible-playbook \
 		-i local_inventory.ini \
 		-e @org_vars.yml \
 		main.yml'

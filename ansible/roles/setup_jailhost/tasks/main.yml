@@ -32,14 +32,19 @@
       canmount: 'on'
   loop: '{{ groups["jails"] }}'
 
+- name: Create dataset for backed-up etc files on the jailhost
+  community.general.zfs:
+    name: zroot/empt/etc
+    state: present
+    extra_zfs_properties:
+      compression: zstd
+  loop: '{{ groups["jails"] }}'
+
 - name: Create dataset for backed-up etc files for each jail
   community.general.zfs:
     name: 'zroot/empt/jails/{{ item }}/etc'
     state: present
     extra_zfs_properties:
-      exec: 'off'
-      setuid: 'off'
-      atime: 'off'
       compression: zstd
   loop: '{{ groups["jails"] }}'
 
@@ -54,6 +59,16 @@
       setuid: 'off'
       compression: zstd
   loop: '{{ groups["jails"] }}'
+
+- name: Create ZFS dataset for backed-up kerberos database storage
+  community.general.zfs:
+    name: zroot/empt/jails/kerberos/krb5data
+    state: present
+    extra_zfs_properties:
+      mountpoint: /empt/jails/kerberos/var/heimdal
+      exec: 'off'
+      setuid: 'off'
+      atime: 'off'
 
 - name: Create top level ZFS dataset for storing data for humans
   community.general.zfs:
@@ -70,7 +85,6 @@
     state: directory
     mode: '0755'
   loop:
-    - /empt/etc/jail_fstabs
     - /tmp/base_jail
 
 # TODO audit file permissions one by one
@@ -165,8 +179,3 @@
 #     name: "jail"
 #     enabled: true
 #     state: started
-
-# TODO file bug for service module not working here
-- name: Start all jails
-  ansible.builtin.command: service jail onerestart # noqa: command-instead-of-module
-  changed_when: false

@@ -1,0 +1,29 @@
+- name: Install certauth required ports
+  ansible.builtin.command: pkg -j certauth install -y py311-cryptography
+  changed_when: true
+
+- name: Install cifs required ports
+  ansible.builtin.command: pkg -j cifs install -y samba419
+  changed_when: true
+
+- name: Install dns required ports
+  ansible.builtin.command: pkg -j dns install -y nsd
+  changed_when: true
+
+- name: Install irc required ports
+  ansible.builtin.command: pkg -j irc install -y unreal anope-devel
+  changed_when: true
+
+# TODO change to stable heimdal once support for OpenSSL 3 is released
+- name: Install kerberos required ports
+  ansible.builtin.command: pkg -j kerberos install -y heimdal-devel
+  changed_when: true
+
+# TODO should I move the it-helpdesk (and python deps) to another jail?
+- name: Install mail required ports
+  ansible.builtin.command: pkg -j mail install -y postfix dovecot mlmmj python
+  changed_when: true
+
+- name: Install radicale required ports
+  ansible.builtin.command: pkg -j radicale install -y py311-gunicorn py311-radicale
+  changed_when: true

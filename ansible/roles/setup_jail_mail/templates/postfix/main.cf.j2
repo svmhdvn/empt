@@ -358,6 +358,7 @@ mynetworks =
 #alias_maps = hash:/etc/aliases
 #alias_maps = hash:/etc/aliases, nis:mail.aliases
 #alias_maps = netinfo:/aliases
+alias_maps = cdb:/etc/mail/aliases
 
 # The alias_database parameter specifies the alias database(s) that
 # are built with "newaliases" or "sendmail -bi".  This is a separate
@@ -367,6 +368,7 @@ mynetworks =
 #alias_database = dbm:/etc/aliases
 #alias_database = hash:/etc/aliases
 #alias_database = hash:/etc/aliases, hash:/opt/majordomo/aliases
+alias_database = cdb:/etc/mail/aliases
 
 # ADDRESS EXTENSIONS (e.g., user+foo)
 #

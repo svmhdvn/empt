@@ -6,6 +6,7 @@
   with_community.general.filetree: '{{ "templates/postfix" }}'
   when: item.state == 'file'
 
+# TODO cdb maps and aliases
 - name: Generate postfix maps
   ansible.builtin.command: 'postmap /usr/local/etc/postfix/{{ item }}'
   loop:
@@ -15,7 +16,7 @@
   changed_when: setup_jail_mail_postmap.rc == 0
 
 - name: Generate aliases database
-  ansible.builtin.command: newaliases
+  ansible.builtin.command: postalias cdb:/etc/mail/aliases
   changed_when: true
 
 - name: Create dovecot conf.d/ directory

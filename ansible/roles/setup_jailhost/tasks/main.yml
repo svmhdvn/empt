@@ -79,16 +79,8 @@
       setuid: 'off'
       compression: zstd
 
-- name: Create all missing directories on jailhost
-  ansible.builtin.file:
-    path: '{{ item }}'
-    state: directory
-    mode: '0755'
-  loop:
-    - /tmp/base_jail
-
 # TODO audit file permissions one by one
-- name: "Populate jailhost /etc files"
+- name: Populate jailhost /etc files
   ansible.builtin.template:
     src: '{{ item.src }}'
     dest: '/etc/{{ item.path | replace(".j2", "") }}'
@@ -98,7 +90,7 @@
   with_community.general.filetree: '{{ "templates/jailhost_etc/" }}'
   when: item.state == 'file'
 
-- name: "Populate jailhost /usr/local/etc files"
+- name: Populate jailhost /usr/local/etc files
   ansible.builtin.template:
     src: '{{ item.src }}'
     dest: '/usr/local/etc/{{ item.path | replace(".j2", "") }}'
@@ -128,10 +120,17 @@
   with_community.general.filetree: '{{ "templates/empt_etc" }}'
   when: item.state == 'file'
 
-- name: "Unarchive (thick) base jail to temporary location"
-  ansible.builtin.unarchive:
-    src: wyse-base.txz
-    dest: /tmp/base_jail
+- name: Create empty directory for base jail
+  ansible.builtin.file:
+    path: /tmp/base_jail
+    state: directory
+    mode: '0755'
+    owner: root
+    group: wheel
+
+- name: Install pkgbase to temporary base jail
+  ansible.builtin.command: pkg --rootdir /tmp/base_jail install -y --repository PoudrierePkgbase -g 'FreeBSD-*'
+  changed_when: true
 
 - name: Create all missing directories in base jail
   ansible.builtin.file:
@@ -166,6 +165,11 @@
 - name: Clone (thick) base jail to installed locations
   ansible.builtin.command: 'cp -a /tmp/base_jail/ /empt/jails/{{ item }}'
   loop: '{{ groups["jails"] }}'
+  changed_when: true
+
+# NOTE needed to clear immutable flags
+- name: Clear all flags in temporary base jail tree
+  ansible.builtin.command: chflags -R 0 /tmp/base_jail
   changed_when: true
 
 - name: Remove temporary base jail

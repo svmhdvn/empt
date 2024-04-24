@@ -47,6 +47,5 @@ kerberos_service_principals:
     host: mail
   - service: host
     host: irc
-  # TODO should this be 'gunicorn'?
-  - service: host
+  - service: HTTP
     host: radicale

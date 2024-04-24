@@ -101,9 +101,11 @@
     group: '{{ human.uid }}'
   delegate_to: mail
 
+# TODO can we change wsgi-kerberos to return REMOTE_USER=<username> instead of
+# REMOTE_USER=<username>@<REALM>?
 - name: Create missing nullfs mountpoint for radicale collections
   ansible.builtin.file:
-    name: '/usr/local/share/radicale/collection-root/{{ human.username }}'
+    name: '/usr/local/share/radicale/collection-root/{{ human.username }}@{{ org_domain | upper }}'
     state: directory
     recurse: true
     mode: '1700'
@@ -124,7 +126,7 @@
 - name: Add diary collections nullfs mount to radicale jail
   ansible.builtin.lineinfile:
     path: /empt/etc/radicale/fstab
-    line: '/empt/human_storage/{{ human.username }}/diary /empt/jails/radicale/usr/local/share/radicale/collection-root/{{ human.username }} nullfs rw 0 0'
+    line: '/empt/human_storage/{{ human.username }}/diary /empt/jails/radicale/usr/local/share/radicale/collection-root/{{ human.username }}@{{ org_domain | upper }} nullfs rw 0 0'
 
 # TODO actually mount all these directories
 

@@ -1,0 +1,13 @@
+import logging
+import socket
+
+import radicale
+import wsgi_kerberos
+
+logger = logging.getLogger('gunicorn.error')
+
+app = wsgi_kerberos.KerberosAuthMiddleware(
+    app=radicale.application,
+    hostname=socket.gethostname(),
+    logger=logger,
+)

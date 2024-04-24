@@ -24,9 +24,9 @@
 # ============================================
 
 - name: Use the rc services from ports heimdal
-  ansible.builtin.lineinfile:
-    path: /etc/rc.conf
-    line: '{{ item }}_program="/usr/local/libexec/{{ item }}"'
+  community.general.sysrc:
+    name: '{{ item }}_program'
+    value: '/usr/local/libexec/{{ item }}'
   loop:
     - kdc
     - kadmind
@@ -73,7 +73,7 @@
   ansible.builtin.copy:
     src: '/empt/jails/kerberos/tmp/{{ item.host }}.keytab'
     remote_src: true
-    dest: '/empt/jails/{{ item.host }}/etc/krb5.keytab'
+    dest: '/empt/jails/{{ item.host }}/usr/local/etc/krb5.keytab'
     owner: root
     group: wheel
     mode: '0600'

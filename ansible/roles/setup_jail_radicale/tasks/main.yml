@@ -1,8 +1,37 @@
-# TODO add upstream /usr/local/etc default config directory
 - name: Configure radicale
   ansible.builtin.template:
-    src: radicale_config.ini.j2
-    dest: /usr/local/etc/radicale/config
+    src: '{{ item.src }}'
+    dest: '/usr/local/etc/radicale/{{ item.path | replace(".j2", "") }}'
     mode: '0600'
     owner: radicale
     group: radicale
+  with_community.general.filetree: '{{ "templates/radicale" }}'
+  when: item.state == 'file'
+
+- name: Configure gunicorn to run as 'radicale' user
+  community.general.sysrc:
+    name: gunicorn_user
+    value: radicale
+
+- name: Configure gunicorn to run as 'radicale' group
+  community.general.sysrc:
+    name: gunicorn_group
+    value: radicale
+
+- name: Configure gunicorn to run with radicale-owned gunicorn config
+  community.general.sysrc:
+    name: gunicorn_config
+    value: /usr/local/etc/radicale/gunicorn_radicale.conf.py
+
+- name: Change keytab ownership strictly to radicale user
+  ansible.builtin.file:
+    name: /usr/local/etc/krb5.keytab
+    mode: '0600'
+    owner: radicale
+    group: radicale
+
+- name: Enable gunicorn service
+  ansible.builtin.service:
+    name: gunicorn
+    enabled: true
+    state: started

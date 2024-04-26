@@ -20,15 +20,15 @@
   delegate_to: jailhost
 
 - name: Retrieve jailhost ssh host public key
-  ansible.builtin.command: ssh-keyscan -t ed25519 jailhost
+  ansible.builtin.command: ssh-keyscan -t ed25519 ::1
   changed_when: false
   register: setup_jail_cronmonitor_jailhost_host_pubkeys
 
 - name: Add jailhost ssh host public keys to known_hosts
-  ansible.builtin.known_hosts:
-    name: jailhost
-    key: '{{ item }}'
+  ansible.builtin.lineinfile:
     path: /home/cronmonitor/.ssh/known_hosts
+    create: true
+    line: '{{ item }}'
   loop: '{{ setup_jail_cronmonitor_jailhost_host_pubkeys.stdout_lines | flatten(levels=1) }}'
 
 - name: Install dma mailer configuration
@@ -53,6 +53,6 @@
     name: check cpu usage
     user: cronmonitor
     job: >
-      ssh monitoragent@jailhost
+      ssh monitoragent@::1
       '/usr/local/libexec/nagios/check_load -r -w 0.75 -c 0.95 | /usr/bin/grep -E "^(WARNING|CRITICAL)"'
 # =========

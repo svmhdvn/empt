@@ -8,7 +8,6 @@
     name: 'zroot/empt/human_storage/{{ human.username }}'
     state: present
     extra_zfs_properties:
-      canmount: 'on'
       quota: '1G'
       reservation: '1G'
 

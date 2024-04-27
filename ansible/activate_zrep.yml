@@ -1,0 +1,42 @@
+---
+- name: Setup ssh mutual trust between primary and secondary
+  hosts: localhost
+  roles:
+    - zrep_setup_mutual_trust
+
+- name: Initialize zrep state on all backed-up datasets on primary
+  hosts: wyse1
+  roles:
+    - zrep_init_state
+
+- name: Enable zrep sync cronjob on primary and secondary
+  hosts: jailhosts
+  tasks:
+    - name: Create zrep system user for crontab
+      ansible.builtin.user:
+        name: zrep
+        comment: Zrep Cron Agent
+        home: /nonexistent
+        create_home: false
+
+    - name: Allow zrep user to run sync command with doas
+      ansible.builtin.lineinfile:
+        line: permit nopass zrep cmd /usr/local/bin/zrep args sync -q 60 all
+        path: /usr/local/etc/doas.conf
+        create: true
+        owner: root
+        group: wheel
+        mode: '0600'
+
+    - name: Ensure zrep cronjobs are run with ZREP_R
+      ansible.builtin.cron:
+        user: zrep
+        env: true
+        name: ZREP_R
+        job: '-R'
+
+    - name: Enable zrep sync cronjob
+      ansible.builtin.cron:
+        user: zrep
+        name: zrep backup job
+        job: time doas /usr/local/bin/zrep sync -q 60 all

@@ -1,0 +1,59 @@
+- name: Generate ssh key for primary root user
+  ansible.builtin.user:
+    name: root
+    generate_ssh_key: true
+    ssh_key_type: ed25519
+  delegate_to: wyse1
+  register: activate_zrep_primary_root_user
+
+- name: Generate ssh key for secondary root user
+  ansible.builtin.user:
+    name: root
+    generate_ssh_key: true
+    ssh_key_type: ed25519
+  delegate_to: wyse2
+  register: activate_zrep_secondary_root_user
+
+- name: Authorize secondary root public key on primary
+  ansible.posix.authorized_key:
+    user: root
+    key: '{{ activate_zrep_secondary_root_user.ssh_public_key }}'
+    exclusive: true
+  environment:
+    CRYPTOGRAPHY_OPENSSL_NO_LEGACY: '1'
+  delegate_to: wyse1
+
+- name: Retrieve secondary host public key
+  ansible.builtin.command: ssh-keyscan -t ed25519 jailhost-secondary.home.arpa
+  changed_when: false
+  delegate_to: wyse1
+  register: activate_zrep_secondary_host_key
+
+- name: Add secondary host key to known_hosts
+  ansible.builtin.known_hosts:
+    name: jailhost-secondary.home.arpa
+    key: '{{ item }}'
+  delegate_to: wyse1
+  loop: '{{ activate_zrep_secondary_host_key.stdout_lines | flatten(levels=1) }}'
+
+- name: Authorize primary root user public key on secondary
+  ansible.posix.authorized_key:
+    user: root
+    key: '{{ activate_zrep_primary_root_user.ssh_public_key }}'
+    exclusive: true
+  environment:
+    CRYPTOGRAPHY_OPENSSL_NO_LEGACY: '1'
+  delegate_to: wyse2
+
+- name: Retrieve primary host public key from secondary
+  ansible.builtin.command: ssh-keyscan -t ed25519 jailhost-primary.home.arpa
+  changed_when: false
+  delegate_to: wyse2
+  register: activate_zrep_primary_host_key
+
+- name: Add primary host key to known_hosts on secondary
+  ansible.builtin.known_hosts:
+    name: jailhost-primary.home.arpa
+    key: '{{ item }}'
+  loop: '{{ activate_zrep_primary_host_key.stdout_lines | flatten(levels=1) }}'
+  delegate_to: wyse2

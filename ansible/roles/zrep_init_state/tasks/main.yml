@@ -1,0 +1,23 @@
+- name: Enable zrep backup of zroot/empt/etc
+  ansible.builtin.command: zrep init -f zroot/empt/etc jailhost-secondary.home.arpa zroot/empt/etc
+  changed_when: true
+
+- name: Enable recursive zrep backup of zroot/empt/human_storage
+  ansible.builtin.command: zrep init -f zroot/empt/human_storage jailhost-secondary.home.arpa zroot/empt/human_storage
+  environment:
+    ZREP_R: '-R'
+  changed_when: true
+
+- name: Enable zrep backup of zroot/empt/jails/kerberos/krb5data
+  ansible.builtin.command: zrep init -f zroot/empt/jails/kerberos/krb5data jailhost-secondary.home.arpa zroot/empt/jails/kerberos/krb5data
+  changed_when: true
+
+- name: Enable zrep backup of all jail-owned etc datasets
+  ansible.builtin.command: 'zrep init -f zroot/empt/jails/{{ item }}/etc jailhost-secondary.home.arpa zroot/empt/jails/{{ item }}/etc'
+  loop: '{{ groups["jails"] }}'
+  changed_when: true
+
+- name: Enable zrep backup of all jail-owned logs datasets
+  ansible.builtin.command: 'zrep init -f zroot/empt/jails/{{ item }}/logs jailhost-secondary.home.arpa zroot/empt/jails/{{ item }}/logs'
+  loop: '{{ groups["jails"] }}'
+  changed_when: true

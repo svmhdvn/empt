@@ -13,7 +13,7 @@ fresh_start:
 		-l $(TARGET) \
 		-i remote_inventory.ini \
 		-b -K --become-method ansible.builtin.su \
-		-K fresh_start.yml
+		fresh_start.yml
 	ssh $(FRESH_INSTALL_USER)@$(TARGET).home.arpa 'cd /tmp/empt-ansible/ansible && \
 		doas env CRYPTOGRAPHY_OPENSSL_NO_LEGACY=1 ansible-playbook \
 		-i local_inventory.ini \
@@ -34,13 +34,21 @@ update_poudriere:
 		-l $(TARGET) \
 		-i remote_inventory.ini \
 		-b -K --become-method ansible.builtin.su \
-		-K update_poudriere.yml
+		update_poudriere.yml
+
+activate_zrep:
+	ansible-playbook \
+		-u $(FRESH_INSTALL_USER) \
+		-b -K --become-method ansible.builtin.su \
+		-i local_inventory.ini \
+		-i remote_inventory.ini \
+		activate_zrep.yml
 
 reset:
 	ansible \
 		-u $(FRESH_INSTALL_USER) \
-		-i remote_inventory.ini \
 		-b -K --become-method ansible.builtin.su \
+		-i remote_inventory.ini \
 		-m import_role -a name=factory_reset \
 		$(TARGET)
 

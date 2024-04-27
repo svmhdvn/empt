@@ -1,5 +1,5 @@
 - name: Install jailhost required packages
-  ansible.builtin.command: pkg install -y cpu-microcode nagios-plugins rsync
+  ansible.builtin.command: pkg install -y cpu-microcode nagios-plugins rsync zrep
   changed_when: true
 
 # TODO query intel or AMD, currently hardcoding for wyse
@@ -17,22 +17,6 @@
     extra_zfs_properties:
       mountpoint: /empt
 
-# TODO see if this needs to be in its own role
-# TODO figure out password situation
-# ============================================
-- name: Create zrep system user
-  ansible.builtin.user:
-    name: zrep
-    comment: Zrep Agent
-    password: '$6$uOZXoB7oD23GM86z$pFPaQEjIyi9P5/Xg4cn7xYpQDWu39SOgIztjfLROF2HS9n43x6mVgSal2syiAIkGy7ELXhIxvtCAzdffyP.R61'
-    generate_ssh_key: true
-    ssh_key_type: ed25519
-
-- name: Create zrep permissions set for zroot/empt
-  ansible.builtin.command: zfs allow -s @zrepset canmount,compression,create,destroy,exec,hold,mount,mountpoint,quota,readonly,receive,rename,reservation,rollback,send,setuid,snapshot,userprop zroot/empt
-  changed_when: true
-# ============================================
-
 - name: Create dataset for backed-up etc files on the jailhost
   community.general.zfs:
     name: zroot/empt/etc
@@ -40,10 +24,6 @@
     extra_zfs_properties:
       compression: zstd
   loop: '{{ groups["jails"] }}'
-
-- name: Allow zrep to backup zroot/empt/etc
-  ansible.builtin.command: zfs allow zrep @zrepset zroot/empt/etc
-  changed_when: true
 
 - name: Create top level ZFS dataset for storing data for humans
   community.general.zfs:
@@ -53,11 +33,6 @@
       exec: 'off'
       setuid: 'off'
       compression: zstd
-
-- name: Allow zrep to backup human_storage dataset
-  ansible.builtin.command: zfs allow zrep @zrepset zroot/empt/human_storage
-  changed_when: true
-
 
 - name: Create ZFS dataset for the top level jails filesystem
   community.general.zfs:
@@ -78,11 +53,6 @@
       compression: zstd
   loop: '{{ groups["jails"] }}'
 
-- name: Allow zrep to backup jail-owned etc datasets
-  ansible.builtin.command: 'zfs allow zrep @zrepset zroot/empt/jails/{{ item }}/etc'
-  loop: '{{ groups["jails"] }}'
-  changed_when: true
-
 - name: Create ZFS dataset for log storage inside each jail
   community.general.zfs:
     name: 'zroot/empt/jails/{{ item }}/logs'
@@ -94,11 +64,6 @@
       compression: zstd
   loop: '{{ groups["jails"] }}'
 
-- name: Allow zrep to backup jail-owned log storage datasets
-  ansible.builtin.command: 'zfs allow zrep @zrepset zroot/empt/jails/{{ item }}/logs'
-  loop: '{{ groups["jails"] }}'
-  changed_when: true
-
 - name: Create ZFS dataset for backed-up kerberos database storage
   community.general.zfs:
     name: zroot/empt/jails/kerberos/krb5data
@@ -107,10 +72,6 @@
       mountpoint: /empt/jails/kerberos/var/heimdal
       exec: 'off'
       setuid: 'off'
-
-- name: Allow zrep to backup kerberos dataset
-  ansible.builtin.command: zfs allow zrep @zrepset zroot/empt/jails/kerberos/krb5data
-  changed_when: true
 
 # TODO audit file permissions one by one
 - name: Populate jailhost /etc files

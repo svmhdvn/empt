@@ -53,6 +53,6 @@
     name: check cpu usage
     user: cronmonitor
     job: >
-      ssh monitoragent@::1
+      -n -q ssh monitoragent@::1
       '/usr/local/libexec/nagios/check_load -r -w 0.75 -c 0.95 | /usr/bin/grep -E "^(WARNING|CRITICAL)"'
 # =========

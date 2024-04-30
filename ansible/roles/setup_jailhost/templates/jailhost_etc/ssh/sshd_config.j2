@@ -1,16 +1,8 @@
 HostKey /etc/ssh/ssh_host_ed25519_key
-PermitRootLogin no
 AuthorizedKeysFile .ssh/authorized_keys
 PrintMotd no
 
 Subsystem sftp /usr/libexec/sftp-server
-
-{% if responsibility == "primary" %}
-Match Host jailhost-secondary.home.arpa
-{% else %}
-Match Host jailhost-primary.home.arpa
-{% endif %}
-	PermitRootLogin prohibit-password
 
 # TODO do we need this?
 #HostbasedAuthentication no
@@ -18,3 +10,6 @@ Match Host jailhost-primary.home.arpa
 
 # TODO disable once everything is figured out
 PasswordAuthentication yes
+
+# TODO disable this eventually, just figuring out zrep mutual trust for now
+PermitRootLogin prohibit-password

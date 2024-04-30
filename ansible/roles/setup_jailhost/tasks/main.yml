@@ -21,8 +21,7 @@
   community.general.zfs:
     name: zroot/empt/etc
     state: present
-    extra_zfs_properties:
-      compression: zstd
+    extra_zfs_properties: '{{ zrep_dataset_props["zroot/empt/etc"] }}'
   loop: '{{ groups["jails"] }}'
 
 - name: Create top level ZFS dataset for storing data for humans
@@ -49,29 +48,21 @@
   community.general.zfs:
     name: 'zroot/empt/jails/{{ item }}/etc'
     state: present
-    extra_zfs_properties:
-      compression: zstd
+    extra_zfs_properties: '{{ zrep_dataset_props["zroot/empt/jails/" + item + "/etc"] }}'
   loop: '{{ groups["jails"] }}'
 
 - name: Create ZFS dataset for log storage inside each jail
   community.general.zfs:
     name: 'zroot/empt/jails/{{ item }}/logs'
     state: present
-    extra_zfs_properties:
-      mountpoint: '/empt/jails/{{ item }}/var/log'
-      exec: 'off'
-      setuid: 'off'
-      compression: zstd
+    extra_zfs_properties: '{{ zrep_dataset_props["zroot/empt/jails/" + item + "/logs"] }}'
   loop: '{{ groups["jails"] }}'
 
 - name: Create ZFS dataset for backed-up kerberos database storage
   community.general.zfs:
     name: zroot/empt/jails/kerberos/krb5data
     state: present
-    extra_zfs_properties:
-      mountpoint: /empt/jails/kerberos/var/heimdal
-      exec: 'off'
-      setuid: 'off'
+    extra_zfs_properties: '{{ zrep_dataset_props["zroot/empt/jails/kerberos/krb5data"] }}'
 
 # TODO audit file permissions one by one
 - name: Populate jailhost /etc files

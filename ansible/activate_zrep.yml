@@ -1,16 +1,15 @@
 ---
 - name: Setup ssh mutual trust between primary and secondary
   hosts: localhost
+  vars_files:
+    - vars/shared.yml
   roles:
     - zrep_setup_mutual_trust
 
-- name: Initialize zrep state on all backed-up datasets on primary
-  hosts: wyse1
-  roles:
-    - zrep_init_state
-
-- name: Enable zrep sync cronjob on primary and secondary
+- name: Setup zrep system users on both primary and secondary
   hosts: jailhosts
+  vars_files:
+    - vars/shared.yml
   tasks:
     - name: Create zrep system user for crontab
       ansible.builtin.user:
@@ -18,25 +17,25 @@
         comment: Zrep Cron Agent
         home: /nonexistent
         create_home: false
+        shell: /usr/sbin/nologin
 
-    - name: Allow zrep user to run sync command with doas
-      ansible.builtin.lineinfile:
-        line: permit nopass zrep cmd /usr/local/bin/zrep args sync -q 60 all
-        path: /usr/local/etc/doas.conf
-        create: true
-        owner: root
-        group: wheel
-        mode: '0600'
+- name: Initialize all zrep backed up datasets
+  hosts: localhost
+  vars_files:
+    - vars/shared.yml
+  tasks:
+    - name: Initialize zrep state on all datasets to be backed up
+      ansible.builtin.include_role:
+        name: zrep_init_dataset
+      loop: '{{ zrep_dataset_props | dict2items }}'
+      loop_control:
+        loop_var: dataset
 
-    - name: Ensure zrep cronjobs are run with ZREP_R
-      ansible.builtin.cron:
-        user: zrep
-        env: true
-        name: ZREP_R
-        job: '-R'
-
-    - name: Enable zrep sync cronjob
-      ansible.builtin.cron:
-        user: zrep
-        name: zrep backup job
-        job: time doas /usr/local/bin/zrep sync -q 60 all
+- name: Unmount entire zroot/empt parent dataset on secondary
+  hosts: jailhost-secondary
+  tasks:
+    - name: Unmount zroot/empt
+      ansible.builtin.command: zfs unmount zroot/empt
+      register: activate_zrep_empt_unmount
+      failed_when: activate_zrep_empt_unmount.rc != 0 and "not currently mounted" not in activate_zrep_empt_unmount.stderr
+      changed_when: true

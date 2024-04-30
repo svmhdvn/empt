@@ -1,0 +1,24 @@
+---
+- name: Create all pre-configured mailing lists
+  hosts: mail
+  vars_files:
+    - vars/shared.yml
+  tasks:
+    - name: Create mailing list
+      ansible.builtin.include_role:
+        name: mlmmj_make_ml
+      loop: '{{ mailing_lists }}'
+      loop_control:
+        loop_var: mailing_list
+
+- name: Add all pre-configured humans
+  hosts: jailhost
+  vars_files:
+    - vars/shared.yml
+  tasks:
+    - name: Add human
+      ansible.builtin.include_role:
+        name: new_human
+      loop: '{{ humans }}'
+      loop_control:
+        loop_var: human

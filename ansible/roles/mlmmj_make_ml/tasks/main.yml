@@ -1,0 +1,46 @@
+# Expects variable:
+# mailing_list: str
+
+# TODO at some point, allow mlmmj-make-ml to create a mailinglist fully on the command line
+# to avoid this whole answer file thing.
+- name: Create mlmmj-make-ml answer file
+  ansible.builtin.template:
+    src: mlmmj-answers.txt.j2
+    dest: /tmp/mlmmj-answers.txt
+    mode: '0600'
+    owner: mlmmj
+    group: mlmmj
+
+- name: Create mailing list
+  ansible.builtin.command: '/usr/local/bin/mlmmj-make-ml -f /tmp/mlmmj-answers.txt'
+  become: true
+  become_method: community.general.doas
+  become_user: mlmmj
+  register: make_ml_output
+  changed_when: make_ml_output.rc == 0
+
+- name: Change relay host to local IPv6
+  ansible.builtin.copy:
+    dest: '/var/spool/mlmmj/{{ mailing_list }}/control/relayhost'
+    content: "fe80::eeee:{{ jid }}%lo0\n"
+    mode: '0644'
+    owner: mlmmj
+    group: mlmmj
+
+- name: Add local mailing list alias mapping to postfix
+  ansible.builtin.lineinfile:
+    path: /usr/local/etc/postfix/mlmmj_aliases
+    line: '{{ mailing_list }}@{{ org_domain }} {{ mailing_list }}@localhost.mlmmj'
+
+- name: Add local mailing list transport mapping to postfix
+  ansible.builtin.lineinfile:
+    path: /usr/local/etc/postfix/mlmmj_transport
+    line: '{{ mailing_list }}@localhost.mlmmj mlmmj:{{ mailing_list }}'
+
+- name: Regenerate postfix maps
+  ansible.builtin.command: 'postmap /usr/local/etc/postfix/{{ item }}'
+  loop:
+    - mlmmj_transport
+    - mlmmj_aliases
+  register: mlmmj_make_ml_postmap
+  changed_when: mlmmj_make_ml_postmap.rc == 0

@@ -85,30 +85,6 @@
   roles:
     - setup_jail_radicale
 
-- name: Create all pre-configured mailing lists
-  hosts: mail
-  remote_user: mlmmj
-  vars_files:
-    - vars/shared.yml
-  tasks:
-    - name: Create mailing list
-      ansible.builtin.include_tasks: mlmmj_make_ml.yml
-      loop: '{{ mailing_lists }}'
-      loop_control:
-        loop_var: mailing_list
-
-- name: Add all pre-configured humans
-  hosts: jailhost
-  vars_files:
-    - vars/shared.yml
-  tasks:
-    - name: Add human
-      ansible.builtin.include_role:
-        name: new_human
-      loop: '{{ humans }}'
-      loop_control:
-        loop_var: human
-
 - name: Setup cron monitoring jail
   hosts: cronmonitor
   vars_files:

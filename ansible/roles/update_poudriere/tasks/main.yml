@@ -3,7 +3,8 @@
     path: '{{ item }}'
     state: absent
   loop:
-    - /usr/local/poudriere_repos/pkgbase
+    - /usr/local/poudriere_repos/host_pkgbase
+    - /usr/local/poudriere_repos/jail_pkgbase
     - /usr/local/poudriere_repos/ports
 
 - name: Create all missing directories on jailhost
@@ -13,7 +14,8 @@
     mode: '0755'
   loop:
     - /usr/local/etc/pkg/repos
-    - /usr/local/poudriere_repos/pkgbase
+    - /usr/local/poudriere_repos/host_pkgbase
+    - /usr/local/poudriere_repos/jail_pkgbase
     - /usr/local/poudriere_repos/ports
 
 - name: Copy poudriere repos to jailhost /tmp
@@ -24,26 +26,36 @@
     owner: root
     group: wheel
   loop:
-    - wyse-PoudrierePkgbase.tar.zst
-    - wyse-PoudrierePorts.tar.zst
+    - wyse-host-pkgbase.tar.zst
+    - wyse-jail-pkgbase.tar.zst
+    - wyse-ports.tar.zst
 
-- name: Extract poudriere pkgbase repo
-  ansible.builtin.command: tar -C /usr/local/poudriere_repos/pkgbase -xf /tmp/wyse-PoudrierePkgbase.tar.zst
+- name: Extract poudriere host pkgbase repo
+  ansible.builtin.command: tar -C /usr/local/poudriere_repos/host_pkgbase -xf /tmp/wyse-host-pkgbase.tar.zst
+  changed_when: true
+
+- name: Extract poudriere jail pkgbase repo
+  ansible.builtin.command: tar -C /usr/local/poudriere_repos/jail_pkgbase -xf /tmp/wyse-jail-pkgbase.tar.zst
   changed_when: true
 
 - name: Extract poudriere ports repo
-  ansible.builtin.command: tar -C /usr/local/poudriere_repos/ports -xf /tmp/wyse-PoudrierePorts.tar.zst
+  ansible.builtin.command: tar -C /usr/local/poudriere_repos/ports -xf /tmp/wyse-ports.tar.zst
   changed_when: true
 
-- name: Configure pkg to use Poudriere repo
+- name: Configure jailhost to use host pkgbase and ports
   ansible.builtin.copy:
     content: |
-      PoudrierePkgbase: {
-        url: "file:///usr/local/poudriere_repos/pkgbase"
+      host_pkgbase: {
+        url: "file:///usr/local/poudriere_repos/host_pkgbase"
         enabled: yes
       }
 
-      PoudrierePorts: {
+      jail_pkgbase: {
+        url: "file:///usr/local/poudriere_repos/jail_pkgbase"
+        enabled: yes
+      }
+
+      ports: {
         url: "file:///usr/local/poudriere_repos/ports"
         enabled: yes
       }
@@ -58,12 +70,12 @@
     dest: /usr/local/etc/pkg/repos/FreeBSD.conf
     owner: root
     group: wheel
-    mode: '0644'
+    mode: '0600'
 
 # NOTE See https://wiki.freebsd.org/PkgBase for .pkgsave fixes
 - name: Upgrade whole system to new pkgbase while preserving passwd db
   ansible.builtin.shell: >
-    pkg-static install -y -r PoudrierePkgbase -g 'FreeBSD-*' && {
+    pkg-static install -y -r host_pkgbase -g 'FreeBSD-*' && {
       cp /etc/master.passwd.pkgsave /etc/master.passwd ;
       cp /etc/group.pkgsave /etc/group ;
       cp /etc/sysctl.conf.pkgsave /etc/sysctl.conf ;
@@ -79,7 +91,7 @@
   ansible.builtin.reboot:
 
 - name: Upgrade all ports on host system
-  ansible.builtin.command: pkg upgrade -y -f -r PoudrierePorts
+  ansible.builtin.command: pkg upgrade -y -f -r ports
   changed_when: true
 
 - name: Reboot to new ports userland

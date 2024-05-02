@@ -27,3 +27,7 @@
 - name: Install radicale required ports
   ansible.builtin.command: pkg -j radicale install -y py311-gunicorn py311-radicale py311-wsgi-kerberos
   changed_when: true
+
+- name: Install cronmonitor required ports
+  ansible.builtin.command: pkg -j cronmonitor install -y openssh-portable
+  changed_when: true

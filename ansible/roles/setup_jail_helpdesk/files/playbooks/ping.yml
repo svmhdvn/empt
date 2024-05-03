@@ -1,0 +1,12 @@
+---
+- name: Reply back with PONG
+  hosts: localhost
+  tasks:
+    - name: Test ping and look for logs
+      ansible.builtin.ping:
+
+    - name: Say hello to sending user
+      community.general.mail:
+        host: mail.home.arpa
+        secure: never
+        cc: 'it@{{ org_domain }}'

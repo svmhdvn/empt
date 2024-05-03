@@ -1,6 +1,7 @@
 # TODO secure
 secret_ca_passphrase: cakey
 
+
 mailing_lists:
   - everyone
   - cryptoppl
@@ -8,6 +9,10 @@ mailing_lists:
 
 # TODO randomly generate the uids properly without collision
 # currently hardcoding "randomly" for now
+helpdesk:
+  uid: 39712
+  fullname: Helpdesk Agent
+
 humans:
   - username: alice
     fullname: Alice Crypto
@@ -61,6 +66,10 @@ kerberos_service_principals:
 
 zrep_dataset_props:
   zroot/empt/etc:
+    compression: zstd
+  zroot/empt/helpdesk:
+    exec: 'off'
+    setuid: 'off'
     compression: zstd
   zroot/empt/jails/kerberos/krb5data:
     mountpoint: /empt/jails/kerberos/var/heimdal

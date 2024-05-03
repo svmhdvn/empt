@@ -1,0 +1,5 @@
+account "helpdesk" maildir "/home/helpdesk/mail"
+
+match "^from:\s*(.*)@{{ org_domain }}" in headers
+	and ^subject:.*ping" in headers
+	action exec "ssh root@::1 helpdesk ping user=%1"

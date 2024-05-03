@@ -1,0 +1,130 @@
+- name: Create storage dataset for helpdesk home
+  community.general.zfs:
+    name: zroot/empt/helpdesk
+    state: present
+    extra_zfs_properties: '{{ zrep_dataset_props["zroot/empt/helpdesk"] }}'
+  delegate_to: jailhost
+
+- name: Create system account for the agent in the helpdesk jail
+  ansible.builtin.user:
+    name: helpdesk
+    comment: Helpdesk Agent
+    shell: /usr/sbin/nologin
+    home: /home/helpdesk
+    create_home: false
+    generate_ssh_key: true
+    ssh_key_type: ed25519
+  register: setup_jail_helpdesk_user
+
+- name: Create maildir directory layout under helpdesk home
+  ansible.builtin.file:
+    name: '/empt/helpdesk/{{ item }}'
+    state: directory
+    recurse: true
+    mode: '0700'
+    owner: '{{ setup_jail_helpdesk_user.uid }}'
+    group: '{{ setup_jail_helpdesk_user.uid }}'
+  loop:
+    - home/mail/cur
+    - home/mail/new
+    - home/mail/tmp
+    - playbooks
+  delegate_to: jailhost
+
+- name: Create mail delivery local account for the helpdesk in the mail jail
+  ansible.builtin.user:
+    name: helpdesk
+    uid: '{{ setup_jail_helpdesk_user.uid }}'
+    comment: Helpdesk Agent
+    shell: /usr/sbin/nologin
+  delegate_to: mail
+
+- name: Create missing nullfs mountpoint for helpdesk maildir delivery in mail jail
+  ansible.builtin.file:
+    name: /home/helpdesk/home/mail
+    state: directory
+    recurse: true
+    mode: '0700'
+    owner: helpdesk
+    group: helpdesk
+  delegate_to: mail
+
+- name: Create missing nullfs mountpoint for helpdesk home directory
+  ansible.builtin.file:
+    name: /home/helpdesk/home
+    state: directory
+    recurse: true
+    mode: '0700'
+    owner: helpdesk
+    group: helpdesk
+
+- name: Add helpdesk home directory nullfs mount
+  ansible.posix.mount:
+    fstab: /empt/etc/mail/fstab
+    src: /empt/helpdesk/home/mail
+    path: /empt/jails/mail/home/helpdesk/mail
+    fstype: nullfs
+    opts: rw
+    state: mounted
+  delegate_to: jailhost
+
+- name: Add helpdesk home directory nullfs mount
+  ansible.posix.mount:
+    fstab: /empt/etc/helpdesk/fstab
+    src: /empt/helpdesk/home
+    path: /empt/jails/helpdesk/home/helpdesk
+    fstype: nullfs
+    opts: rw
+    state: mounted
+  delegate_to: jailhost
+
+- name: Authorize helpdesk agent ssh key on jailhost for receiving helpdesk play commands
+  ansible.posix.authorized_key:
+    user: root
+    key: '{{ setup_jail_helpdesk_user.ssh_public_key }}'
+    key_options: 'command="/root/ssh-forced-helpdesk $SSH_ORIGINAL_COMMAND"'
+  delegate_to: jailhost
+
+- name: Retrieve jailhost ssh host public key
+  ansible.builtin.command: ssh-keyscan -t ed25519 ::1
+  changed_when: false
+  delegate_to: jailhost
+  register: setup_jail_helpdesk_host_pubkeys
+
+- name: Add jailhost ssh host public keys to known_hosts
+  ansible.builtin.lineinfile:
+    path: /home/helpdesk/.ssh/known_hosts
+    create: true
+    line: '{{ item }}'
+  loop: '{{ setup_jail_helpdesk_host_pubkeys.stdout_lines | flatten(levels=1) }}'
+
+- name: Install fdm configuration
+  ansible.builtin.template:
+    src: fdm.conf.j2
+    dest: /home/helpdesk/.fdm.conf
+    mode: '0600'
+    owner: helpdesk
+    group: helpdesk
+    validate: fdm -n
+
+- name: Install helpdesk ansible playbooks
+  ansible.builtin.file:
+    src: playbooks
+    dest: /empt/helpdesk/playbooks
+    mode: '0700'
+    owner: root
+    group: wheel
+  delegate_to: jailhost
+
+- name: Set crontab MAILTO
+  ansible.builtin.cron:
+    user: helpdesk
+    env: true
+    name: MAILTO
+    job: 'it@{{ org_domain }}'
+
+- name: Setup crontab to periodically process helpdesk queue
+  ansible.builtin.cron:
+    user: helpdesk
+    name: process helpdesk queue with fdm
+    job: fdm -a helpdesk -l fetch

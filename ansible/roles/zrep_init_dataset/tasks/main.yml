@@ -1,29 +1,29 @@
 # Expects variable:
-# dataset:
+# zrep_init_dataset_dataset
 #   key: str
 #   value: dict
 
 - name: Destroy dataset on secondary
   community.general.zfs:
-    name: '{{ dataset.key }}'
+    name: '{{ zrep_init_dataset_dataset.key }}'
     state: absent
   delegate_to: jailhost-secondary
 
 - name: Initialize zrep dataset on primary and secondary
-  ansible.builtin.command: 'zrep init {{ dataset.key }} jailhost-secondary.home.arpa {{ dataset.key }}'
+  ansible.builtin.command: 'zrep init {{ zrep_init_dataset_dataset.key }} jailhost-secondary.home.arpa {{ zrep_init_dataset_dataset.key }}'
   delegate_to: jailhost-primary
   # TODO fix changed_when
   changed_when: true
 
 - name: Set all primary custom local zfs properties from the primary on zrep secondary dataset
   community.general.zfs:
-    name: '{{ dataset.key }}'
+    name: '{{ zrep_init_dataset_dataset.key }}'
     state: present
-    extra_zfs_properties: '{{ dataset.value }}'
+    extra_zfs_properties: '{{ zrep_init_dataset_dataset.value }}'
   delegate_to: jailhost-secondary
 
 - name: Unmount the secondary dataset
-  ansible.builtin.command: 'zfs unmount {{ dataset.key }}'
+  ansible.builtin.command: 'zfs unmount {{ zrep_init_dataset_dataset.key }}'
   register: zrep_init_dataset_unmount
   failed_when: zrep_init_dataset_unmount.rc != 0 and "not currently mounted" not in zrep_init_dataset_unmount.stderr
   changed_when: true
@@ -32,7 +32,7 @@
 - name: Allow zrep user to run each sync command with doas
   ansible.builtin.lineinfile:
     path: /usr/local/etc/doas.conf
-    line: 'permit nopass zrep cmd /usr/local/bin/zrep args sync {{ dataset.key }}'
+    line: 'permit nopass zrep cmd /usr/local/bin/zrep args sync {{ zrep_init_dataset_dataset.key }}'
     create: true
     mode: '0600'
     owner: root
@@ -43,7 +43,7 @@
 - name: Enable zrep sync cronjobs
   ansible.builtin.cron:
     user: zrep
-    name: 'zrep {{ dataset.key }}'
-    job: 'zrep uptodate {{ dataset.key }} || time doas /usr/local/bin/zrep sync {{ dataset.key }}'
+    name: 'zrep {{ zrep_init_dataset_dataset.key }}'
+    job: 'zrep uptodate {{ zrep_init_dataset_dataset.key }} || time doas /usr/local/bin/zrep sync {{ zrep_init_dataset_dataset.key }}'
   delegate_to: '{{ item }}'
   loop: '{{ groups["jailhosts"] }}'

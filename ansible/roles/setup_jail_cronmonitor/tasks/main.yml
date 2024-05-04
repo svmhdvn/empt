@@ -29,6 +29,9 @@
     path: /home/cronmonitor/.ssh/known_hosts
     create: true
     line: '{{ item }}'
+    mode: '0600'
+    owner: cronmonitor
+    group: cronmonitor
   loop: '{{ setup_jail_cronmonitor_jailhost_host_pubkeys.stdout_lines | flatten(levels=1) }}'
 
 - name: Install dma mailer configuration

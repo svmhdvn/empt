@@ -1,12 +1,21 @@
 ---
 - name: Reply back with PONG
-  hosts: localhost
+  hosts: jailhost
   tasks:
     - name: Test ping and look for logs
       ansible.builtin.ping:
 
     - name: Say hello to sending user
       community.general.mail:
-        host: mail.home.arpa
+        host: 'mail.{{ org_domain }}'
         secure: never
+        to: '{{ user }}@{{ org_domain }}'
         cc: 'it@{{ org_domain }}'
+        subject: '[HELPDESK] pong'
+        body: 'Hello, {{ user }}!'
+        sender: 'helpdesk@{{ org_domain }}'
+        message_id_domain: 'helpdesk@{{ org_domain }}'
+        headers:
+          - 'In-Reply-To={{ in_reply_to }}'
+          - 'References={{ references }} {{ in_reply_to }}'
+          - 'Keywords=helpdesk,ping'

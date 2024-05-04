@@ -1,0 +1,33 @@
+#!/bin/sh
+set -e
+
+_EX_NOPERM=77
+
+deny_permission() {
+	echo "$_this: PERMISSION DENIED: '$_commandline'" >&2
+	exit $_EX_NOPERM
+}
+
+_this="$0"
+_commandline="$*"
+
+_command="$1"
+shift
+case "$_command" in
+	play)
+		_playbook="$1"
+		shift
+
+		test -r "$_playbook" || deny_permission
+
+		CRYPTOGRAPHY_OPENSSL_NO_LEGACY=1 \
+			/usr/local/bin/ansible-playbook \
+			--inventory /empt/helpdeskbot/inventory.ini \
+			--extra-vars org_domain={{ org_domain }} \
+			--extra-vars "$*" \
+			"$_playbook"
+		;;
+	*)
+		deny_permission
+		;;
+esac

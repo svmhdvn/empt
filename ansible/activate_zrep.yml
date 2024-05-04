@@ -29,7 +29,7 @@
         name: zrep_init_dataset
       loop: '{{ zrep_dataset_props | dict2items }}'
       loop_control:
-        loop_var: dataset
+        loop_var: zrep_init_dataset_dataset
 
 - name: Unmount entire zroot/empt parent dataset on secondary
   hosts: jailhost-secondary

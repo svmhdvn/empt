@@ -19,7 +19,7 @@
   ansible.builtin.include_role:
     name: zrep_init_dataset
   vars:
-    dataset:
+    zrep_init_dataset_dataset:
       key: 'zroot/empt/human_storage/{{ human.username }}'
       value:
         quota: '1G'

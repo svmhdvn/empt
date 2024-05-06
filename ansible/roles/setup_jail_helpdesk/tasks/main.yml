@@ -13,7 +13,7 @@
     dest: /empt/helpdeskbot/inventory.ini
     owner: root
     group: wheel
-    mode: '0600'
+    mode: u=rw
   delegate_to: jailhost
 
 - name: Copy jailhost root-owned helpdesk scripts to helpdeskbot dataset
@@ -22,14 +22,14 @@
     dest: /empt/helpdeskbot/ssh-forced-helpdeskbot
     owner: root
     group: wheel
-    mode: '0700'
+    mode: u=rwx
   delegate_to: jailhost
 
 - name: Install helpdesk ansible playbooks
   ansible.builtin.copy:
     src: playbooks
-    dest: /empt/helpdeskbot/playbooks
-    mode: '0700'
+    dest: /empt/helpdeskbot/
+    mode: u=rwX
     owner: root
     group: wheel
   delegate_to: jailhost
@@ -39,38 +39,25 @@
   ansible.builtin.user:
     name: helpdeskbot
     comment: Helpdesk Robot
-    shell: /usr/sbin/nologin
     home: /home/helpdeskbot
-    create_home: true
+    create_home: false
+    # shell: /usr/sbin/nologin
 # TODO find a way to create a globally unique UID, currently hardcoding
     uid: 21891
-    generate_ssh_key: true
-    ssh_key_type: ed25519
   register: setup_jail_helpdeskbot_user
 
-- name: Create mail delivery local account for the helpdeskbot in the mail jail
-  ansible.builtin.user:
-    name: helpdeskbot
-    comment: Helpdesk Robot
-    shell: /usr/sbin/nologin
-    home: /home/helpdeskbot
-    create_home: true
-    uid: '{{ setup_jail_helpdeskbot_user.uid }}'
-  delegate_to: mail
-
-- name: Create maildir directory layout under helpdeskbot home
+- name: Create directory layout under helpdeskbot dataset
   ansible.builtin.file:
     name: '/empt/helpdeskbot/{{ item }}'
     state: directory
     recurse: true
-    mode: '0700'
+    mode: u=rwX
     owner: '{{ setup_jail_helpdeskbot_user.uid }}'
     group: '{{ setup_jail_helpdeskbot_user.uid }}'
   loop:
     - home/mail/cur
     - home/mail/new
     - home/mail/tmp
-    - playbooks
   delegate_to: jailhost
 
 - name: Add helpdeskbot maildir directory nullfs mount to mail jail
@@ -93,22 +80,39 @@
     state: mounted
   delegate_to: jailhost
 
+- name: Create ssh key for the helpdesk jail system account
+  ansible.builtin.user:
+    name: helpdeskbot
+    generate_ssh_key: true
+    ssh_key_type: ed25519
+  register: setup_jail_helpdeskbot_user
+
 - name: Ensure helpdeskbot maildir nullfs mountpoint has correct permissions in mail jail
   ansible.builtin.file:
     name: /home/helpdeskbot/mail
     state: directory
-    mode: '0700'
-    owner: helpdeskbot
-    group: helpdeskbot
+    mode: u=rwX
+    owner: '{{ setup_jail_helpdeskbot_user.uid }}'
+    group: '{{ setup_jail_helpdeskbot_user.uid }}'
   delegate_to: mail
 
 - name: Ensure helpdeskbot home nullfs mountpoint has correct permissions in helpdesk jail
   ansible.builtin.file:
     name: /home/helpdeskbot
     state: directory
-    mode: '0700'
-    owner: helpdeskbot
-    group: helpdeskbot
+    mode: u=rwX
+    owner: '{{ setup_jail_helpdeskbot_user.uid }}'
+    group: '{{ setup_jail_helpdeskbot_user.uid }}'
+
+- name: Create mail delivery local account for the helpdeskbot in the mail jail
+  ansible.builtin.user:
+    name: helpdeskbot
+    comment: Helpdesk Robot
+    shell: /usr/sbin/nologin
+    home: /home/helpdeskbot
+    create_home: false
+    uid: '{{ setup_jail_helpdeskbot_user.uid }}'
+  delegate_to: mail
 
 - name: Authorize helpdeskbot ssh key on jailhost for receiving helpdesk play commands
   ansible.posix.authorized_key:
@@ -137,7 +141,7 @@
   ansible.builtin.template:
     src: fdm.conf.j2
     dest: /home/helpdeskbot/.fdm.conf
-    mode: '0600'
+    mode: u=rw
     owner: helpdeskbot
     group: helpdeskbot
     validate: fdm -f %s -n
@@ -154,6 +158,15 @@
     user: helpdeskbot
     name: process helpdeskbot queue with fdm
     job: fdm -a helpdeskbot -l fetch
+
+- name: Ensure the IT mailinglist can be added as a subscriber to any other mailing list
+  ansible.builtin.file:
+    path: /var/spool/mlmmj/it/control/tocc
+    state: touch
+    mode: u=rw
+    owner: mlmmj
+    group: mlmmj
+  delegate_to: mail
 
 - name: Subscribe the helpdesk and IT staff to the helpdesk mailing list
   ansible.builtin.command: '/usr/local/bin/mlmmj-sub -L /var/spool/mlmmj/helpdesk -a {{ item }}@{{ org_domain }} -c -f -s'

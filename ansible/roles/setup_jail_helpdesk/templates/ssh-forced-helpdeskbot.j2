@@ -14,8 +14,8 @@ _commandline="$*"
 _command="$1"
 shift
 case "$_command" in
-	play)
-		_playbook="$1"
+	helpdesk)
+		_playbook="/empt/helpdeskbot/playbooks/$1.yml"
 		shift
 
 		test -r "$_playbook" || deny_permission

@@ -1,8 +1,14 @@
-account "helpdeskbot" maildir "/home/helpdeskbot/mail"
+set strip-characters ""
 
-match "^from:.*helpdeskbot@{{ org_domain }}" in headers action drop
+account 'helpdeskbot' maildir '/home/helpdeskbot/mail'
 
-match "^from:\s*(\S+@\S+)" in headers
-	and "^subject:(.*\bping\b)" in headers
-	and "^references:\s*(.*)" in headers
-	action exec "ssh root@::1 helpdesk ping sender=%0 subject=%1 references=%2 in_reply_to=%[message_id]"
+match '^from:\s*(\S.*)' in headers action tag 'my_from' value '%1' continue
+match '^subject:\s*(\S.*)' in headers action tag 'my_subject' value '%1' continue
+match '^references:\s*(\S.*)' in headers action tag 'my_references' value '%1' continue
+
+match string '%[my_from]' to '\bhelpdeskbot@{{ org_domain }}\b' action drop
+
+match string '%[my_subject]' to '\bping\b'
+        action exec "ssh root@::1 helpdesk ping \"sender='%[my_from]' subject='%[my_subject]' in_reply_to='%[message_id]' references='%[my_references]'\""
+
+set unmatched-mail keep

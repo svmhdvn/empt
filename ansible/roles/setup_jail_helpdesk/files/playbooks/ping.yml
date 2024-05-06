@@ -9,10 +9,10 @@
       community.general.mail:
         host: 'mail.{{ org_domain }}'
         secure: never
-        to: '{{ user }}@{{ org_domain }}'
+        to: '{{ sender }}'
         cc: 'it@{{ org_domain }}'
         subject: '[HELPDESK] pong'
-        body: 'Hello, {{ user }}!'
+        body: 'Hello, {{ sender }}!'
         sender: 'helpdesk@{{ org_domain }}'
         message_id_domain: 'helpdesk@{{ org_domain }}'
         headers:

@@ -6,65 +6,42 @@
     group: wheel
     mode: '0644'
 
-# TODO upstream this instead
-# ============================================
-- name: Create missing local rc.d directory
-  ansible.builtin.file:
-    path: /usr/local/etc/rc.d
-    state: directory
-    mode: '0755'
-
-- name: TODO SIVA configure kdc rc service file
-  ansible.builtin.template:
-    src: kdc.j2
-    dest: /usr/local/etc/rc.d/kdc
-    owner: root
-    group: wheel
-    mode: '0755'
-# ============================================
-
-- name: Use the rc services from ports heimdal
-  community.general.sysrc:
-    name: '{{ item }}_program'
-    value: '/usr/local/libexec/{{ item }}'
-  loop:
-    - kdc
-    - kadmind
-
 # TODO retrieve and store securely
 - name: Create heimdal master key
-  ansible.builtin.command: '/usr/local/sbin/kstash --random-key'
+  ansible.builtin.command: 'kstash --random-key'
   args:
     creates: /var/heimdal/m-key
 
 - name: Check if kerberos realm exists
-  ansible.builtin.command: '/usr/local/bin/kadmin --local check {{ org_domain | upper }}'
+  ansible.builtin.command: 'kadmin --local check {{ org_domain | upper }}'
   register: setup_jail_kerberos_realm_exists
   failed_when: setup_jail_kerberos_realm_exists.rc >= 2
   changed_when: false
 
 - name: Initialize kerberos realm
-  ansible.builtin.command: '/usr/local/bin/kadmin --local init --realm-max-ticket-life=1d --realm-max-renewable-life=1w {{ org_domain | upper }}'
-  when: "'does not exist' in setup_jail_kerberos_realm_exists.stderr"
+  ansible.builtin.command: 'kadmin --local init --realm-max-ticket-life=1d --realm-max-renewable-life=1w {{ org_domain | upper }}'
+  # TODO change back to stderr based check after next heimdal release
+  #when: "'does not exist' in setup_jail_kerberos_realm_exists.stderr"
+  when: "\"doesn't exist\" in setup_jail_kerberos_realm_exists.stdout"
   register: setup_jail_kerberos_init_realm_output
   changed_when: setup_jail_kerberos_init_realm_output.rc == 0
 
 - name: Check which service principals are missing
-  ansible.builtin.command: '/usr/local/bin/kadmin --local get --short {{ item.service }}/{{ item.host }}.{{ org_domain }}'
+  ansible.builtin.command: 'kadmin --local get --short {{ item.service }}/{{ item.host }}.{{ org_domain }}'
   loop: '{{ kerberos_service_principals }}'
   register: setup_jail_kerberos_service_principal_exists
   failed_when: setup_jail_kerberos_service_principal_exists.rc >= 2
   changed_when: false
 
 - name: Add missing service principals
-  ansible.builtin.command: '/usr/local/bin/kadmin --local add --random-key --use-defaults {{ item.item.service }}/{{ item.item.host }}.{{ org_domain }}'
+  ansible.builtin.command: 'kadmin --local add --random-key --use-defaults {{ item.item.service }}/{{ item.item.host }}.{{ org_domain }}'
   when: '"Principal does not exist" in item.stderr'
   register: setup_jail_kerberos_add_service_principals_output
   changed_when: setup_jail_kerberos_add_service_principals_output.rc == 0
   loop: '{{ setup_jail_kerberos_service_principal_exists.results }}'
 
 - name: Extract service principals into their respective keytabs
-  ansible.builtin.command: '/usr/local/bin/kadmin --local ext_keytab --keytab=/tmp/{{ item.host }}.keytab {{ item.service }}/{{ item.host }}.{{ org_domain }}'
+  ansible.builtin.command: 'kadmin --local ext_keytab --keytab=/tmp/{{ item.host }}.keytab {{ item.service }}/{{ item.host }}.{{ org_domain }}'
   register: setup_jail_kerberos_extract_keytabs_output
   changed_when: setup_jail_kerberos_extract_keytabs_output.rc == 0
   loop: '{{ kerberos_service_principals }}'
@@ -73,7 +50,7 @@
   ansible.builtin.copy:
     src: '/empt/jails/kerberos/tmp/{{ item.host }}.keytab'
     remote_src: true
-    dest: '/empt/jails/{{ item.host }}/usr/local/etc/krb5.keytab'
+    dest: '/empt/jails/{{ item.host }}/etc/krb5.keytab'
     owner: root
     group: wheel
     mode: '0600'

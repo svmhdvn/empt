@@ -25,7 +25,7 @@
 
 - name: Change keytab ownership strictly to radicale user
   ansible.builtin.file:
-    name: /usr/local/etc/krb5.keytab
+    name: /etc/krb5.keytab
     mode: '0600'
     owner: radicale
     group: radicale

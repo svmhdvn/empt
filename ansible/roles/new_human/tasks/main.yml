@@ -156,14 +156,14 @@
 
 # TODO a lot of bugs with Heimdal's `get` and `list` commands, fix them.
 - name: Check which user principals are missing
-  ansible.builtin.command: '/usr/local/bin/kadmin --local get --short {{ human.username }}'
+  ansible.builtin.command: 'kadmin --local get --short {{ human.username }}'
   delegate_to: kerberos
   register: new_human_user_principal_exists
   failed_when: new_human_user_principal_exists.rc >= 2
   changed_when: false
 
 - name: Add new kerberos principal
-  ansible.builtin.command: '/usr/local/bin/kadmin --local add --password={{ human.username }} --use-defaults {{ human.username }}'
+  ansible.builtin.command: 'kadmin --local add --password={{ human.username }} --use-defaults {{ human.username }}'
   delegate_to: kerberos
   when: '"Principal does not exist" in new_human_user_principal_exists.stderr'
   register: setup_jail_kerberos_add_user_principals_output

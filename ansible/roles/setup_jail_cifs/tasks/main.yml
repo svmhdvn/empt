@@ -7,10 +7,11 @@
     group: wheel
     validate: '/usr/local/bin/testparm --suppress-prompt %s'
 
-- name: Allow KDC to accept auth requests from samba with no PAC
-  ansible.builtin.command: 'kadmin --local modify --attributes=no-auth-data-reqd cifs/cifs.{{ org_domain }}'
-  delegate_to: kerberos
-  changed_when: true
+# TODO add back after next heimdal release
+#- name: Allow KDC to accept auth requests from samba with no PAC
+#  ansible.builtin.command: 'kadmin --local modify --attributes=no-auth-data-reqd cifs/cifs.{{ org_domain }}'
+#  delegate_to: kerberos
+#  changed_when: true
 
 - name: Disable nmbd
   community.general.sysrc:

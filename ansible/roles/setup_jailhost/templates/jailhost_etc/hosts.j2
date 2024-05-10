@@ -1,6 +1,6 @@
-{% for jail in groups['jails'] %}
-fe80::eeee:{{ hostvars[jail].jid }}%lo0 {{ jail }} {{ jail }}.home.arpa {{ jail }}.{{ org_domain }}
-{% endfor %}
-
-127.0.0.1 localhost
 ::1 localhost
+127.0.0.1 localhost
+
+{% for jail in groups['jails'] %}
+fe80::eeee:{{ hostvars[jail].jid }}%lo0 {{ jail }}.{{ org_domain }} {{ jail }}.home.arpa {{ jail }}
+{% endfor %}

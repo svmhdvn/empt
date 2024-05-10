@@ -53,7 +53,7 @@
     dest: '/empt/jails/{{ item.host }}/etc/krb5.keytab'
     owner: root
     group: wheel
-    mode: '0600'
+    mode: '0400'
   delegate_to: jailhost
   loop: '{{ kerberos_service_principals }}'
 

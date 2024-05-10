@@ -8,7 +8,7 @@ auth_debug = yes
 #   plain login digest-md5 cram-md5 ntlm rpa apop anonymous gssapi otp
 #   gss-spnego
 # NOTE: See also disable_plaintext_auth setting.
-auth_mechanisms = gssapi
+auth_mechanisms = plain gssapi
 
 # Host name to use in GSSAPI principal names. The default is to use the
 # name returned by gethostname(). Use "$ALL" (with quotes) to allow all keytab
@@ -127,6 +127,6 @@ userdb {
 }
 
 passdb {
-	driver = static
-	args = nopassword=y
+	driver = pam
+	args = %s
 }

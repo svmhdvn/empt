@@ -1,3 +1,2 @@
 # TODO only enable dns server for publically facing jails
-#search {{ org_domain }}
-#nameserver fe80::eeee:{{ hostvars['dns'].jid }}%lo0
+nameserver fe80::eeee:{{ hostvars['dns'].jid }}%lo0

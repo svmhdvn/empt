@@ -50,12 +50,12 @@
   roles:
     - setup_jail_kerberos
 
-#- name: Setup IRC jail
-#  hosts: irc
-#  vars_files:
-#    - vars/shared.yml
-#  roles:
-#    - setup_jail_irc
+- name: Setup IRC jail
+  hosts: irc
+  vars_files:
+    - vars/shared.yml
+  roles:
+    - setup_jail_irc
 
 - name: Setup DNS server jail
   hosts: dns

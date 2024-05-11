@@ -1,33 +1,53 @@
-- name: Configure UnrealIRCd
+- name: Configure ngIRCd
   ansible.builtin.template:
     src: '{{ item.src }}'
-    dest: '/usr/local/etc/unreal/{{ item.path | replace(".j2", "") }}'
+    dest: '/usr/local/etc/ngircd/{{ item.path | replace(".j2", "") }}'
     mode: '0644'
-  with_community.general.filetree: '{{ "templates/unreal" }}'
+    # TODO figure out better validation
+    # validate: ngircd --config %s --configtest > /dev/null
+  with_community.general.filetree: '{{ "templates/ngircd" }}'
   when: item.state == 'file'
 
-- name: Copy TLS certificate to UnrealIRCd conf folder
+- name: Configure PAM with krb5 for ngircd service
   ansible.builtin.copy:
-    src: '/etc/ssl/{{ inventory_hostname }}.crt.pem'
-    remote_src: true
-    dest: /usr/local/etc/unreal/tls/server.cert.pem
-    owner: ircd
-    group: ircd
+    content: 'auth required pam_krb5.so no_user_check'
+    dest: /etc/pam.d/ngircd
     mode: '0644'
+    owner: root
+    group: wheel
 
-- name: Copy TLS private key to UnrealIRCd conf folder
-  ansible.builtin.copy:
-    src: '/etc/ssl/{{ inventory_hostname }}.key.pem'
-    remote_src: true
-    dest: /usr/local/etc/unreal/tls/server.key.pem
-    owner: ircd
-    group: ircd
-    mode: '0600'
+# TODO maybe move the keytab to a dovecot-owned location then
+- name: Ensure keytab can only be read by ngircd
+  ansible.builtin.file:
+    path: /etc/krb5.keytab
+    mode: '0400'
+    owner: ngircd
+    group: ngircd
 
-- name: Configure anope
-  ansible.builtin.template:
-    src: '{{ item.src }}'
-    dest: '/usr/local/anope/{{ item.path | replace(".j2", "") }}'
-    mode: '0644'
-  with_community.general.filetree: '{{ "templates/anope" }}'
-  when: item.state == 'file'
+# TODO TLS support
+
+# - name: Copy TLS certificate to UnrealIRCd conf folder
+#   ansible.builtin.copy:
+#     src: '/etc/ssl/{{ inventory_hostname }}.crt.pem'
+#     remote_src: true
+#     dest: /usr/local/etc/unreal/tls/server.cert.pem
+#     owner: ircd
+#     group: ircd
+#     mode: '0644'
+#
+# - name: Copy TLS private key to UnrealIRCd conf folder
+#   ansible.builtin.copy:
+#     src: '/etc/ssl/{{ inventory_hostname }}.key.pem'
+#     remote_src: true
+#     dest: /usr/local/etc/unreal/tls/server.key.pem
+#     owner: ircd
+#     group: ircd
+#     mode: '0600'
+#
+# - name: Configure anope
+#   ansible.builtin.template:
+#     src: '{{ item.src }}'
+#     dest: '/usr/local/anope/{{ item.path | replace(".j2", "") }}'
+#     mode: '0644'
+#   with_community.general.filetree: '{{ "templates/anope" }}'
+#   when: item.state == 'file'

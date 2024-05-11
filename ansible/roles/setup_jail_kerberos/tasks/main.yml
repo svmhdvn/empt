@@ -21,7 +21,7 @@
 - name: Initialize kerberos realm
   ansible.builtin.command: 'kadmin --local init --realm-max-ticket-life=1d --realm-max-renewable-life=1w {{ org_domain | upper }}'
   # TODO change back to stderr based check after next heimdal release
-  #when: "'does not exist' in setup_jail_kerberos_realm_exists.stderr"
+  # when: "'does not exist' in setup_jail_kerberos_realm_exists.stderr"
   when: "\"doesn't exist\" in setup_jail_kerberos_realm_exists.stdout"
   register: setup_jail_kerberos_init_realm_output
   changed_when: setup_jail_kerberos_init_realm_output.rc == 0

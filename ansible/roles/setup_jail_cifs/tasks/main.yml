@@ -1,3 +1,11 @@
+- name: Create missing /groups directory
+  ansible.builtin.file:
+    path: /groups
+    state: directory
+    mode: '1755'
+    owner: root
+    group: wheel
+
 - name: Configure samba
   ansible.builtin.template:
     src: smb4.conf.j2

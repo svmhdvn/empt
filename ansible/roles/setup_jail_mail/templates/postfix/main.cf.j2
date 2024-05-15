@@ -234,7 +234,7 @@ mynetworks_style = host
 mynetworks =
   [fe80::eeee:{{ jid }}]/128
   [fe80::eeee:{{ hostvars['cronmonitor'].jid }}]/128
-  [fe80::eeee:{{ hostvars['helpdesk'].jid }}]/128
+  [::1]/128
 
 # The relay_domains parameter restricts what destinations this system will
 # relay mail to.  See the smtpd_relay_restrictions and

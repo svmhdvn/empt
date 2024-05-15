@@ -1,0 +1,23 @@
+#!/bin/sh
+set -e
+
+deny_permission() {
+	echo "ERROR: $0: PERMISSION DENIED" >&2
+	exit 77 # EX_NOPERM
+}
+
+case "$HELPDESK_SUBJECT" in
+    *group\ *)
+        taskname="groups"
+        ;;
+    *)
+        taskname="helpdesk_usage"
+        ;;
+esac
+readonly taskname
+
+task="/empt/helpdeskbot/tasks/$taskname.sh"
+readonly task
+
+test -x "$task" || deny_permission
+$task

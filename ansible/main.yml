@@ -104,9 +104,9 @@
       loop_control:
         loop_var: mailing_list
 
-- name: Setup helpdesk jail
-  hosts: helpdesk
+- name: Open the helpdesk for business
+  hosts: jailhost
   vars_files:
     - vars/shared.yml
   roles:
-    - setup_jail_helpdesk
+    - open_jailhost_helpdesk

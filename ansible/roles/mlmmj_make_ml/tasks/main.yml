@@ -27,6 +27,14 @@
     owner: mlmmj
     group: mlmmj
 
+- name: Ensure the list can be added as a subscriber to any other mailing list
+  ansible.builtin.file:
+    path: '/var/spool/mlmmj/{{ mailing_list }}/control/tocc'
+    state: touch
+    mode: '0600'
+    owner: mlmmj
+    group: mlmmj
+
 - name: Add local mailing list alias mapping to postfix
   ansible.builtin.lineinfile:
     path: /usr/local/etc/postfix/mlmmj_aliases

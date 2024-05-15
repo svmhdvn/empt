@@ -1,24 +1,29 @@
 [global]
-	log level = 1
-	logging = syslog
+        log level = 1
+        logging = syslog
 
-	map to guest = never
+        map to guest = never
 
-	server role = standalone
+        server role = standalone
 
-	kerberos encryption types = strong
-	kerberos method = dedicated keytab
-	dedicated keytab file = /etc/krb5.keytab
+        kerberos encryption types = strong
+        kerberos method = dedicated keytab
+        dedicated keytab file = /etc/krb5.keytab
 
-	realm = {{ org_domain | upper }}
-	# TODO see if a different workgroup name is necessary
-	workgroup = EMPT
-	disable netbios = yes
+        realm = EMPT.SIVA
+        # TODO see if a different workgroup name is necessary
+        workgroup = EMPT
+        disable netbios = yes
 
-	client use kerberos = required
-	ntlm auth = disabled
+        client use kerberos = required
+        ntlm auth = disabled
 
-	vfs objects = zfsacl
+        vfs objects = zfsacl
+        read only = no
 [homes]
-	read only = no
-	inherit permissions = yes
+        create mask = 0600
+        directory mask = 1700
+[groups]
+        path = /groups
+        create mask = 0640
+        directory mask = 1770

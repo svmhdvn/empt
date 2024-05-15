@@ -126,10 +126,3 @@ zrep_dataset_props:
     exec: 'off'
     setuid: 'off'
     compression: zstd
-  zroot/empt/jails/helpdesk/etc:
-    compression: zstd
-  zroot/empt/jails/helpdesk/logs:
-    mountpoint: '/empt/jails/helpdesk/var/log'
-    exec: 'off'
-    setuid: 'off'
-    compression: zstd

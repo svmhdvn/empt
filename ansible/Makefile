@@ -3,8 +3,9 @@
 
 # TODO cleanup duplicate var
 FRESH_INSTALL_USER = tester
+TARGET = primary
 
-TARGET = XXX
+all: fresh_start start_fake_company reboot
 
 fresh_start:
 	ansible-playbook \
@@ -19,9 +20,19 @@ fresh_start:
 		-e responsibility=$(TARGET) \
 		-e @org_vars.yml \
 		main.yml'
+
+start_fake_company:
+	ssh $(FRESH_INSTALL_USER)@jailhost-$(TARGET).home.arpa 'cd /tmp/empt-ansible/ansible && \
+		doas env CRYPTOGRAPHY_OPENSSL_NO_LEGACY=1 ansible-playbook \
+		-i remote_inventory.ini \
+		-i local_inventory.ini \
+		-e @org_vars.yml \
+		start_fake_company.yml'
+
+reboot:
 	ansible \
 		-u $(FRESH_INSTALL_USER) \
-		-b -K --become-method ansible.builtin.su \
+		-b --become-method community.general.doas \
 		-i remote_inventory.ini \
 		-m reboot \
 		jailhost-$(TARGET)
@@ -34,14 +45,6 @@ update_poudriere:
 		-i remote_inventory.ini \
 		-b -K --become-method ansible.builtin.su \
 		update_poudriere.yml
-
-start_fake_company:
-	ssh $(FRESH_INSTALL_USER)@jailhost-$(TARGET).home.arpa 'cd /tmp/empt-ansible/ansible && \
-		doas env CRYPTOGRAPHY_OPENSSL_NO_LEGACY=1 ansible-playbook \
-		-i remote_inventory.ini \
-		-i local_inventory.ini \
-		-e @org_vars.yml \
-		start_fake_company.yml'
 
 activate_zrep:
 	ansible-playbook \
@@ -61,9 +64,9 @@ reset:
 
 help:
 	@echo "usage:"
-	@echo "    make TARGET=<responsibility> [FRESH_INSTALL_USER=<your_user>]"
+	@echo "    make [TARGET=<responsibility>] [FRESH_INSTALL_USER=<your_user>]"
 	@echo
 	@echo "  where"
 	@echo
-	@echo "    responsibility: either 'primary' or 'secondary'. REQUIRED."
+	@echo "    responsibility: either 'primary' or 'secondary'. Default = primary"
 	@echo "    your_user: the user you added during the FreeBSD fresh install onto the jailhost. Default = tester"

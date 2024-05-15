@@ -1,0 +1,115 @@
+- name: Create storage dataset for all helpdesk data
+  community.general.zfs:
+    name: zroot/empt/helpdeskbot
+    state: present
+    extra_zfs_properties: '{{ zrep_dataset_props["zroot/empt/helpdeskbot"] }}'
+
+# TODO turn this into a FreeBSD ports pkg
+# =======================================
+- name: Copy root-owned helpdesk scripts to helpdeskbot dataset
+  ansible.builtin.template:
+    src: helpdesk.sh.j2
+    dest: /empt/helpdeskbot/helpdesk.sh
+    mode: '0700'
+    owner: root
+    group: wheel
+
+- name: Install helpdesk scripts
+  ansible.builtin.copy:
+    src: tasks
+    dest: /empt/helpdeskbot/
+    mode: '0700'
+    owner: root
+    group: wheel
+# =======================================
+
+- name: Create system account for the helpdeskbot
+  ansible.builtin.user:
+    name: helpdeskbot
+    comment: Helpdesk Robot
+    home: /empt/helpdeskbot/home
+    create_home: false
+    shell: /usr/sbin/nologin
+# TODO find a way to create a globally unique UID, currently hardcoding
+    uid: 21891
+  register: setup_jail_helpdeskbot_user
+
+- name: Create directory layout under helpdeskbot dataset
+  ansible.builtin.file:
+    name: '/empt/helpdeskbot/{{ item }}'
+    state: directory
+    mode: '0700'
+    owner: '{{ setup_jail_helpdeskbot_user.uid }}'
+    group: '{{ setup_jail_helpdeskbot_user.uid }}'
+  loop:
+    - home/mail/cur
+    - home/mail/new
+    - home/mail/tmp
+
+- name: Add helpdeskbot maildir directory nullfs mount to mail jail
+  ansible.posix.mount:
+    fstab: /empt/etc/mail/fstab
+    src: /empt/helpdeskbot/home/mail
+    path: /empt/jails/mail/home/helpdeskbot/mail
+    fstype: nullfs
+    opts: rw
+    state: mounted
+
+- name: Ensure helpdeskbot maildir nullfs mountpoint has correct permissions in mail jail
+  ansible.builtin.file:
+    name: /home/helpdeskbot/mail
+    state: directory
+    mode: '0700'
+    owner: '{{ setup_jail_helpdeskbot_user.uid }}'
+    group: '{{ setup_jail_helpdeskbot_user.uid }}'
+  delegate_to: mail
+
+- name: Create mail delivery local account for the helpdeskbot in the mail jail
+  ansible.builtin.user:
+    name: helpdeskbot
+    comment: Helpdesk Robot
+    shell: /usr/sbin/nologin
+    home: /home/helpdeskbot
+    create_home: false
+    uid: '{{ setup_jail_helpdeskbot_user.uid }}'
+  delegate_to: mail
+
+- name: Silently subscribe the helpdesk and IT staff to the helpdesk mailing list
+  ansible.builtin.command: '/usr/local/bin/mlmmj-sub -L /var/spool/mlmmj/helpdesk -a {{ item }}@{{ org_domain }} -fqs'
+  loop:
+    - it
+    - helpdeskbot
+  delegate_to: mail
+  register: setup_jail_helpdesk_mlmmj_sub_output
+  changed_when: setup_jail_helpdesk_mlmmj_sub_output.rc == 0
+
+- name: Install fdm configuration
+  ansible.builtin.template:
+    src: fdm.conf.j2
+    dest: /empt/helpdeskbot/home/.fdm.conf
+    mode: '0600'
+    owner: helpdeskbot
+    group: helpdeskbot
+    validate: fdm -f %s -n
+
+- name: Set crontab MAILTO
+  ansible.builtin.cron:
+    user: helpdeskbot
+    env: true
+    name: MAILTO
+    job: 'it@{{ org_domain }}'
+
+- name: Allow the helpdeskbot to only run the helpdesk script
+  ansible.builtin.lineinfile:
+    path: /usr/local/etc/doas.conf
+    line: 'permit nopass setenv { HELPDESK_FROM HELPDESK_CC HELPDESK_MESSAGE_ID HELPDESK_SUBJECT HELPDESK_REFERENCES } helpdeskbot cmd /empt/helpdeskbot/helpdesk.sh args'
+    create: true
+    mode: '0600'
+    owner: root
+    group: wheel
+
+- name: Enable cronjob to periodically process helpdesk queue with fdm
+  ansible.builtin.cron:
+    user: helpdeskbot
+    name: process helpdeskbot queue with fdm
+    job: fdm -a helpdeskbot -l fetch

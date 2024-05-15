@@ -1,5 +1,5 @@
 - name: Install jailhost required packages
-  ansible.builtin.command: pkg install -y cpu-microcode nagios-plugins rsync zrep
+  ansible.builtin.command: pkg install -y cpu-microcode nagios-plugins rsync zrep fdm
   changed_when: true
 
 # TODO query intel or AMD, currently hardcoding for wyse

@@ -21,9 +21,15 @@
         vfs objects = zfsacl
         read only = no
 [homes]
-        create mask = 0600
-        directory mask = 1700
+        create mask = 0000
+        force create mode = 0600
+
+        directory mask = 0000
+        force directory mode = 1700
 [groups]
         path = /groups
-        create mask = 0640
-        directory mask = 1770
+        create mask = 0000
+        force create mode = 0640
+
+        directory mask = 0000
+        force directory mode = 1770

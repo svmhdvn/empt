@@ -1,6 +1,3 @@
-# TODO secure
-secret_ca_passphrase: cakey
-
 mailing_lists:
   - cryptoppl
   - everyone
@@ -70,13 +67,6 @@ zrep_dataset_props:
     mountpoint: /empt/jails/kerberos/var/heimdal
     exec: 'off'
     setuid: 'off'
-  zroot/empt/jails/certauth/etc:
-    compression: zstd
-  zroot/empt/jails/certauth/logs:
-    mountpoint: '/empt/jails/certauth/var/log'
-    exec: 'off'
-    setuid: 'off'
-    compression: zstd
   zroot/empt/jails/cifs/etc:
     compression: zstd
   zroot/empt/jails/cifs/logs:
@@ -126,3 +116,8 @@ zrep_dataset_props:
     exec: 'off'
     setuid: 'off'
     compression: zstd
+
+# TODO secure
+secret_ca_passphrase: cakey
+certauth_cacrt_path: '/empt/etc/{{ org_domain }}.cacrt.pem'
+certauth_cakey_path: '/empt/etc/{{ org_domain }}.cakey.pem'

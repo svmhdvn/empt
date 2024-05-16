@@ -110,8 +110,8 @@ mount -t nullfs "$cifs_mount_src" "$cifs_mount_dst"
 To: $HELPDESK_FROM
 Cc: $HELPDESK_CC, Helpdesk <helpdesk@empt.siva>
 Subject: [HELPDESK] Re: $HELPDESK_SUBJECT
-In-Reply-To: $HELPDESK_IN_REPLY_TO
-References: $HELPDESK_REFERENCES $HELPDESK_IN_REPLY_TO
+In-Reply-To: $HELPDESK_MESSAGE_ID
+References: $HELPDESK_REFERENCES $HELPDESK_MESSAGE_ID
 
 You are now part of the new group '$group_name'!
 

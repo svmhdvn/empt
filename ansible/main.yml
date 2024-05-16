@@ -25,14 +25,46 @@
     - bootstrap
     - refresh_etc_hosts
 
-- name: Setup certauth jail
-  hosts: certauth
+# TODO organize this better maybe
+- name: Setup TLS private certificate authority
+  hosts: jailhost
   environment:
     CRYPTOGRAPHY_OPENSSL_NO_LEGACY: "1"
   vars_files:
     - vars/shared.yml
-  roles:
-    - setup_jail_certauth
+  tasks:
+    # TODO waiting on https://bugzilla.mozilla.org/show_bug.cgi?id=1325335 for ED25519 support
+    # generating P-256 keys in the meantime
+    - name: Create CA private key with password protection
+      community.crypto.openssl_privatekey:
+        path: '{{ certauth_cakey_path }}'
+        backup: true
+        passphrase: "{{ secret_ca_passphrase }}"
+        type: ECC
+        curve: secp256r1
+        cipher: auto
+
+    - name: Create CSR for CA certificate
+      community.crypto.openssl_csr_pipe:
+        privatekey_path: '{{ certauth_cakey_path }}'
+        privatekey_passphrase: "{{ secret_ca_passphrase }}"
+        common_name: '{{ org_domain }} (CA)'
+        use_common_name_for_san: false # since we do not specify SANs, don't use CN as a SAN
+        basic_constraints:
+          - 'CA:TRUE'
+        basic_constraints_critical: true
+        key_usage:
+          - keyCertSign
+        key_usage_critical: true
+      register: certauth_ca_csr
+
+    - name: Create self-signed CA certificate from CSR
+      community.crypto.x509_certificate:
+        path: '{{ certauth_cacrt_path }}'
+        csr_content: "{{ certauth_ca_csr.csr }}"
+        privatekey_path: '{{ certauth_cakey_path }}'
+        privatekey_passphrase: "{{ secret_ca_passphrase }}"
+        provider: selfsigned
 
 - name: Generate host certs for each jail
   hosts: jails

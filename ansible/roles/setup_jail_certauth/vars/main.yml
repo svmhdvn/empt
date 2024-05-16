@@ -1,2 +1,0 @@
-setup_jail_certauth_cacrt_path: '/etc/ssl/{{ org_domain }}.cacrt.pem'
-setup_jail_certauth_cakey_path: '/etc/ssl/{{ org_domain }}.cakey.pem'

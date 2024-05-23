@@ -7,7 +7,7 @@
   changed_when: true
 
 - name: Install irc required ports
-  ansible.builtin.command: pkg -j irc install -y ngircd
+  ansible.builtin.command: pkg -j irc install -y ngircd soju kimchi tlstunnel
   changed_when: true
 
 # - name: Install kerberos required ports

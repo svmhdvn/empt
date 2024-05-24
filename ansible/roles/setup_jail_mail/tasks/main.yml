@@ -92,6 +92,7 @@
     - dovecot
 
 - name: Add mlmmj maintenance task to cron
-  ansible.builtin.lineinfile:
-    path: /etc/crontab
-    line: '*/2 * * * * mlmmj /usr/local/bin/mlmmj-maintd -F -d /var/spool/mlmmj'
+  ansible.builtin.cron:
+    user: mlmmj
+    name: check cpu usage
+    job: -n -q /usr/local/bin/mlmmj-maintd -F -d /var/spool/mlmmj

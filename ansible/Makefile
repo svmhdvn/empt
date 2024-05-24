@@ -5,7 +5,13 @@
 FRESH_INSTALL_USER = tester
 TARGET = primary
 
-all: fresh_start start_fake_company reboot
+default: solitary
+
+standby: fresh_start reboot
+
+solitary: standby start_fake_company
+
+redundant: standby activate_zrep start_fake_company
 
 fresh_start:
 	ansible-playbook \

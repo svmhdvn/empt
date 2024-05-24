@@ -1,0 +1,23 @@
+- name: Create system account for monitoring all empt services
+  ansible.builtin.user:
+    name: emptmonitor
+    comment: EMPT Monitor Agent
+    shell: /usr/sbin/nologin
+    home: /nonexistent
+    create_home: false
+
+# TODO add a bunch of checks to cover all cases
+# - name: Authorize emptmonitor with doas to run various monitoring scripts
+#   ansible.builtin.lineinfile:
+#     path: /usr/local/etc/doas.conf
+#     line: 'permit nopass emptmonitor cmd /usr/local/libexec/nagios/check_load'
+#     create: true
+#     mode: '0600'
+#     owner: root
+#     group: wheel
+
+- name: Setup crontab with useful checks
+  ansible.builtin.cron:
+    user: emptmonitor
+    name: check cpu usage
+    job: -n -q /usr/local/libexec/nagios/check_load -r -w 0.75 -c 0.95

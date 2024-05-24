@@ -92,13 +92,6 @@
     group: helpdeskbot
     validate: fdm -f %s -n
 
-- name: Set crontab MAILTO
-  ansible.builtin.cron:
-    user: helpdeskbot
-    env: true
-    name: MAILTO
-    job: 'it@{{ org_domain }}'
-
 - name: Allow the helpdeskbot to only run the helpdesk script
   ansible.builtin.lineinfile:
     path: /usr/local/etc/doas.conf
@@ -112,4 +105,4 @@
   ansible.builtin.cron:
     user: helpdeskbot
     name: process helpdeskbot queue with fdm
-    job: fdm -a helpdeskbot -l fetch
+    job: -n -q fdm -a helpdeskbot -l fetch

@@ -74,13 +74,6 @@ zrep_dataset_props:
     exec: 'off'
     setuid: 'off'
     compression: zstd
-  zroot/empt/jails/cronmonitor/etc:
-    compression: zstd
-  zroot/empt/jails/cronmonitor/logs:
-    mountpoint: '/empt/jails/cronmonitor/var/log'
-    exec: 'off'
-    setuid: 'off'
-    compression: zstd
   zroot/empt/jails/dns/etc:
     compression: zstd
   zroot/empt/jails/dns/logs:

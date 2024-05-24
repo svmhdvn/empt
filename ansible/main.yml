@@ -117,13 +117,6 @@
   roles:
     - setup_jail_radicale
 
-- name: Setup cron monitoring jail
-  hosts: cronmonitor
-  vars_files:
-    - vars/shared.yml
-  roles:
-    - setup_jail_cronmonitor
-
 - name: Create all pre-configured mailing lists
   hosts: mail
   vars_files:
@@ -142,3 +135,10 @@
     - vars/shared.yml
   roles:
     - open_jailhost_helpdesk
+
+- name: Start the cron monitor
+  hosts: jailhost
+  vars_files:
+    - vars/shared.yml
+  roles:
+    - start_cronmonitor

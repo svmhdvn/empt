@@ -1,4 +1,7 @@
 dumpdev="NO"
 syslogd_enable="YES"
 syslogd_flags="-8 -O syslog -N -s -s"
-cron_flags="-j 15 -J 15"
+
+# TODO do we need cron jitter?
+cron_flags="-m it@{{ org_domain }}"
+#cron_flags="-j 15 -J 15"

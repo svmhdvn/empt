@@ -28,22 +28,3 @@
   failed_when: zrep_init_dataset_unmount.rc != 0 and "not currently mounted" not in zrep_init_dataset_unmount.stderr
   changed_when: true
   delegate_to: jailhost-secondary
-
-- name: Allow zrep user to run each sync command with doas
-  ansible.builtin.lineinfile:
-    path: /usr/local/etc/doas.conf
-    line: 'permit nopass zrep cmd /usr/local/bin/zrep args sync {{ zrep_init_dataset_dataset.key }}'
-    create: true
-    mode: '0600'
-    owner: root
-    group: wheel
-  delegate_to: '{{ item }}'
-  loop: '{{ groups["jailhosts"] }}'
-
-- name: Enable zrep sync cronjobs
-  ansible.builtin.cron:
-    user: zrep
-    name: 'zrep {{ zrep_init_dataset_dataset.key }}'
-    job: 'zrep uptodate {{ zrep_init_dataset_dataset.key }} || time doas /usr/local/bin/zrep sync {{ zrep_init_dataset_dataset.key }}'
-  delegate_to: '{{ item }}'
-  loop: '{{ groups["jailhosts"] }}'

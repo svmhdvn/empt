@@ -6,19 +6,6 @@
   roles:
     - zrep_setup_mutual_trust
 
-- name: Setup zrep system users on both primary and secondary
-  hosts: jailhosts
-  vars_files:
-    - vars/shared.yml
-  tasks:
-    - name: Create zrep system user for crontab
-      ansible.builtin.user:
-        name: zrep
-        comment: Zrep Cron Agent
-        home: /nonexistent
-        create_home: false
-        shell: /usr/sbin/nologin
-
 - name: Initialize all zrep backed up datasets
   hosts: localhost
   vars_files:
@@ -39,3 +26,31 @@
       register: activate_zrep_empt_unmount
       failed_when: activate_zrep_empt_unmount.rc != 0 and "not currently mounted" not in activate_zrep_empt_unmount.stderr
       changed_when: true
+
+- name: Setup zrep system users on both primary and secondary for zrep cronjobs
+  hosts: jailhosts
+  vars_files:
+    - vars/shared.yml
+  tasks:
+    - name: Create system user for running zrep backup commands
+      ansible.builtin.user:
+        name: emptbackup
+        comment: EMPT Backup Agent
+        shell: /usr/sbin/nologin
+        home: /nonexistent
+        create_home: false
+
+    - name: Allow emptbackup user to run each sync command with doas
+      ansible.builtin.lineinfile:
+        path: /usr/local/etc/doas.conf
+        line: 'permit nopass emptbackup cmd /usr/local/bin/zrep'
+        create: true
+        mode: '0600'
+        owner: root
+        group: wheel
+
+    - name: Enable zrep sync cronjobs
+      ansible.builtin.cron:
+        user: emptbackup
+        name: 'zrep concurrent incremental backup'
+        job: -n -q zfs list -Hp -t filesystem -o zrep:dest-fs,written,name | awk '$1 != "-" && $2 != 0 { print $3 }' | xargs -L1 -P0 doas /usr/local/bin/zrep sync

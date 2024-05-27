@@ -60,7 +60,15 @@ kerberos_service_principals:
 zrep_dataset_props:
   zroot/empt/etc:
     compression: zstd
-  zroot/empt/helpdeskbot:
+  zroot/empt/helpdesk:
+    exec: 'off'
+    setuid: 'off'
+    compression: zstd
+  zroot/empt/jails/mail/postfix_spool:
+    mountpoint: /empt/jails/mail/var/spool/postfix
+  zroot/empt/jails/mail/mlmmj_spool:
+    mountpoint: /empt/jails/mail/var/spool/mlmmj
+    exec: 'off'
     setuid: 'off'
     compression: zstd
   zroot/empt/jails/kerberos/krb5data:

@@ -16,7 +16,7 @@ case "$HELPDESK_SUBJECT" in
 esac
 readonly taskname
 
-task="/empt/helpdeskbot/tasks/$taskname.sh"
+task="/empt/etc/tasks/$taskname.sh"
 readonly task
 
 test -x "$task" || deny_permission

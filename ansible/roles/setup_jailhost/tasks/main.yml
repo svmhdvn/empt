@@ -64,6 +64,18 @@
     state: present
     extra_zfs_properties: '{{ zrep_dataset_props["zroot/empt/jails/kerberos/krb5data"] }}'
 
+- name: Create ZFS dataset for backed-up postfix mail spool
+  community.general.zfs:
+    name: zroot/empt/jails/mail/postfix_spool
+    state: present
+    extra_zfs_properties: '{{ zrep_dataset_props["zroot/empt/jails/mail/postfix_spool"] }}'
+
+- name: Create ZFS dataset for backed-up mlmmj mailing lists archive and spool
+  community.general.zfs:
+    name: zroot/empt/jails/mail/mlmmj_spool
+    state: present
+    extra_zfs_properties: '{{ zrep_dataset_props["zroot/empt/jails/mail/mlmmj_spool"] }}'
+
 # TODO audit file permissions one by one
 - name: Populate jailhost /etc files
   ansible.builtin.template:

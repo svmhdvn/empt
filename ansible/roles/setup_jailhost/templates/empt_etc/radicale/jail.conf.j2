@@ -2,4 +2,6 @@ radicale {
     jid = {{ hostvars['radicale'].jid }};
     ip4.addr = "re0|{{ ipv4_prefix }}.20${jid}/32";
     ip6.addr += "re0|{{ ula_prefix }}::eeee:${jid}/128";
+    depend = "dns";
+    depend += "kerberos";
 }

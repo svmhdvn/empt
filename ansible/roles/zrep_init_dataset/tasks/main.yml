@@ -3,28 +3,26 @@
 #   key: str
 #   value: dict
 
+- name: Clear zrep state on the primary dataset
+  ansible.builtin.command: 'zrep clear -f {{ zrep_init_dataset_dataset.key }}'
+  delegate_to: jailhost-primary
+  changed_when: true
+
 - name: Destroy dataset on secondary
   community.general.zfs:
     name: '{{ zrep_init_dataset_dataset.key }}'
     state: absent
   delegate_to: jailhost-secondary
 
-- name: Initialize zrep dataset on primary and secondary
+- name: Initialize dataset on primary using zrep to propagate to secondary
   ansible.builtin.command: 'zrep init {{ zrep_init_dataset_dataset.key }} jailhost-secondary.home.arpa {{ zrep_init_dataset_dataset.key }}'
   delegate_to: jailhost-primary
   # TODO fix changed_when
   changed_when: true
 
-- name: Set all primary custom local zfs properties from the primary on zrep secondary dataset
+- name: Set all custom local zfs properties taken from the primary onto the secondary dataset
   community.general.zfs:
     name: '{{ zrep_init_dataset_dataset.key }}'
     state: present
     extra_zfs_properties: '{{ zrep_init_dataset_dataset.value }}'
-  delegate_to: jailhost-secondary
-
-- name: Unmount the secondary dataset
-  ansible.builtin.command: 'zfs unmount {{ zrep_init_dataset_dataset.key }}'
-  register: zrep_init_dataset_unmount
-  failed_when: zrep_init_dataset_unmount.rc != 0 and "not currently mounted" not in zrep_init_dataset_unmount.stderr
-  changed_when: true
   delegate_to: jailhost-secondary

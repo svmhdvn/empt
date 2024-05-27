@@ -106,7 +106,7 @@ mount -t nullfs "$cifs_mount_src" "$cifs_mount_dst"
 # ==========================================================================
 
 # TODO figure out the proper way to use DMA without using the absolute command
-/usr/libexec/dma -f 'helpdeskbot@empt.siva' -t <<EOF
+/usr/libexec/dma -f 'empthelper@empt.siva' -t <<EOF
 To: $HELPDESK_FROM
 Cc: $HELPDESK_CC, Helpdesk <helpdesk@empt.siva>
 Subject: [HELPDESK] Re: $HELPDESK_SUBJECT

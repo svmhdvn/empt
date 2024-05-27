@@ -6,26 +6,17 @@
   roles:
     - zrep_setup_mutual_trust
 
-- name: Initialize all zrep backed up datasets
+- name: Initialize all pre-configured zrep backed-up datasets
   hosts: localhost
   vars_files:
     - vars/shared.yml
   tasks:
-    - name: Initialize zrep state on all datasets to be backed up
+    - name: Initialize zrep state on all pre-configured datasets to be backed up
       ansible.builtin.include_role:
         name: zrep_init_dataset
       loop: '{{ zrep_dataset_props | dict2items }}'
       loop_control:
         loop_var: zrep_init_dataset_dataset
-
-- name: Unmount entire zroot/empt parent dataset on secondary
-  hosts: jailhost-secondary
-  tasks:
-    - name: Unmount zroot/empt
-      ansible.builtin.command: zfs unmount zroot/empt
-      register: activate_zrep_empt_unmount
-      failed_when: activate_zrep_empt_unmount.rc != 0 and "not currently mounted" not in activate_zrep_empt_unmount.stderr
-      changed_when: true
 
 - name: Setup zrep system users on both primary and secondary for zrep cronjobs
   hosts: jailhosts
@@ -40,7 +31,7 @@
         home: /nonexistent
         create_home: false
 
-    - name: Allow emptbackup user to run each sync command with doas
+    - name: Allow emptbackup user to run sync command with doas
       ansible.builtin.lineinfile:
         path: /usr/local/etc/doas.conf
         line: 'permit nopass emptbackup cmd /usr/local/bin/zrep'
@@ -49,8 +40,13 @@
         owner: root
         group: wheel
 
-    - name: Enable zrep sync cronjobs
-      ansible.builtin.cron:
-        user: emptbackup
-        name: 'zrep concurrent incremental backup'
-        job: -n -q zfs list -Hp -t filesystem -o zrep:dest-fs,written,name | awk '$1 != "-" && $2 != 0 { print $3 }' | xargs -L1 -P0 doas /usr/local/bin/zrep sync
+    # TODO file ansible.builtin.cron bug to allow @<num> as a special_time value
+    - name: Enable full system zrep replication cronjob to run every minute
+      ansible.builtin.lineinfile:
+        path: /var/cron/tabs/emptbackup
+        line: >
+          @60 -n -q zfs list -Hp -t filesystem -o zrep:dest-fs,written,name | awk '$1 != "-" && $2 != 0 { print $3 }' | xargs -L1 -P0 doas /usr/local/bin/zrep sync
+        create: true
+        mode: '0600'
+        owner: root
+        group: wheel

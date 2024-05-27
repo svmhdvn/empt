@@ -1,84 +1,76 @@
-- name: Create storage dataset for all helpdesk data
-  community.general.zfs:
-    name: zroot/empt/helpdeskbot
-    state: present
-    extra_zfs_properties: '{{ zrep_dataset_props["zroot/empt/helpdeskbot"] }}'
-
 # TODO turn this into a FreeBSD ports pkg
 # =======================================
-- name: Copy root-owned helpdesk scripts to helpdeskbot dataset
+- name: Copy helpdesk triage script to etc dataset
   ansible.builtin.template:
     src: helpdesk.sh.j2
-    dest: /empt/helpdeskbot/helpdesk.sh
+    dest: /empt/etc/helpdesk.sh
     mode: '0700'
     owner: root
     group: wheel
 
-- name: Install helpdesk scripts
+- name: Install EMPT administration task scripts to etc dataset
   ansible.builtin.copy:
     src: tasks
-    dest: /empt/helpdeskbot/
+    dest: /empt/etc/
     mode: '0700'
     owner: root
     group: wheel
 # =======================================
 
-- name: Create system account for the helpdeskbot
+- name: Create storage dataset for all helpdesk data
+  community.general.zfs:
+    name: zroot/empt/helpdesk
+    state: present
+    extra_zfs_properties: '{{ zrep_dataset_props["zroot/empt/helpdesk"] }}'
+
+- name: Create system account for the empthelper helpdesk agent
   ansible.builtin.user:
-    name: helpdeskbot
-    comment: Helpdesk Robot
-    home: /empt/helpdeskbot/home
+    name: empthelper
+    comment: EMPT Helpdesk Agent
+    home: /empt/helpdesk
     create_home: false
     shell: /usr/sbin/nologin
 # TODO find a way to create a globally unique UID, currently hardcoding
     uid: 21891
-  register: setup_jail_helpdeskbot_user
+  register: setup_jail_empthelper_user
 
-- name: Create directory layout under helpdeskbot dataset
+- name: Create directory layout under helpdesk dataset
   ansible.builtin.file:
-    name: '/empt/helpdeskbot/{{ item }}'
+    name: '/empt/helpdesk/{{ item }}'
     state: directory
     mode: '0700'
-    owner: '{{ setup_jail_helpdeskbot_user.uid }}'
-    group: '{{ setup_jail_helpdeskbot_user.uid }}'
+    owner: empthelper
+    group: empthelper
   loop:
-    - home/mail/cur
-    - home/mail/new
-    - home/mail/tmp
+    - '.'
+    - mail/cur
+    - mail/new
+    - mail/tmp
 
-- name: Add helpdeskbot maildir directory nullfs mount to mail jail
+- name: Add empthelper maildir directory nullfs mount to mail jail
   ansible.posix.mount:
     fstab: /empt/etc/mail/fstab
-    src: /empt/helpdeskbot/home/mail
-    path: /empt/jails/mail/home/helpdeskbot/mail
+    src: /empt/helpdesk/mail
+    path: /empt/jails/mail/home/helpdesk/mail
     fstype: nullfs
     opts: rw
     state: mounted
 
-- name: Ensure helpdeskbot maildir nullfs mountpoint has correct permissions in mail jail
-  ansible.builtin.file:
-    name: /home/helpdeskbot/mail
-    state: directory
-    mode: '0700'
-    owner: '{{ setup_jail_helpdeskbot_user.uid }}'
-    group: '{{ setup_jail_helpdeskbot_user.uid }}'
-  delegate_to: mail
-
-- name: Create mail delivery local account for the helpdeskbot in the mail jail
+- name: Create empthelper mail delivery local account in the mail jail
   ansible.builtin.user:
-    name: helpdeskbot
-    comment: Helpdesk Robot
+    name: '{{ setup_jail_empthelper_user.name }}'
+    comment: '{{ setup_jail_empthelper_user.comment }}'
     shell: /usr/sbin/nologin
-    home: /home/helpdeskbot
+    home: '/home/{{ setup_jail_empthelper_user.name }}'
     create_home: false
-    uid: '{{ setup_jail_helpdeskbot_user.uid }}'
+    uid: '{{ setup_jail_empthelper_user.uid }}'
   delegate_to: mail
 
 - name: Silently subscribe the helpdesk and IT staff to the helpdesk mailing list
   ansible.builtin.command: '/usr/local/bin/mlmmj-sub -L /var/spool/mlmmj/helpdesk -a {{ item }}@{{ org_domain }} -fqs'
   loop:
     - it
-    - helpdeskbot
+    - empthelper
   delegate_to: mail
   register: setup_jail_helpdesk_mlmmj_sub_output
   changed_when: setup_jail_helpdesk_mlmmj_sub_output.rc == 0
@@ -86,16 +78,16 @@
 - name: Install fdm configuration
   ansible.builtin.template:
     src: fdm.conf.j2
-    dest: /empt/helpdeskbot/home/.fdm.conf
+    dest: /empt/helpdesk/.fdm.conf
     mode: '0600'
-    owner: helpdeskbot
-    group: helpdeskbot
+    owner: empthelper
+    group: empthelper
     validate: fdm -f %s -n
 
-- name: Allow the helpdeskbot to only run the helpdesk script
+- name: Allow the empthelper to only run the helpdesk triage script
   ansible.builtin.lineinfile:
     path: /usr/local/etc/doas.conf
-    line: 'permit nopass setenv { HELPDESK_FROM HELPDESK_CC HELPDESK_MESSAGE_ID HELPDESK_SUBJECT HELPDESK_REFERENCES } helpdeskbot cmd /empt/helpdeskbot/helpdesk.sh args'
+    line: 'permit nopass setenv { HELPDESK_FROM HELPDESK_CC HELPDESK_MESSAGE_ID HELPDESK_SUBJECT HELPDESK_REFERENCES } empthelper cmd /empt/etc/helpdesk.sh args'
     create: true
     mode: '0600'
     owner: root
@@ -103,6 +95,6 @@
 
 - name: Enable cronjob to periodically process helpdesk queue with fdm
   ansible.builtin.cron:
-    user: helpdeskbot
-    name: process helpdeskbot queue with fdm
-    job: -n -q fdm -a helpdeskbot -l fetch
+    user: empthelper
+    name: process helpdesk queue with fdm
+    job: -n -q fdm -a helpdesk -l fetch

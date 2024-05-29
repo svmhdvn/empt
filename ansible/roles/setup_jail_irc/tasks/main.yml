@@ -1,3 +1,13 @@
+- name: Add soju DB nullfs mount to irc jail
+  ansible.posix.mount:
+    fstab: /empt/synced/rw/fstab.d/irc.fstab
+    src: /empt/synced/rw/sojudb
+    path: /empt/jails/irc/var/db/soju
+    fstype: nullfs
+    opts: rw
+    state: mounted
+  delegate_to: jailhost
+
 - name: Configure ngIRCd backend IRC server
   ansible.builtin.template:
     src: '{{ item.src }}'
@@ -62,7 +72,7 @@
 - name: Copy pre-built gamja IRC webclient to location
   ansible.builtin.copy:
     src: gamja
-    dest: /usr/local/www/gamja
+    dest: /usr/local/www/
     # TODO only webserver user should be able to access this
     mode: '0755'
     owner: root

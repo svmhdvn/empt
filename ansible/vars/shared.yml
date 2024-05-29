@@ -39,11 +39,6 @@ humans:
       - everyone
       - cryptoppl
       - it
-  - username: siva
-    fullname: Siva Mahadevan
-    uid: 5097
-    mailing_lists:
-      - everyone
 
 kerberos_service_principals:
   - service: cifs
@@ -57,68 +52,14 @@ kerberos_service_principals:
   - service: HTTP
     host: radicale
 
-zrep_dataset_props:
-  zroot/empt/etc:
-    compression: zstd
-  zroot/empt/helpdesk:
-    exec: 'off'
-    setuid: 'off'
-    compression: zstd
-  zroot/empt/jails/mail/postfix_spool:
-    mountpoint: /empt/jails/mail/var/spool/postfix
-  zroot/empt/jails/mail/mlmmj_spool:
-    mountpoint: /empt/jails/mail/var/spool/mlmmj
-    exec: 'off'
-    setuid: 'off'
-    compression: zstd
-  zroot/empt/jails/kerberos/krb5data:
-    mountpoint: /empt/jails/kerberos/var/heimdal
-    exec: 'off'
-    setuid: 'off'
-  zroot/empt/jails/cifs/etc:
-    compression: zstd
-  zroot/empt/jails/cifs/logs:
-    mountpoint: '/empt/jails/cifs/var/log'
-    exec: 'off'
-    setuid: 'off'
-    compression: zstd
-  zroot/empt/jails/dns/etc:
-    compression: zstd
-  zroot/empt/jails/dns/logs:
-    mountpoint: '/empt/jails/dns/var/log'
-    exec: 'off'
-    setuid: 'off'
-    compression: zstd
-  zroot/empt/jails/irc/etc:
-    compression: zstd
-  zroot/empt/jails/irc/logs:
-    mountpoint: '/empt/jails/irc/var/log'
-    exec: 'off'
-    setuid: 'off'
-    compression: zstd
-  zroot/empt/jails/kerberos/etc:
-    compression: zstd
-  zroot/empt/jails/kerberos/logs:
-    mountpoint: '/empt/jails/kerberos/var/log'
-    exec: 'off'
-    setuid: 'off'
-    compression: zstd
-  zroot/empt/jails/mail/etc:
-    compression: zstd
-  zroot/empt/jails/mail/logs:
-    mountpoint: '/empt/jails/mail/var/log'
-    exec: 'off'
-    setuid: 'off'
-    compression: zstd
-  zroot/empt/jails/radicale/etc:
-    compression: zstd
-  zroot/empt/jails/radicale/logs:
-    mountpoint: '/empt/jails/radicale/var/log'
+zrep_synced_dataset_properties:
+  # TODO benchmark lz4 (default) vs zstd
+  zroot/empt/synced/rw:
     exec: 'off'
     setuid: 'off'
     compression: zstd
 
 # TODO secure
 secret_ca_passphrase: cakey
-certauth_cacrt_path: '/empt/etc/{{ org_domain }}.cacrt.pem'
-certauth_cakey_path: '/empt/etc/{{ org_domain }}.cakey.pem'
+certauth_cacrt_path: '/empt/synced/rw/{{ org_domain }}.cacrt.pem'
+certauth_cakey_path: '/empt/synced/rw/{{ org_domain }}.cakey.pem'

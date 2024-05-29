@@ -10,72 +10,6 @@
       cpu_microcode_load="YES"
       cpu_microcode_name="/boot/firmware/amd-ucode.bin"
 
-- name: Create ZFS top level dataset for empt
-  community.general.zfs:
-    name: zroot/empt
-    state: present
-    extra_zfs_properties:
-      mountpoint: /empt
-
-- name: Create dataset for backed-up etc files on the jailhost
-  community.general.zfs:
-    name: zroot/empt/etc
-    state: present
-    extra_zfs_properties: '{{ zrep_dataset_props["zroot/empt/etc"] }}'
-  loop: '{{ groups["jails"] }}'
-
-- name: Create top level ZFS dataset for storing data for humans
-  community.general.zfs:
-    name: zroot/empt/human_storage
-    state: present
-    extra_zfs_properties:
-      exec: 'off'
-      setuid: 'off'
-      compression: zstd
-
-- name: Create ZFS dataset for the top level jails filesystem
-  community.general.zfs:
-    name: zroot/empt/jails
-    state: present
-
-- name: Create parent dataset for each jail
-  community.general.zfs:
-    name: 'zroot/empt/jails/{{ item }}'
-    state: present
-  loop: '{{ groups["jails"] }}'
-
-- name: Create dataset for backed-up etc files for each jail
-  community.general.zfs:
-    name: 'zroot/empt/jails/{{ item }}/etc'
-    state: present
-    extra_zfs_properties: '{{ zrep_dataset_props["zroot/empt/jails/" + item + "/etc"] }}'
-  loop: '{{ groups["jails"] }}'
-
-- name: Create ZFS dataset for log storage inside each jail
-  community.general.zfs:
-    name: 'zroot/empt/jails/{{ item }}/logs'
-    state: present
-    extra_zfs_properties: '{{ zrep_dataset_props["zroot/empt/jails/" + item + "/logs"] }}'
-  loop: '{{ groups["jails"] }}'
-
-- name: Create ZFS dataset for backed-up kerberos database storage
-  community.general.zfs:
-    name: zroot/empt/jails/kerberos/krb5data
-    state: present
-    extra_zfs_properties: '{{ zrep_dataset_props["zroot/empt/jails/kerberos/krb5data"] }}'
-
-- name: Create ZFS dataset for backed-up postfix mail spool
-  community.general.zfs:
-    name: zroot/empt/jails/mail/postfix_spool
-    state: present
-    extra_zfs_properties: '{{ zrep_dataset_props["zroot/empt/jails/mail/postfix_spool"] }}'
-
-- name: Create ZFS dataset for backed-up mlmmj mailing lists archive and spool
-  community.general.zfs:
-    name: zroot/empt/jails/mail/mlmmj_spool
-    state: present
-    extra_zfs_properties: '{{ zrep_dataset_props["zroot/empt/jails/mail/mlmmj_spool"] }}'
-
 # TODO audit file permissions one by one
 - name: Populate jailhost /etc files
   ansible.builtin.template:
@@ -96,36 +30,6 @@
     group: wheel
   with_community.general.filetree: '{{ "templates/jailhost_usr_local_etc/" }}'
   when: item.state == 'file'
-
-- name: Create missing /empt/etc subdirectories
-  ansible.builtin.file:
-    path: '/empt/etc/{{ item.path }}'
-    state: directory
-    mode: '0700'
-    owner: root
-    group: wheel
-  with_community.general.filetree: '{{ "templates/empt_etc" }}'
-  when: item.state == 'directory'
-
-- name: Configure EMPT backed-up jail-specific etc files
-  ansible.builtin.template:
-    src: '{{ item.src }}'
-    dest: '/empt/etc/{{ item.path | replace(".j2", "") }}'
-    mode: '0600'
-    owner: root
-    group: wheel
-  with_community.general.filetree: '{{ "templates/empt_etc" }}'
-  when: item.state == 'file'
-
-- name: Add an fstab for every jail
-  ansible.builtin.lineinfile:
-    path: '/empt/etc/{{ item }}/fstab'
-    create: true
-    line: '/usr/local/poudriere_repos /empt/jails/{{ item }}/usr/local/poudriere_repos nullfs ro 0 0'
-    mode: '0600'
-    owner: root
-    group: wheel
-  loop: '{{ groups["jails"] }}'
 
 - name: Create empty directory for base jail
   ansible.builtin.file:
@@ -148,6 +52,7 @@
     - /tmp/base_jail/home
     - /tmp/base_jail/usr/local/etc/pkg/repos
     - /tmp/base_jail/usr/local/poudriere_repos
+    # TODO don't use root for ssh between systems
     - /tmp/base_jail/root/.ssh
 
 - name: Populate common /etc files into base jail
@@ -185,7 +90,96 @@
     group: wheel
     mode: '0600'
 
+- name: Create top level dataset for empt
+  community.general.zfs:
+    name: zroot/empt
+    state: present
+    extra_zfs_properties:
+      mountpoint: /empt
+
+# TODO benchmark lz4 (default) vs no compression here
+- name: Create ZFS dataset for all non-synced jail storage
+  community.general.zfs:
+    name: zroot/empt/jails
+    state: present
+
+- name: Create dataset for all synced (replicated with backup) data
+  community.general.zfs:
+    name: zroot/empt/synced
+    state: present
+
+- name: Create synced dataset for non-executable compressed data
+  community.general.zfs:
+    name: zroot/empt/synced/rw
+    state: present
+    extra_zfs_properties: '{{ zrep_synced_dataset_properties["zroot/empt/synced/rw"] }}'
+
+- name: Populate rough EMPT directory structure
+  ansible.builtin.file:
+    path: '{{ item }}'
+    state: directory
+    mode: '0755'
+    owner: root
+    group: wheel
+  loop:
+    - /empt/synced/bin
+    - /empt/synced/postfix_spool
+    - /empt/synced/rw/fstab.d
+    - /empt/synced/rw/groups
+    - /empt/synced/rw/helpdesk
+    - /empt/synced/rw/humans
+    - /empt/synced/rw/jail.conf.d
+    - /empt/synced/rw/krb5data
+    - /empt/synced/rw/mlmmj_spool
+    - /empt/synced/rw/sojudb
+
+- name: Prepare directories for jail nullfs-mounted logs and etc
+  ansible.builtin.file:
+    path: '{{ item }}'
+    state: directory
+    mode: '0755'
+    owner: root
+    group: wheel
+  loop: '{{ ["/empt/synced/rw/logs/", "/empt/synced/etc/"] | product(groups["jails"]) | map("join") }}'
+
+- name: Install all jail.conf files
+  ansible.builtin.template:
+    src: '{{ item.src }}'
+    dest: '/empt/synced/rw/jail.conf.d/{{ item.path | replace(".j2", "") }}'
+    mode: '0600'
+    owner: root
+    group: wheel
+  with_community.general.filetree: '{{ "templates/jail.conf.d" }}'
+  when: item.state == 'file'
+
+- name: Create an fstab for every jail
+  ansible.builtin.copy:
+    # TODO is it possible to mount the jail /etc as 'ro'? it seems better
+    content: |
+      /usr/local/poudriere_repos /empt/jails/{{ item }}/usr/local/poudriere_repos nullfs ro 0 0
+      /empt/synced/rw/logs/{{ item }} /empt/jails/{{ item }}/var/log nullfs rw 0 0
+      /empt/synced/etc/{{ item }} /empt/jails/{{ item }}/etc nullfs rw 0 0
+    dest: '/empt/synced/rw/fstab.d/{{ item }}.fstab'
+    mode: '0600'
+    owner: root
+    group: wheel
+  loop: '{{ groups["jails"] }}'
+
+- name: Copy base jail /etc to synced jail etc directory under EMPT
+  # NOTE the trailing slash on /tmp/base_jail/etc/ is required to copy its contents
+  # rather than the entire directory. See cp(1).
+  ansible.builtin.command: 'cp -a /tmp/base_jail/etc/ /empt/synced/etc/{{ item }}'
+  loop: '{{ groups["jails"] }}'
+  changed_when: true
+
+- name: Remove /etc from base jail
+  ansible.builtin.file:
+    path: /tmp/base_jail/etc
+    state: absent
+
 - name: Clone (thick) base jail to installed locations
+  # NOTE the trailing slash on /tmp/base_jail/ is required to copy its contents
+  # rather than the entire directory. See cp(1).
   ansible.builtin.command: 'cp -a /tmp/base_jail/ /empt/jails/{{ item }}'
   loop: '{{ groups["jails"] }}'
   changed_when: true
@@ -199,10 +193,3 @@
   ansible.builtin.file:
     path: /tmp/base_jail
     state: absent
-
-# TODO no idea why this needs to be broken into two steps
-# - name: Enable jail service
-#   ansible.builtin.service:
-#     name: "jail"
-#     enabled: true
-#     state: started

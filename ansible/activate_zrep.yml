@@ -6,47 +6,69 @@
   roles:
     - zrep_setup_mutual_trust
 
-- name: Initialize all pre-configured zrep backed-up datasets
-  hosts: localhost
-  vars_files:
-    - vars/shared.yml
-  tasks:
-    - name: Initialize zrep state on all pre-configured datasets to be backed up
-      ansible.builtin.include_role:
-        name: zrep_init_dataset
-      loop: '{{ zrep_dataset_props | dict2items }}'
-      loop_control:
-        loop_var: zrep_init_dataset_dataset
-
-- name: Setup zrep system users on both primary and secondary for zrep cronjobs
-  hosts: jailhosts
-  vars_files:
-    - vars/shared.yml
-  tasks:
-    - name: Create system user for running zrep backup commands
-      ansible.builtin.user:
-        name: emptbackup
-        comment: EMPT Backup Agent
-        shell: /usr/sbin/nologin
-        home: /nonexistent
-        create_home: false
-
-    - name: Allow emptbackup user to run sync command with doas
-      ansible.builtin.lineinfile:
-        path: /usr/local/etc/doas.conf
-        line: 'permit nopass emptbackup cmd /usr/local/bin/zrep'
-        create: true
-        mode: '0600'
-        owner: root
-        group: wheel
-
-    # TODO file ansible.builtin.cron bug to allow @<num> as a special_time value
-    - name: Enable full system zrep replication cronjob to run every minute
-      ansible.builtin.lineinfile:
-        path: /var/cron/tabs/emptbackup
-        line: >
-          @60 -n -q zfs list -Hp -t filesystem -o zrep:dest-fs,written,name | awk '$1 != "-" && $2 != 0 { print $3 }' | xargs -L1 -P0 doas /usr/local/bin/zrep sync
-        create: true
-        mode: '0600'
-        owner: root
-        group: wheel
+#- name: Activate zrep syncing on zroot/empt/synced
+#  hosts: localhost
+#  vars_files:
+#    - vars/shared.yml
+#  tasks:
+#    - name: Clear zrep state on the primary dataset
+#      ansible.builtin.command: zrep clear -f zroot/empt/synced
+#      environment:
+#        ZREP_R: '-R'
+#      delegate_to: jailhost-primary
+#      changed_when: true
+#
+#    - name: Destroy dataset on secondary
+#      community.general.zfs:
+#        name: zroot/empt/synced
+#        state: absent
+#      delegate_to: jailhost-secondary
+#
+#    - name: Initialize dataset on primary using zrep to propagate to secondary
+#      ansible.builtin.command: zrep init zroot/empt/synced jailhost-secondary.home.arpa zroot/empt/synced
+#      environment:
+#        ZREP_R: '-R'
+#      delegate_to: jailhost-primary
+#      # TODO fix changed_when
+#      changed_when: true
+#
+#    - name: Set all custom local zfs properties taken from the primary onto the secondary dataset
+#      community.general.zfs:
+#        name: '{{ item.key }}'
+#        state: present
+#        extra_zfs_properties: '{{ item.value }}'
+#      loop: '{{ zrep_synced_dataset_properties | dict2items }}'
+#      delegate_to: jailhost-secondary
+#
+#- name: Setup zrep system users on both primary and secondary for zrep cronjobs
+#  hosts: jailhosts
+#  vars_files:
+#    - vars/shared.yml
+#  tasks:
+#    - name: Create system user for running zrep backup commands
+#      ansible.builtin.user:
+#        name: emptbackup
+#        comment: EMPT Backup Agent
+#        shell: /usr/sbin/nologin
+#        home: /nonexistent
+#        create_home: false
+#
+#    - name: Allow emptbackup user to run sync command with doas
+#      ansible.builtin.lineinfile:
+#        path: /usr/local/etc/doas.conf
+#        line: permit nopass setenv { ZREP_R=-R } emptbackup cmd /usr/local/bin/zrep args sync zroot/empt/synced
+#        create: true
+#        mode: '0600'
+#        owner: root
+#        group: wheel
+#
+#    # TODO file ansible.builtin.cron bug to allow @<num> as a special_time value
+#    - name: Enable full system zrep replication cronjob to run every minute
+#      ansible.builtin.lineinfile:
+#        path: /var/cron/tabs/emptbackup
+#        line: >
+#          @60 -n -q zfs list -rHpo written zroot/empt/synced | grep -qvx 0 && doas /usr/local/bin/zrep sync zroot/empt/synced
+#        create: true
+#        mode: '0600'
+#        owner: root
+#        group: wheel

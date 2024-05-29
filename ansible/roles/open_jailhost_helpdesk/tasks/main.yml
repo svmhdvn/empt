@@ -3,7 +3,7 @@
 - name: Copy helpdesk triage script to etc dataset
   ansible.builtin.template:
     src: helpdesk.sh.j2
-    dest: /empt/etc/helpdesk.sh
+    dest: /empt/synced/bin/helpdesk.sh
     mode: '0700'
     owner: root
     group: wheel
@@ -11,23 +11,17 @@
 - name: Install EMPT administration task scripts to etc dataset
   ansible.builtin.copy:
     src: tasks
-    dest: /empt/etc/
+    dest: /empt/synced/bin/
     mode: '0700'
     owner: root
     group: wheel
 # =======================================
 
-- name: Create storage dataset for all helpdesk data
-  community.general.zfs:
-    name: zroot/empt/helpdesk
-    state: present
-    extra_zfs_properties: '{{ zrep_dataset_props["zroot/empt/helpdesk"] }}'
-
 - name: Create system account for the empthelper helpdesk agent
   ansible.builtin.user:
     name: empthelper
     comment: EMPT Helpdesk Agent
-    home: /empt/helpdesk
+    home: /empt/synced/rw/helpdesk
     create_home: false
     shell: /usr/sbin/nologin
 # TODO find a way to create a globally unique UID, currently hardcoding
@@ -36,22 +30,21 @@
 
 - name: Create directory layout under helpdesk dataset
   ansible.builtin.file:
-    name: '/empt/helpdesk/{{ item }}'
+    name: '/empt/synced/rw/helpdesk/{{ item }}'
     state: directory
     mode: '0700'
     owner: empthelper
     group: empthelper
   loop:
-    - '.'
     - mail/cur
     - mail/new
     - mail/tmp
 
 - name: Add empthelper maildir directory nullfs mount to mail jail
   ansible.posix.mount:
-    fstab: /empt/etc/mail/fstab
-    src: /empt/helpdesk/mail
-    path: /empt/jails/mail/home/helpdesk/mail
+    fstab: /empt/synced/rw/fstab.d/mail.fstab
+    src: /empt/synced/rw/helpdesk/mail
+    path: /empt/jails/mail/home/empthelper/mail
     fstype: nullfs
     opts: rw
     state: mounted
@@ -78,7 +71,7 @@
 - name: Install fdm configuration
   ansible.builtin.template:
     src: fdm.conf.j2
-    dest: /empt/helpdesk/.fdm.conf
+    dest: /empt/synced/rw/helpdesk/.fdm.conf
     mode: '0600'
     owner: empthelper
     group: empthelper
@@ -87,7 +80,7 @@
 - name: Allow the empthelper to only run the helpdesk triage script
   ansible.builtin.lineinfile:
     path: /usr/local/etc/doas.conf
-    line: 'permit nopass setenv { HELPDESK_FROM HELPDESK_CC HELPDESK_MESSAGE_ID HELPDESK_SUBJECT HELPDESK_REFERENCES } empthelper cmd /empt/etc/helpdesk.sh args'
+    line: 'permit nopass setenv { HELPDESK_FROM HELPDESK_CC HELPDESK_MESSAGE_ID HELPDESK_SUBJECT HELPDESK_REFERENCES } empthelper cmd /empt/synced/bin/helpdesk.sh args'
     create: true
     mode: '0600'
     owner: root

@@ -79,28 +79,35 @@ done
 
 # Create a storage dataset for the group and mount it in corresponding jails
 # ==========================================================================
+
 # TODO do we need a reservation? I don't think so
+group_mount="/empt/synced/rw/groups/$group_name"
+readonly group_mount
 zfs create -p \
     -o quota=1G \
-    "zroot/empt/group_storage/$group_name"
+    -o mountpoint="$group_mount" \
+    "zroot/empt/synced/rw/group:$group_name"
 
 for d in home diary; do
-    mkdir -p "/empt/group_storage/$group_name/$d"
+    mkdir -p "$group_mount/$d"
 done
 
-chown -R "root:$group_gid" "/empt/group_storage/$group_name"
-chmod -R 1770 "/empt/group_storage/$group_name"
-echo "welcome, $creator & $other_members" > "/empt/group_storage/$group_name/home/WELCOME.txt"
+chown -R "root:$group_gid" "$group_mount"
+chmod -R 1770 "$group_mount"
+
+# TODO do we really need to welcome users?
+#echo "welcome, $creator & $other_members" > "$group_mount/home/WELCOME.txt"
+#chmod 0660 "$group_mount/home/WELCOME.txt"
 
 # Mount the group storage in cifs
 jexec -l cifs mkdir -p "/groups/$group_name"
-cifs_mount_src="/empt/group_storage/$group_name/home"
+cifs_mount_src="$group_mount/home"
 readonly cifs_mount_src
 cifs_mount_dst="/empt/jails/cifs/groups/$group_name"
 readonly cifs_mount_dst
-append_if_missing "$cifs_mount_src $cifs_mount_dst nullfs rw 0 0" /empt/etc/cifs/fstab
-# TODO make this idempotent
-mount -t nullfs "$cifs_mount_src" "$cifs_mount_dst"
+append_if_missing "$cifs_mount_src $cifs_mount_dst nullfs rw 0 0" /empt/synced/rw/fstab.d/cifs.fstab
+# TODO idempotency
+mount -t nullfs "$cifs_mount_src" "$cifs_mount_dst" || true
 
 # TODO radicale
 # ==========================================================================

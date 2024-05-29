@@ -4,11 +4,6 @@
   vars_files:
     - vars/shared.yml
   tasks:
-    - name: Check if zrep backups are enabled
-      ansible.builtin.command: zrep list
-      changed_when: false
-      register: start_fake_company_zrep_list
-
     - name: Start all jails
       ansible.builtin.command: service jail onerestart
       changed_when: true

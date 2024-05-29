@@ -11,4 +11,4 @@ match '^cc:\s*(\S.*)' in headers action tag 'my_cc' value '%1' continue
 match '^subject:\s*(\S.*)' in headers action tag 'my_subject' value '%1' continue
 match '^references:\s*(\S.*)' in headers action tag 'my_references' value '%1' continue
 
-match all action exec "env HELPDESK_FROM='%[my_from]' HELPDESK_CC='%[my_cc]' HELPDESK_MESSAGE_ID='%[message_id]' HELPDESK_SUBJECT='%[my_subject]' HELPDESK_REFERENCES='%[my_references]' doas /empt/etc/helpdesk.sh"
+match all action exec "env HELPDESK_FROM='%[my_from]' HELPDESK_CC='%[my_cc]' HELPDESK_MESSAGE_ID='%[message_id]' HELPDESK_SUBJECT='%[my_subject]' HELPDESK_REFERENCES='%[my_references]' doas /empt/synced/bin/helpdesk.sh"

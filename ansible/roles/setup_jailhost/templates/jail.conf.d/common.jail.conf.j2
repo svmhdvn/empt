@@ -29,7 +29,7 @@ exec.start = "/bin/sh /etc/rc";
 exec.stop = "/bin/sh /etc/rc.shutdown";
 
 # Common fstab to share /usr/ports at a minimum
-mount.fstab = "/empt/etc/${name}/fstab";
+mount.fstab = "/empt/synced/rw/fstab.d/${name}.fstab";
 
 # TODO use real ULA subnet prefix length instead of '64'
 # TODO programmatically query name of network interface instead of 're0'
@@ -39,7 +39,3 @@ mount.fstab = "/empt/etc/${name}/fstab";
 # TODO narrow down fe80:: subnet range
 # TODO currently hardcoding the _random_ IPv6 addresses for convenience
 ip6.addr = "lo0|fe80:2::eeee:${jid}/128";
-
-{% for jail in groups['jails'] %}
-.include "/empt/etc/{{ jail }}/jail.conf";
-{% endfor %}

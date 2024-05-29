@@ -5,42 +5,20 @@
 #   uid: int
 #   mailing_lists: [str]
 
-# TODO try not to duplicate extra_zfs_properties here
-# ===================================================
 - name: Create storage dataset for human
   community.general.zfs:
-    name: 'zroot/empt/human_storage/{{ human.username }}'
+    name: 'zroot/empt/synced/rw/human:{{ human.username }}'
     state: present
     extra_zfs_properties:
+      mountpoint: '/empt/synced/rw/humans/{{ human.username }}'
       quota: '1G'
       reservation: '1G'
 
-- name: Initialize zrep state on all datasets to be backed up
-  ansible.builtin.include_role:
-    name: zrep_init_dataset
-  vars:
-    zrep_init_dataset_dataset:
-      key: 'zroot/empt/human_storage/{{ human.username }}'
-      value:
-        quota: '1G'
-        reservation: '1G'
-  when: start_fake_company_zrep_list.stdout | length > 0
-# ===================================================
-
-- name: Set owner and group permissions for the new storage dataset
-  ansible.builtin.file:
-    name: '/empt/human_storage/{{ human.username }}'
-    state: directory
-    mode: '1700'
-    owner: '{{ human.uid }}'
-    group: '{{ human.uid }}'
-
 - name: Populate human-owned storage directories
   ansible.builtin.file:
-    name: '/empt/human_storage/{{ human.username }}/{{ item }}'
+    name: '/empt/synced/rw/humans/{{ human.username }}/{{ item }}'
     state: directory
-    recurse: true
-    mode: '1700'
+    mode: '0700'
     owner: '{{ human.uid }}'
     group: '{{ human.uid }}'
   loop:
@@ -57,10 +35,9 @@
 
 - name: Populate human calendar/contacts directories
   ansible.builtin.file:
-    name: '/empt/human_storage/{{ human.username }}/diary/{{ item }}'
+    name: '/empt/synced/rw/humans/{{ human.username }}/diary/{{ item }}'
     state: directory
-    recurse: true
-    mode: '1700'
+    mode: '0700'
     owner: '{{ new_human_radicale_system_account.uid }}'
     group: '{{ new_human_radicale_system_account.uid }}'
   loop:
@@ -72,7 +49,7 @@
 - name: Initialize radicale properties for each new collection
   ansible.builtin.template:
     src: 'radicale/{{ item }}/Radicale.props.json.j2'
-    dest: '/empt/human_storage/{{ human.username }}/diary/{{ item }}/.Radicale.props'
+    dest: '/empt/synced/rw/humans/{{ human.username }}/diary/{{ item }}/.Radicale.props'
     mode: '0600'
     owner: '{{ new_human_radicale_system_account.uid }}'
     group: '{{ new_human_radicale_system_account.uid }}'
@@ -100,8 +77,7 @@
   ansible.builtin.file:
     name: '/home/{{ human.username }}'
     state: directory
-    recurse: true
-    mode: '1700'
+    mode: '0700'
     owner: '{{ human.uid }}'
     group: '{{ human.uid }}'
   delegate_to: cifs
@@ -110,8 +86,7 @@
   ansible.builtin.file:
     name: '/home/{{ human.username }}/mail'
     state: directory
-    recurse: true
-    mode: '1700'
+    mode: '0700'
     owner: '{{ human.uid }}'
     group: '{{ human.uid }}'
   delegate_to: mail
@@ -120,18 +95,18 @@
 # REMOTE_USER=<username>@<REALM>?
 - name: Create missing nullfs mountpoint for radicale collections
   ansible.builtin.file:
-    name: '/usr/local/share/radicale/collection-root/{{ human.username }}@{{ org_domain | upper }}'
+    name: '/var/db/radicale/collection-root/{{ human.username }}@{{ org_domain | upper }}'
     state: directory
     recurse: true
-    mode: '1700'
+    mode: '0700'
     owner: '{{ new_human_radicale_system_account.uid }}'
     group: '{{ new_human_radicale_system_account.uid }}'
   delegate_to: radicale
 
 - name: Add human home directory nullfs mount to cifs jail
   ansible.posix.mount:
-    fstab: /empt/etc/cifs/fstab
-    src: '/empt/human_storage/{{ human.username }}/home'
+    fstab: /empt/synced/rw/fstab.d/cifs.fstab
+    src: '/empt/synced/rw/humans/{{ human.username }}/home'
     path: '/empt/jails/cifs/home/{{ human.username }}'
     fstype: nullfs
     opts: rw
@@ -139,8 +114,8 @@
 
 - name: Add Maildir nullfs mount to mail jail
   ansible.posix.mount:
-    fstab: /empt/etc/mail/fstab
-    src: '/empt/human_storage/{{ human.username }}/mail'
+    fstab: /empt/synced/rw/fstab.d/mail.fstab
+    src: '/empt/synced/rw/humans/{{ human.username }}/mail'
     path: '/empt/jails/mail/home/{{ human.username }}/mail'
     fstype: nullfs
     opts: rw
@@ -148,9 +123,9 @@
 
 - name: Nullfs mount diary collections to radicale jail
   ansible.posix.mount:
-    fstab: /empt/etc/radicale/fstab
-    src: '/empt/human_storage/{{ human.username }}/diary'
-    path: '/empt/jails/radicale/usr/local/share/radicale/collection-root/{{ human.username }}@{{ org_domain | upper }}'
+    fstab: /empt/synced/rw/fstab.d/radicale.fstab
+    src: '/empt/synced/rw/humans/{{ human.username }}/diary'
+    path: '/empt/jails/radicale/var/db/radicale/collection-root/{{ human.username }}@{{ org_domain | upper }}'
     fstype: nullfs
     opts: rw
     state: mounted

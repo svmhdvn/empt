@@ -1,0 +1,7 @@
+---
+- name: Enable automatic ZFS replication
+  hosts: localhost
+  vars_files:
+    - vars/shared.yml
+  roles:
+    - enable_automatic_replication

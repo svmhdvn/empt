@@ -11,7 +11,7 @@ standby: fresh_start reboot
 
 solitary: standby start_fake_company
 
-redundant: standby activate_zrep start_fake_company
+redundant: standby enable_automatic_replication start_fake_company
 
 fresh_start:
 	ansible-playbook \
@@ -52,13 +52,13 @@ update_poudriere:
 		-b -K --become-method ansible.builtin.su \
 		update_poudriere.yml
 
-activate_zrep:
+enable_automatic_replication:
 	ansible-playbook \
 		-u $(FRESH_INSTALL_USER) \
-		-b -K --become-method ansible.builtin.su \
+		-b --become-method community.general.doas \
 		-i local_inventory.ini \
 		-i remote_inventory.ini \
-		activate_zrep.yml
+		enable_automatic_replication.yml
 
 reset:
 	ansible \

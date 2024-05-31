@@ -1,43 +1,46 @@
 #!/bin/sh
 
-set -ex
+set -e
+
+zfscmd="doas -u zfsemptoperator /sbin/zfs"
+readonly zfscmd
 
 _usage() {
     cat <<EOF
 usage:
-    replication.sh init <hostname of secondary>
-    replication.sh backup|failover|takeover
+    replication.sh init|backup
 EOF
 }
 
 _init() {
-    secondary="$1"
-    firstsnap=beginning
-
-    if test "$(ssh "$secondary" zfs get -Hp -o value empt:primary zroot/empt)" != '-'; then
-        echo "Failed to verify secondary host '$secondary', please check configuration." >&2
+    secondary="$(zfs get -Hp -o value empt:secondary zroot/empt)"
+    primary_prop_from_secondary="$(ssh "zfsemptoperator@${secondary}" zfs get -Hp -o value empt:primary zroot/empt)"
+    if test "${primary_prop_from_secondary}" != '-'; then
+        echo "Failed to verify secondary host '${secondary}', please check configuration." >&2
         exit 78 # EX_CONFIG
     fi
 
     # start from scratch by clearing all snapshots that aren't held
     # TODO idempotency
-    zfs destroy -Rf zroot/empt/synced@% || true
+    ${zfscmd} destroy -Rf zroot/empt/synced@% || true
 
     # create the first snapshot for a full send
-    zfs snapshot -r "zroot/empt/synced@$firstsnap"
+    firstsnap=beginning
+    ${zfscmd} snapshot -r "zroot/empt/synced@${firstsnap}"
 
     # do a full replication stream zfs send
-    zfs send -Rv "zroot/empt/synced@$firstsnap" | ssh "$secondary" zfs receive -Fduv zroot
+    ${zfscmd} send -Rv "zroot/empt/synced@${firstsnap}" | ssh "zfsemptoperator@${secondary}" zfs receive -Fduv zroot
 
     # once that succeeds, everything is successfully initialized!
-    zfs set empt:primary=on "empt:secondary=$secondary" "empt:lastsent=$firstsnap" zroot/empt
+    ${zfscmd} set empt:primary=on "empt:lastsent=${firstsnap}" zroot/empt
 }
 
 _backup() {
+    emptprops="$(zfs list -Hpo empt:primary,empt:secondary,empt:lastsent zroot/empt/synced)"
     read -r primary secondary lastsent <<EOF
-$(zfs list -Hpo empt:primary,empt:secondary,empt:lastsent zroot/empt/synced)
+${emptprops}
 EOF
-    if test "$primary" != 'on' -o test "$secondary" = '-' -o "$lastsent" = '-'; then
+    if test "${primary}" != 'on' -o "${secondary}" = '-' -o "${lastsent}" = '-'; then
         echo "ERROR: $0: misconfigured replication tracking state! Sanity check both sides now." >&2
         exit 78 # EX_CONFIG
     fi
@@ -49,55 +52,40 @@ EOF
     fi
 
     newsnap="$(date -Iseconds)"
-    zfs snapshot -r "zroot/empt/synced@$newsnap"
+    ${zfscmd} snapshot -r "zroot/empt/synced@${newsnap}"
+
+    # clean old snapshots that are expired by the snapshot retention schedule
+    _clean
 
     # TODO figure out whether '-i' or '-I' is better here
-    zfs send -Rv -i "@$lastsent" "zroot/empt/synced@$newsnap" | ssh "$secondary" zfs receive -Fduv zroot
+    ${zfscmd} send -Rv -i "@${lastsent}" "zroot/empt/synced@${newsnap}" | ssh "zfsemptoperator@${secondary}" zfs receive -Fduv zroot
 
     # once that succeeds, we're good to go!
-    zfs set "empt:lastsent=$newsnap" zroot/empt
+    ${zfscmd} set "empt:lastsent=${newsnap}" zroot/empt
 }
 
-_failover() {
-    # lock all EMPT robots
-    # TODO idempotency
-    awk -F: '$1 ~ /^empt/ { print $1 }' /etc/passwd | xargs -L1 pw lock || true
-
-    # stop all jails
-    service jail onestop
-
-    # set readonly and become secondary
-    zfs set readonly=on zroot/empt
-    zfs inherit -r empt:primary zroot/empt
-
-    # unmount the entire EMPT zfs tree
-    # TODO idempotency
-    # TODO figure out how to keep it unmounted permanently as the secondary
-    # using the 'canmount' property recursively.
-    zfs unmount zroot/empt || true
-}
-
-_takeover() {
-    # mount the entire EMPT zfs tree
-    zfs mount -R zroot/empt
-
-    # remove readonly from EMPT and takeover as primary
-    zfs set empt:primary=on zroot/empt
-    zfs inherit -r readonly zroot/empt
-
-    # start all jails
-    service jail onerestart
-
-    # unlock all EMPT robots
-    # TODO idempotency
-    awk -F: '$1 ~ /^empt/ { print $1 }' /etc/passwd | xargs -L1 pw unlock || true
+# TODO:
+# * Keep the most recent x minutes of snapshots
+# * After that, keep the last y snapshots, x minutes apart
+# * Only keep snapshots that are a maximum of z hours ago
+# example (reasonable) configuration:
+# * keep the most recent 10 minutes of snapshots
+# * then keep the next 12 snapshots, each 10 minutes apart, for a total of 2 hours worth of old data live
+# NOTE: current simple configuration is: keep the 10 most recent snapshots
+_clean() {
+    keep=10
+    snapshots="$(zfs list -H -t snapshot -o name zroot/empt/synced)"
+    numsnapshots="$(echo "${snapshots}" | wc -l)"
+    if test "${numsnapshots}" -gt "${keep}"; then
+        destroyupto="$(echo "${snapshots}" | tail -$((keep + 1)) | head -1)"
+        ${zfscmd} destroy -Rfv "zroot/empt/synced@%${destroyupto##*@}"
+    fi
 }
 
 case "$1" in
-    init) _init "$2" ;;
+    init) _init ;;
     backup) _backup ;;
-    failover) _failover ;;
-    takeover) _takeover ;;
+    clean) _clean ;;
     *)
         echo "unrecognized action: '$1'" >&2
         _usage >&2

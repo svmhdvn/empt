@@ -1,33 +1,57 @@
-- name: Create unlocked system user for running zfs replication commands on primary
+- name: Create replication cron agent user on primary
   ansible.builtin.user:
     name: emptreplicator
     comment: EMPT ZFS Replication Agent
-    shell: /usr/sbin/nologin
     home: /home/emptreplicator
-    create_home: true
     generate_ssh_key: true
     ssh_key_type: ed25519
   delegate_to: jailhost-primary
   register: enable_automatic_replication_primary_user
 
-- name: Create locked system user for running zfs replication commands on secondary
+- name: Create replication cron agent user on secondary
   ansible.builtin.user:
     name: emptreplicator
     comment: EMPT ZFS Replication Agent
-    shell: /usr/sbin/nologin
     home: /home/emptreplicator
-    create_home: true
     generate_ssh_key: true
     ssh_key_type: ed25519
-    password_lock: true
   delegate_to: jailhost-secondary
   register: enable_automatic_replication_secondary_user
+
+- name: Create system users for zroot/empt 'zfs allow' privileges
+  ansible.builtin.user:
+    name: zfsemptoperator
+    comment: ZFS EMPT operator
+    home: /home/zfsemptoperator
+  delegate_to: '{{ item }}'
+  loop: '{{ groups["jailhosts"] }}'
+
+# TODO find a way to avoid giving property permissions like 'compression', 'exec', and 'setuid'
+- name: Allow zfsemptoperator to run any zfs commands needed for replication
+  ansible.builtin.command: >
+    zfs allow -u zfsemptoperator
+    compression,create,destroy,exec,hold,mount,mountpoint,quota,receive,reservation,send,setuid,snapshot,userprop
+    zroot/empt
+  changed_when: true
+  delegate_to: '{{ item }}'
+  loop: '{{ groups["jailhosts"] }}'
+
+- name: Allow emptreplicator to run zfs commands as zfsemptoperator
+  ansible.builtin.lineinfile:
+    path: /usr/local/etc/doas.conf
+    line: permit nopass emptreplicator as zfsemptoperator cmd /sbin/zfs
+    create: true
+    mode: '0600'
+    owner: root
+    group: wheel
+  delegate_to: '{{ item }}'
+  loop: '{{ groups["jailhosts"] }}'
 
 # TODO secure with SSH forced command
 # ===================================
 - name: Authorize primary replicator user public key on secondary
   ansible.posix.authorized_key:
-    user: '{{ enable_automatic_replication_primary_user.name }}'
+    user: zfsemptoperator
     key: '{{ enable_automatic_replication_primary_user.ssh_public_key }}'
   environment:
     CRYPTOGRAPHY_OPENSSL_NO_LEGACY: '1'
@@ -35,7 +59,7 @@
 
 - name: Authorize secondary replicator user public key on primary
   ansible.posix.authorized_key:
-    user: '{{ enable_automatic_replication_secondary_user.name }}'
+    user: zfsemptoperator
     key: '{{ enable_automatic_replication_secondary_user.ssh_public_key }}'
   environment:
     CRYPTOGRAPHY_OPENSSL_NO_LEGACY: '1'
@@ -48,10 +72,11 @@
   delegate_to: jailhost-primary
   register: enable_automatic_replication_secondary_host_key
 
-- name: Add secondary host key to known_hosts
+- name: Add secondary host key to known_hosts on primary
   ansible.builtin.known_hosts:
     name: jailhost-secondary.home.arpa
     key: '{{ item }}'
+    path: /home/emptreplicator/.ssh/known_hosts
   delegate_to: jailhost-primary
   loop: '{{ enable_automatic_replication_secondary_host_key.stdout_lines | flatten(levels=1) }}'
 
@@ -65,47 +90,58 @@
   ansible.builtin.known_hosts:
     name: jailhost-primary.home.arpa
     key: '{{ item }}'
+    path: /home/emptreplicator/.ssh/known_hosts
   loop: '{{ enable_automatic_replication_primary_host_key.stdout_lines | flatten(levels=1) }}'
+  delegate_to: jailhost-secondary
+
+- name: Configure the empt:secondary prop on the primary host
+  ansible.builtin.command: zfs set empt:secondary=jailhost-secondary.home.arpa zroot/empt
+  changed_when: true
+  delegate_to: jailhost-primary
+
+- name: Configure the empt:secondary prop on the secondary host
+  ansible.builtin.command: zfs set empt:secondary=jailhost-primary.home.arpa zroot/empt
+  changed_when: true
   delegate_to: jailhost-secondary
 
 # TODO turn this into a FreeBSD ports pkg
 # =======================================
-- name: Copy the replication script to the root directory
+- name: Copy the downtime script to the root home directory
+  ansible.builtin.copy:
+    src: downtime.sh
+    dest: /root
+    mode: '0700'
+    owner: root
+    group: wheel
+  delegate_to: '{{ item }}'
+  loop: '{{ groups["jailhosts"] }}'
+
+- name: Copy the replication script to the replicator user home directory
   ansible.builtin.copy:
     src: replication.sh
-    dest: '{{ enable_automatic_replication_primary_user.home }}'
+    dest: /home/emptreplicator
     mode: '0700'
-    owner: '{{ enable_automatic_replication_primary_user.name }}'
-    group: '{{ enable_automatic_replication_primary_user.name }}'
+    owner: emptreplicator
+    group: emptreplicator
   delegate_to: '{{ item }}'
   loop: '{{ groups["jailhosts"] }}'
 # =======================================
 
-- name: Allow emptreplicator user to run any zfs commands needed for replication
-  ansible.builtin.command: >
-    zfs allow -u {{ enable_automatic_replication_primary_user.name }}
-    create,destroy,hold,mount,mountpoint,quota,receive,reservation,send,snapshot
-    zroot/empt/synced
-  changed_when: true
-  delegate_to: '{{ item }}'
-  loop: '{{ groups["jailhosts"] }}'
-
-- name: Ensure that the secondary is explicitly set as 'secondary'
-  ansible.builtin.command: '{{ enable_automatic_replication_secondary_user.home }}/replication.sh failover'
+- name: Failover on the secondary first
+  ansible.builtin.command: /root/downtime.sh failover
   changed_when: true
   delegate_to: jailhost-secondary
 
-- name: Initialize the replication configuration on the primary
-  ansible.builtin.command: '{{ enable_automatic_replication_primary_user.home }}/replication.sh init jailhost-secondary.home.arpa'
+- name: Then takeover on the primary
+  ansible.builtin.command: /root/downtime.sh takeover
   changed_when: true
   delegate_to: jailhost-primary
 
 # TODO file ansible.builtin.cron bug to allow @<num> as a special_time value
 - name: Setup automatic backup cronjobs
   ansible.builtin.lineinfile:
-    path: '/var/cron/tabs/{{ enable_automatic_replication_primary_user.name }}'
-    line: >
-      @60 -n -q {{ enable_automatic_replication_primary_user.name }}/replication.sh backup
+    path: /var/cron/tabs/emptreplicator
+    line: '@60 -n -q /home/emptreplicator/replication.sh backup'
     create: true
     mode: '0600'
     owner: root

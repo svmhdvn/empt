@@ -1,23 +1,27 @@
 #!/bin/sh
+
 set -e
 
-deny_permission() {
-	echo "ERROR: $0: PERMISSION DENIED" >&2
-	exit 77 # EX_NOPERM
-}
+. ./util.sh
 
-case "$HELPDESK_SUBJECT" in
-    *group\ *)
-        taskname="groups"
-        ;;
-    *)
-        taskname="helpdesk_usage"
-        ;;
+HELPDESK_FROM_USER="$(echo "${HELPDESK_FROM}" | _address_list_to_usernames)"
+readonly HELPDESK_FROM_USER
+
+if test -z "${HELPDESK_FROM_USER}"; then
+    echo "$0: ERROR: invalid HELPDESK_FROM value '${HELPDESK_FROM}'" >&2
+    exit 65 # EX_DATAERR
+fi
+
+# parse the subject line
+read -r verb object param1 <<EOF
+$HELPDESK_SUBJECT
+EOF
+
+case "${object}" in
+    group*) taskname=groups ;;
 esac
-readonly taskname
 
-task="/empt/synced/bin/tasks/$taskname.sh"
+task="/empt/synced/bin/tasks/${taskname:-helpdesk_usage}.sh"
 readonly task
 
-test -x "$task" || deny_permission
-$task
+doas "${task}" "${verb}" "${param1}"

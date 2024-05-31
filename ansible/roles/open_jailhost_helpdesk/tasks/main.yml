@@ -1,49 +1,41 @@
-# TODO turn this into a FreeBSD ports pkg
-# =======================================
-- name: Copy helpdesk triage script to etc dataset
-  ansible.builtin.template:
-    src: helpdesk.sh.j2
-    dest: /empt/synced/bin/helpdesk.sh
-    mode: '0700'
-    owner: root
-    group: wheel
-
-- name: Install EMPT administration task scripts to etc dataset
-  ansible.builtin.copy:
-    src: tasks
-    dest: /empt/synced/bin/
-    mode: '0700'
-    owner: root
-    group: wheel
-# =======================================
-
 - name: Create system account for the empthelper helpdesk agent
   ansible.builtin.user:
     name: empthelper
     comment: EMPT Helpdesk Agent
-    home: /empt/synced/rw/helpdesk
+    home: /empt/synced/helpdesk
     create_home: false
     shell: /usr/sbin/nologin
 # TODO find a way to create a globally unique UID, currently hardcoding
     uid: 21891
   register: setup_jail_empthelper_user
 
-- name: Create directory layout under helpdesk dataset
+# TODO turn these scripts into a FreeBSD ports pkg
+# =======================================
+- name: Copy helpdesk scripts to synced bin
+  ansible.builtin.copy:
+    src: helpdesk
+    dest: /empt/synced/
+    mode: '0700'
+    owner: empthelper
+    group: empthelper
+# =======================================
+
+- name: Create maildir layout under helpdesk dataset
   ansible.builtin.file:
-    name: '/empt/synced/rw/helpdesk/{{ item }}'
+    name: '/empt/synced/helpdesk/mail/{{ item }}'
     state: directory
     mode: '0700'
     owner: empthelper
     group: empthelper
   loop:
-    - mail/cur
-    - mail/new
-    - mail/tmp
+    - cur
+    - new
+    - tmp
 
 - name: Add empthelper maildir directory nullfs mount to mail jail
   ansible.posix.mount:
     fstab: /empt/synced/rw/fstab.d/mail.fstab
-    src: /empt/synced/rw/helpdesk/mail
+    src: /empt/synced/helpdesk/mail
     path: /empt/jails/mail/home/empthelper/mail
     fstype: nullfs
     opts: rw
@@ -51,10 +43,10 @@
 
 - name: Create empthelper mail delivery local account in the mail jail
   ansible.builtin.user:
-    name: '{{ setup_jail_empthelper_user.name }}'
-    comment: '{{ setup_jail_empthelper_user.comment }}'
+    name: empthelper
+    comment: EMPT Helpdesk Agent
     shell: /usr/sbin/nologin
-    home: '/home/{{ setup_jail_empthelper_user.name }}'
+    home: /home/empthelper
     create_home: false
     uid: '{{ setup_jail_empthelper_user.uid }}'
   delegate_to: mail
@@ -71,20 +63,23 @@
 - name: Install fdm configuration
   ansible.builtin.template:
     src: fdm.conf.j2
-    dest: /empt/synced/rw/helpdesk/.fdm.conf
+    dest: /empt/synced/helpdesk/.fdm.conf
     mode: '0600'
     owner: empthelper
     group: empthelper
     validate: fdm -f %s -n
 
-- name: Allow the empthelper to only run the helpdesk triage script
+- name: Allow the empthelper to only run helpdesk task scripts
   ansible.builtin.lineinfile:
     path: /usr/local/etc/doas.conf
-    line: 'permit nopass setenv { HELPDESK_FROM HELPDESK_CC HELPDESK_MESSAGE_ID HELPDESK_SUBJECT HELPDESK_REFERENCES } empthelper cmd /empt/synced/bin/helpdesk.sh args'
+    line: 'permit nopass keepenv empthelper cmd /empt/synced/helpdesk/tasks/{{ item }}.sh'
     create: true
     mode: '0600'
     owner: root
     group: wheel
+  # TODO generate the loop from the files inside the tasks folder
+  loop:
+    - groups
 
 - name: Enable cronjob to periodically process helpdesk queue with fdm
   ansible.builtin.cron:

@@ -3,53 +3,58 @@
 # TODO
 # * Create a shared calendar
 # * Create a group-private IRC channel (possibly with a shared password)
+# * validate HELPDESK_* variables input
 
-set -ex
+set -e
 
-# Converts an RFC 5322 address-list to a list of UNIX usernames
-address_list_to_usernames() {
-    awk -v RS=',' '{ split($NF, parts, "@"); sub("<", "", parts[1]); print parts[1] }'
+# TODO is the relative path ok here?
+. ../util.sh
+
+_usage() {
+    cat <<EOF
+usage:
+    groups.sh list
+    groups.sh create <groupname>
+
+environment: HELPDESK_*
+EOF
 }
 
-append_if_missing() {
-    _line="$1"
-    _file="$2"
-    grep -qxF "$_line" "$_file" || echo "$_line" >> "$_file"
+_list() {
+    _helpdesk_reply <<EOF
+You are a part of these groups:
+
+$(groups "${HELPDESK_FROM_USER}")
+EOF
 }
 
-creator="$(echo "$HELPDESK_FROM" | address_list_to_usernames)"
-readonly creator
-other_members="$(echo "$HELPDESK_CC" | address_list_to_usernames)"
-readonly other_members
-comma_separated_members="$(printf '%s\n%s\n' "$creator" "$other_members" | paste -s -d, -)"
-readonly comma_separated_members
+_create() {
+    # Take the new group name as the last word of the subject line
+    group_name="$1"
+    readonly group_name
 
-if ! echo "$HELPDESK_SUBJECT" | grep -qw 'create'; then
-    echo "ERROR: only 'create' operation is supported now." >&2
-    exit 64 # EX_USAGE
-fi
+    other_members="$(echo "${HELPDESK_CC}" | _address_list_to_usernames)"
+    readonly other_members
+    comma_separated_members="$(printf '%s\n%s\n' "${HELPDESK_FROM_USER}" "${other_members}" | paste -s -d, -)"
+    readonly comma_separated_members
 
-# Take the new group name as the last word of the subject line
-group_name="$(echo "$HELPDESK_SUBJECT" | awk '{ print $NF }')"
-readonly group_name
+    # Add the group to the CIFS jail with all members and get back a GID for it
+    jexec -l cifs pw groupadd -n "${group_name}" -M "${comma_separated_members}" -q || true
+    group_gid="$(jexec -l cifs pw groupshow "${group_name}" | cut -f 3 -d :)"
+    readonly group_gid
 
-# Add the group to the CIFS jail with all members and get back a GID for it
-jexec -l cifs pw groupadd -n "$group_name" -M "$comma_separated_members" -q || true
-group_gid="$(jexec -l cifs pw groupshow "$group_name" | cut -f 3 -d :)"
-readonly group_gid
+    # Add the group to the other necessary jails with all members
+    for j in radicale; do
+        jexec -l "${j}" pw groupadd -g "${group_gid}" -n "${group_name}" -M "${comma_separated_members}" -q || true
+    done
 
-# Add the group to the other necessary jails with all members
-for j in radicale; do
-    jexec -l "$j" pw groupadd -g "$group_gid" -n "$group_name" -M "$comma_separated_members" -q || true
-done
+    # Create a mailing list and subscribe all members of the group
+    # ============================================================
 
-# Create a mailing list and subscribe all members of the group
-# ============================================================
-
-# TODO remove need for answer file
-cat > /empt/jails/mail/tmp/mlmmj-answers.txt <<EOF
+    # TODO remove need for answer file
+    cat > /empt/jails/mail/tmp/mlmmj-answers.txt <<EOF
 SPOOLDIR='/var/spool/mlmmj'
-LISTNAME='$group_name'
+LISTNAME='${group_name}'
 FQDN='empt.siva'
 OWNER='postmaster@empt.siva'
 TEXTLANG='en'
@@ -59,67 +64,73 @@ CHOWN=''
 ADDCRON='n'
 EOF
 
-jexec -l -U mlmmj mail mlmmj-make-ml -f /tmp/mlmmj-answers.txt
+    jexec -l -U mlmmj mail mlmmj-make-ml -f /tmp/mlmmj-answers.txt
 
-mail_jid="$(jls -j mail jid)"
-readonly mail_jid
+    mail_jid="$(jls -j mail jid)"
+    readonly mail_jid
 
-echo "fe80::eeee:$mail_jid%lo0" | jexec -l -U mlmmj mail tee "/var/spool/mlmmj/$group_name/control/relayhost"
-append_if_missing "$group_name@empt.siva $group_name@localhost.mlmmj" /empt/jails/mail/usr/local/etc/postfix/mlmmj_aliases
-append_if_missing "$group_name@localhost.mlmmj mlmmj:$group_name" /empt/jails/mail/usr/local/etc/postfix/mlmmj_transport
-for m in mlmmj_aliases mlmmj_transport; do
-    jexec -l mail postmap "/usr/local/etc/postfix/$m"
-done
+    echo "fe80::eeee:${mail_jid}%lo0" | jexec -l -U mlmmj mail tee "/var/spool/mlmmj/${group_name}/control/relayhost"
+    append_if_missing "${group_name}@empt.siva ${group_name}@localhost.mlmmj" /empt/jails/mail/usr/local/etc/postfix/mlmmj_aliases
+    append_if_missing "${group_name}@localhost.mlmmj mlmmj:${group_name}" /empt/jails/mail/usr/local/etc/postfix/mlmmj_transport
+    for m in mlmmj_aliases mlmmj_transport; do
+        jexec -l mail postmap "/usr/local/etc/postfix/${m}"
+    done
 
-for u in $creator $other_members; do
-    jexec -l -U mlmmj mail /usr/local/bin/mlmmj-sub -L "/var/spool/mlmmj/$group_name" -a "$u@empt.siva" -c -f -s
-done
+    for u in ${HELPDESK_FROM_USER} ${other_members}; do
+        jexec -l -U mlmmj mail /usr/local/bin/mlmmj-sub -L "/var/spool/mlmmj/${group_name}" -a "${u}@empt.siva" -c -f -s
+    done
 
-# ============================================================
+    # ============================================================
 
-# Create a storage dataset for the group and mount it in corresponding jails
-# ==========================================================================
+    # Create a storage dataset for the group and mount it in corresponding jails
+    # ==========================================================================
 
-# TODO do we need a reservation? I don't think so
-group_mount="/empt/synced/rw/groups/$group_name"
-readonly group_mount
-zfs create -p \
-    -o quota=1G \
-    -o mountpoint="$group_mount" \
-    "zroot/empt/synced/rw/group:$group_name"
+    # TODO do we need a reservation? I don't think so
+    group_mount="/empt/synced/rw/groups/${group_name}"
+    readonly group_mount
+    zfs create -p \
+        -o quota=1G \
+        -o mountpoint="${group_mount}" \
+        "zroot/empt/synced/rw/group:${group_name}"
 
-for d in home diary; do
-    mkdir -p "$group_mount/$d"
-done
+    for d in home diary; do
+        mkdir -p "${group_mount}/${d}"
+    done
 
-chown -R "root:$group_gid" "$group_mount"
-chmod -R 1770 "$group_mount"
+    chown -R "root:${group_gid}" "${group_mount}"
+    chmod -R 1770 "${group_mount}"
 
-# TODO do we really need to welcome users?
-#echo "welcome, $creator & $other_members" > "$group_mount/home/WELCOME.txt"
-#chmod 0660 "$group_mount/home/WELCOME.txt"
+    # create a welcome file
+    echo "welcome, ${HELPDESK_FROM_USER} & ${other_members}" > "${group_mount}/home/WELCOME.txt"
+    chown "${HELPDESK_FROM_USER}:${group_name}" "${group_mount}/home/WELCOME.txt"
+    chmod 0660 "${group_mount}/home/WELCOME.txt"
 
-# Mount the group storage in cifs
-jexec -l cifs mkdir -p "/groups/$group_name"
-cifs_mount_src="$group_mount/home"
-readonly cifs_mount_src
-cifs_mount_dst="/empt/jails/cifs/groups/$group_name"
-readonly cifs_mount_dst
-append_if_missing "$cifs_mount_src $cifs_mount_dst nullfs rw 0 0" /empt/synced/rw/fstab.d/cifs.fstab
-# TODO idempotency
-mount -t nullfs "$cifs_mount_src" "$cifs_mount_dst" || true
+    # Mount the group storage in cifs
+    jexec -l cifs mkdir -p "/groups/${group_name}"
+    cifs_mount_src="${group_mount}/home"
+    readonly cifs_mount_src
+    cifs_mount_dst="/empt/jails/cifs/groups/${group_name}"
+    readonly cifs_mount_dst
+    append_if_missing "${cifs_mount_src} ${cifs_mount_dst} nullfs rw 0 0" /empt/synced/rw/fstab.d/cifs.fstab
+    # TODO idempotency
+    mount -t nullfs "${cifs_mount_src}" "${cifs_mount_dst}" || true
 
-# TODO radicale
-# ==========================================================================
+    # TODO radicale
+    # ==========================================================================
 
-# TODO figure out the proper way to use DMA without using the absolute command
-/usr/libexec/dma -f 'empthelper@empt.siva' -t <<EOF
-To: $HELPDESK_FROM
-Cc: $HELPDESK_CC, Helpdesk <helpdesk@empt.siva>
-Subject: [HELPDESK] Re: $HELPDESK_SUBJECT
-In-Reply-To: $HELPDESK_MESSAGE_ID
-References: $HELPDESK_REFERENCES $HELPDESK_MESSAGE_ID
-
-You are now part of the new group '$group_name'!
-
+    # TODO figure out the proper way to use DMA without using the absolute command
+    _helpdesk_reply <<EOF
+You are now part of the new group '${group_name}'!
 EOF
+}
+
+# TODO turn this into a case/esac statement
+# TODO verify that the subject is already whitespace-trimmed on both sides
+case "$1" in
+    list) _list ;;
+    create) _create "$2" ;;
+    *)
+        echo "$0: ERROR: invalid verb '$1'" >&2
+        _usage >&2
+        exit 64 # EX_USAGE
+esac

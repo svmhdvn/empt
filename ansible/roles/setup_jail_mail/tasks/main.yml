@@ -1,7 +1,3 @@
-# TODO
-# * create spool dataset to backup the entire spool
-# (Q: do we need two separate ones for postfix and mlmmj? or just the entire thing?)
-
 - name: Configure postfix
   ansible.builtin.template:
     src: '{{ item.src }}'
@@ -78,13 +74,34 @@
     shell: /usr/sbin/nologin
     create_home: false
 
-- name: Create empty mlmmj spool directory
+- name: Create empty mountpoints for mail service spools
   ansible.builtin.file:
-    path: /var/spool/mlmmj
+    path: '/var/spool/{{ item }}'
     state: directory
     mode: '0700'
-    owner: mlmmj
-    group: mlmmj
+    owner: '{{ item }}'
+    group: '{{ item }}'
+  loop:
+    - postfix
+    - mlmmj
+
+- name: Nullfs mount the mlmmj spool storage
+  ansible.posix.mount:
+    fstab: /empt/synced/rw/fstab.d/mail.fstab
+    src: /empt/synced/rw/mlmmj_spool
+    path: /empt/jails/mail/var/spool/mlmmj
+    fstype: nullfs
+    opts: rw
+    state: mounted
+
+- name: Nullfs mount the postfix spool storage
+  ansible.posix.mount:
+    fstab: /empt/synced/rw/fstab.d/mail.fstab
+    src: /empt/synced/postfix_spool
+    path: /empt/jails/mail/var/spool/postfix
+    fstype: nullfs
+    opts: rw
+    state: mounted
 
 - name: Add mlmmj maintenance task to cron
   ansible.builtin.cron:

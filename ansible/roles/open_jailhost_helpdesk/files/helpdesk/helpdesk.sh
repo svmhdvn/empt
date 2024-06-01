@@ -2,10 +2,9 @@
 
 set -e
 
-. ./util.sh
+. /empt/synced/helpdesk/util.sh
 
-HELPDESK_FROM_USER="$(echo "${HELPDESK_FROM}" | _address_list_to_usernames)"
-readonly HELPDESK_FROM_USER
+export HELPDESK_FROM_USER="$(echo "${HELPDESK_FROM}" | _address_list_to_usernames)"
 
 if test -z "${HELPDESK_FROM_USER}"; then
     echo "$0: ERROR: invalid HELPDESK_FROM value '${HELPDESK_FROM}'" >&2
@@ -19,9 +18,10 @@ EOF
 
 case "${object}" in
     group*) taskname=groups ;;
+    *) taskname=helpdesk_usage ;;
 esac
 
-task="/empt/synced/bin/tasks/${taskname:-helpdesk_usage}.sh"
+task="/empt/synced/helpdesk/tasks/${taskname}.sh"
 readonly task
 
 doas "${task}" "${verb}" "${param1}"

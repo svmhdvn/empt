@@ -85,4 +85,4 @@
   ansible.builtin.cron:
     user: empthelper
     name: process helpdesk queue with fdm
-    job: -n -q fdm -a helpdesk -l fetch
+    job: -n -q fdm -a helpdesk fetch

@@ -7,8 +7,7 @@
 
 set -e
 
-# TODO is the relative path ok here?
-. ../util.sh
+. /empt/synced/helpdesk/util.sh
 
 _usage() {
     cat <<EOF
@@ -21,10 +20,11 @@ EOF
 }
 
 _list() {
+    groups="$(jexec -l cifs groups "${HELPDESK_FROM_USER}")"
     _helpdesk_reply <<EOF
 You are a part of these groups:
 
-$(groups "${HELPDESK_FROM_USER}")
+${groups}
 EOF
 }
 
@@ -70,8 +70,8 @@ EOF
     readonly mail_jid
 
     echo "fe80::eeee:${mail_jid}%lo0" | jexec -l -U mlmmj mail tee "/var/spool/mlmmj/${group_name}/control/relayhost"
-    append_if_missing "${group_name}@empt.siva ${group_name}@localhost.mlmmj" /empt/jails/mail/usr/local/etc/postfix/mlmmj_aliases
-    append_if_missing "${group_name}@localhost.mlmmj mlmmj:${group_name}" /empt/jails/mail/usr/local/etc/postfix/mlmmj_transport
+    _append_if_missing "${group_name}@empt.siva ${group_name}@localhost.mlmmj" /empt/jails/mail/usr/local/etc/postfix/mlmmj_aliases
+    _append_if_missing "${group_name}@localhost.mlmmj mlmmj:${group_name}" /empt/jails/mail/usr/local/etc/postfix/mlmmj_transport
     for m in mlmmj_aliases mlmmj_transport; do
         jexec -l mail postmap "/usr/local/etc/postfix/${m}"
     done
@@ -100,10 +100,6 @@ EOF
     chown -R "root:${group_gid}" "${group_mount}"
     chmod -R 1770 "${group_mount}"
 
-    # create a welcome file
-    echo "welcome, ${HELPDESK_FROM_USER} & ${other_members}" > "${group_mount}/home/WELCOME.txt"
-    chown "${HELPDESK_FROM_USER}:${group_name}" "${group_mount}/home/WELCOME.txt"
-    chmod 0660 "${group_mount}/home/WELCOME.txt"
 
     # Mount the group storage in cifs
     jexec -l cifs mkdir -p "/groups/${group_name}"
@@ -111,9 +107,14 @@ EOF
     readonly cifs_mount_src
     cifs_mount_dst="/empt/jails/cifs/groups/${group_name}"
     readonly cifs_mount_dst
-    append_if_missing "${cifs_mount_src} ${cifs_mount_dst} nullfs rw 0 0" /empt/synced/rw/fstab.d/cifs.fstab
+    _append_if_missing "${cifs_mount_src} ${cifs_mount_dst} nullfs rw 0 0" /empt/synced/rw/fstab.d/cifs.fstab
     # TODO idempotency
     mount -t nullfs "${cifs_mount_src}" "${cifs_mount_dst}" || true
+
+    # create a welcome file
+    echo "welcome, ${HELPDESK_FROM_USER} & ${other_members}" > "${group_mount}/home/WELCOME.txt"
+    chmod 0660 "${group_mount}/home/WELCOME.txt"
+    jexec -l cifs chown "${HELPDESK_FROM_USER}:${group_name}" "/groups/${group_name}/WELCOME.txt"
 
     # TODO radicale
     # ==========================================================================

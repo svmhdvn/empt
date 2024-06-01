@@ -231,9 +231,7 @@ mynetworks_style = host
 #mynetworks = 168.100.3.0/28, 127.0.0.0/8
 #mynetworks = $config_directory/mynetworks
 #mynetworks = hash:$config_directory/network_table
-mynetworks =
-  [fe80::eeee:{{ jid }}]/128
-  [::1]/128
+mynetworks = [fe80::eeee:{{ jid }}]/128
 
 # The relay_domains parameter restricts what destinations this system will
 # relay mail to.  See the smtpd_relay_restrictions and
@@ -650,11 +648,12 @@ strict_rfc821_envelopes = yes
 tls_append_default_CA = no
 tls_preempt_cipherlist = yes
 
-smtp_sasl_auth_enable = yes
-smtp_sasl_password_maps = hash:$config_directory/sasl_passwd
-smtp_sasl_tls_security_options = noanonymous
-smtp_tls_security_level = encrypt
-smtp_tls_wrappermode = yes
+# TODO enable smtp sasl for outgoing smtp to external places
+#smtp_sasl_auth_enable = yes
+#smtp_sasl_password_maps = hash:$config_directory/sasl_passwd
+#smtp_sasl_tls_security_options = noanonymous
+#smtp_tls_security_level = encrypt
+#smtp_tls_wrappermode = yes
 
 smtpd_tls_auth_only = yes
 smtpd_tls_received_header = yes

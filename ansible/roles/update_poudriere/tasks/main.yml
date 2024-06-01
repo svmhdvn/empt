@@ -30,17 +30,21 @@
     - wyse-jail-pkgbase.tar.zst
     - wyse-ports.tar.zst
 
+# TODO avoid ansible tar module requiring random GNU tar dependencies if the
+# system has zstd on it
+# =============================================================================
 - name: Extract poudriere host pkgbase repo
-  ansible.builtin.command: tar -C /usr/local/poudriere_repos/host_pkgbase -xf /tmp/wyse-host-pkgbase.tar.zst
+  ansible.builtin.command: tar -C /usr/local/poudriere_repos/host_pkgbase -xf /tmp/wyse-host-pkgbase.tar.zst # noqa: command-instead-of-module
   changed_when: true
 
 - name: Extract poudriere jail pkgbase repo
-  ansible.builtin.command: tar -C /usr/local/poudriere_repos/jail_pkgbase -xf /tmp/wyse-jail-pkgbase.tar.zst
+  ansible.builtin.command: tar -C /usr/local/poudriere_repos/jail_pkgbase -xf /tmp/wyse-jail-pkgbase.tar.zst # noqa: command-instead-of-module
   changed_when: true
 
 - name: Extract poudriere ports repo
-  ansible.builtin.command: tar -C /usr/local/poudriere_repos/ports -xf /tmp/wyse-ports.tar.zst
+  ansible.builtin.command: tar -C /usr/local/poudriere_repos/ports -xf /tmp/wyse-ports.tar.zst # noqa: command-instead-of-module
   changed_when: true
+# =============================================================================
 
 - name: Configure jailhost to use host pkgbase and ports
   ansible.builtin.copy:

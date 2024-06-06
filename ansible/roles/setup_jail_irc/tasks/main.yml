@@ -1,3 +1,29 @@
+- name: Install irc required ports
+  ansible.builtin.command: pkg install -y ngircd soju kimchi tlstunnel
+  changed_when: true
+
+- name: Query new soju user
+  ansible.builtin.user:
+    name: soju
+  register: setup_jail_irc_soju_user
+
+- name: Create soju DB directory in jailhost
+  ansible.builtin.file:
+    path: /empt/synced/rw/sojudb
+    state: directory
+    mode: '0700'
+    owner: '{{ setup_jail_irc_soju_user.uid }}'
+    group: '{{ setup_jail_irc_soju_user.uid }}'
+  delegate_to: jailhost
+
+- name: Create soju DB mountpoint
+  ansible.builtin.file:
+    path: /var/db/soju
+    state: directory
+    mode: '0700'
+    owner: soju
+    group: soju
+
 - name: Add soju DB nullfs mount to irc jail
   ansible.posix.mount:
     fstab: /empt/synced/rw/fstab.d/irc.fstab
@@ -53,12 +79,16 @@
     owner: root
     group: wheel
 
-- name: Ensure keytab can only be read by soju
+- name: Ensure keytab and TLS certs can only be read by soju
   ansible.builtin.file:
-    path: /etc/krb5.keytab
+    path: '{{ item }}'
     mode: '0400'
     owner: soju
     group: soju
+  loop:
+    - /etc/krb5.keytab
+    - /etc/ssl/irc.crt.pem
+    - /etc/ssl/irc.key.pem
 
 # TODO somehow package gamja without relying on NPM, currently pre-building
 - name: Ensure WWWDIR exists
@@ -78,6 +108,22 @@
     owner: root
     group: wheel
 
+- name: Configure kimchi and tlstunnel to run as the root user
+  community.general.sysrc:
+    name: '{{ item }}_user'
+    value: root
+  loop:
+    - kimchi
+    - tlstunnel
+
+- name: Configure kimchi and tlstunnel to run as the wheel group
+  community.general.sysrc:
+    name: '{{ item }}_group'
+    value: wheel
+  loop:
+    - kimchi
+    - tlstunnel
+
 - name: Enable and start all IRC services
   ansible.builtin.service:
     name: '{{ item }}'
@@ -86,5 +132,5 @@
   loop:
     - ngircd
     - soju
-    # - kimchi
-    # - tlstunnel
+    - kimchi
+    - tlstunnel

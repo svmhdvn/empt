@@ -8,5 +8,5 @@ tasks:
       ansible-galaxy install -r requirements.yml
       cp remote_inventory.ini.sample remote_inventory.ini
       cp org_vars.yml.sample org_vars.yml
-      find . -type f -name "*.yml" | xargs ansible-lint
-      find . -type f -name "*.sh" | xargs shellcheck -o all
+      find . -type f -name '*.yml' | xargs ansible-lint
+      find . -type f -name '*.sh' | xargs shellcheck -o all

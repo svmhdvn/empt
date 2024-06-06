@@ -123,15 +123,12 @@
     group: wheel
   loop:
     - /empt/synced/bin
-    - /empt/synced/postfix_spool
     - /empt/synced/rw/fstab.d
     - /empt/synced/rw/groups
     - /empt/synced/rw/helpdesk
     - /empt/synced/rw/humans
     - /empt/synced/rw/jail.conf.d
     - /empt/synced/rw/krb5data
-    - /empt/synced/rw/mlmmj_spool
-    - /empt/synced/rw/sojudb
 
 - name: Prepare directories for jail nullfs-mounted logs and etc
   ansible.builtin.file:

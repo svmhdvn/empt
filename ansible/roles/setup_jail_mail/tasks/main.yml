@@ -1,3 +1,89 @@
+# TODO mlmmj port should create mlmmj user and spooldir
+# =====================================================
+- name: Add mlmmj user for postfix transport
+  ansible.builtin.user:
+    name: mlmmj
+    comment: Mlmmj Transport
+    home: /var/spool/mlmmj
+    shell: /usr/sbin/nologin
+    create_home: false
+  register: setup_jail_mail_mlmmj_user
+
+- name: Create mlmmj spool directory in jailhost
+  ansible.builtin.file:
+    path: /empt/synced/rw/mlmmj_spool
+    state: directory
+    mode: '0700'
+    owner: '{{ setup_jail_mail_mlmmj_user.uid }}'
+    group: '{{ setup_jail_mail_mlmmj_user.uid }}'
+  delegate_to: jailhost
+
+- name: Create empty mountpoint for mlmmj spool
+  ansible.builtin.file:
+    path: /var/spool/mlmmj
+    state: directory
+    mode: '0700'
+    owner: mlmmj
+    group: mlmmj
+
+- name: Nullfs mount the mlmmj spool storage
+  ansible.posix.mount:
+    fstab: /empt/synced/rw/fstab.d/mail.fstab
+    src: /empt/synced/rw/mlmmj_spool
+    path: /empt/jails/mail/var/spool/mlmmj
+    fstype: nullfs
+    opts: rw
+    state: mounted
+  delegate_to: jailhost
+# =====================================================
+
+- name: Create postfix spool directory in jailhost temporarily with chown root
+  ansible.builtin.file:
+    path: /empt/synced/postfix_spool
+    state: directory
+    mode: '0755'
+    owner: root
+    group: wheel
+  delegate_to: jailhost
+
+- name: Create empty mountpoint for postfix spool
+  ansible.builtin.file:
+    path: /var/spool/postfix
+    state: directory
+    mode: '0755'
+    owner: root
+    group: wheel
+
+- name: Nullfs mount the postfix spool storage
+  ansible.posix.mount:
+    fstab: /empt/synced/rw/fstab.d/mail.fstab
+    src: /empt/synced/postfix_spool
+    path: /empt/jails/mail/var/spool/postfix
+    fstype: nullfs
+    opts: rw
+    state: mounted
+  delegate_to: jailhost
+
+- name: Install mail jail required ports
+  ansible.builtin.command: pkg install -y postfix dovecot mlmmj
+  changed_when: true
+
+- name: Query new postfix user
+  ansible.builtin.user:
+    name: postfix
+  register: setup_jail_mail_postfix_user
+
+- name: Change ownership and permissions on postfix spool data and mountpoint directories
+  ansible.builtin.file:
+    path: '{{ item }}'
+    state: directory
+    mode: '0700'
+    owner: '{{ setup_jail_mail_postfix_user.uid }}'
+    group: '{{ setup_jail_mail_postfix_user.uid }}'
+  loop:
+    - /empt/synced/postfix_spool
+    - /empt/jails/mail/var/spool/postfix
+
 - name: Configure postfix
   ansible.builtin.template:
     src: '{{ item.src }}'
@@ -65,43 +151,6 @@
     mode: '0400'
     owner: dovecot
     group: dovecot
-
-- name: Add mlmmj user for postfix transport
-  ansible.builtin.user:
-    name: mlmmj
-    comment: Mlmmj Transport
-    home: /var/spool/mlmmj
-    shell: /usr/sbin/nologin
-    create_home: false
-
-- name: Create empty mountpoints for mail service spools
-  ansible.builtin.file:
-    path: '/var/spool/{{ item }}'
-    state: directory
-    mode: '0700'
-    owner: '{{ item }}'
-    group: '{{ item }}'
-  loop:
-    - postfix
-    - mlmmj
-
-- name: Nullfs mount the mlmmj spool storage
-  ansible.posix.mount:
-    fstab: /empt/synced/rw/fstab.d/mail.fstab
-    src: /empt/synced/rw/mlmmj_spool
-    path: /empt/jails/mail/var/spool/mlmmj
-    fstype: nullfs
-    opts: rw
-    state: mounted
-
-- name: Nullfs mount the postfix spool storage
-  ansible.posix.mount:
-    fstab: /empt/synced/rw/fstab.d/mail.fstab
-    src: /empt/synced/postfix_spool
-    path: /empt/jails/mail/var/spool/postfix
-    fstype: nullfs
-    opts: rw
-    state: mounted
 
 - name: Add mlmmj maintenance task to cron
   ansible.builtin.cron:

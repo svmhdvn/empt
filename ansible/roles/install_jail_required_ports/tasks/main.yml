@@ -6,17 +6,9 @@
   ansible.builtin.command: pkg -j dns install -y nsd
   changed_when: true
 
-- name: Install irc required ports
-  ansible.builtin.command: pkg -j irc install -y ngircd soju kimchi tlstunnel
-  changed_when: true
-
 # - name: Install kerberos required ports
 #   ansible.builtin.command: pkg -j kerberos install -y heimdal-devel
 #   changed_when: true
-
-- name: Install mail required ports
-  ansible.builtin.command: pkg -j mail install -y postfix dovecot mlmmj
-  changed_when: true
 
 - name: Install radicale required ports
   ansible.builtin.command: pkg -j radicale install -y py311-gunicorn py311-radicale py311-wsgi-kerberos

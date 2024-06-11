@@ -11,7 +11,7 @@
 
 # TODO turn these scripts into a FreeBSD ports pkg
 # =======================================
-- name: Copy helpdesk scripts to synced bin
+- name: Copy helpdesk scripts to synced dir
   ansible.builtin.copy:
     src: helpdesk
     dest: /empt/synced/
@@ -32,15 +32,6 @@
     - new
     - tmp
 
-- name: Add empthelper maildir directory nullfs mount to mail jail
-  ansible.posix.mount:
-    fstab: /empt/synced/rw/fstab.d/mail.fstab
-    src: /empt/synced/helpdesk/mail
-    path: /empt/jails/mail/home/empthelper/mail
-    fstype: nullfs
-    opts: rw
-    state: mounted
-
 - name: Create empthelper mail delivery local account in the mail jail
   ansible.builtin.user:
     name: empthelper
@@ -51,11 +42,57 @@
     uid: '{{ setup_jail_empthelper_user.uid }}'
   delegate_to: mail
 
-- name: Silently subscribe the helpdesk and IT staff to the helpdesk mailing list
-  ansible.builtin.command: '/usr/local/bin/mlmmj-sub -L /var/spool/mlmmj/helpdesk -a {{ item }}@{{ org_domain }} -fqs'
+- name: Create helpdesk maildir mountpoint in mail jail
+  ansible.builtin.file:
+    name: /empt/jails/mail/home/empthelper/mail
+    state: directory
+    mode: '0700'
+    owner: empthelper
+    group: empthelper
+
+- name: Add empthelper maildir directory nullfs mount to mail jail
+  ansible.posix.mount:
+    fstab: /empt/synced/rw/fstab.d/mail.fstab
+    src: /empt/synced/helpdesk/mail
+    path: /empt/jails/mail/home/empthelper/mail
+    fstype: nullfs
+    opts: rw
+    state: mounted
+
+- name: Assign the IT staff to moderate the helpdesk list
+  ansible.builtin.copy:
+    content: "it@{{ org_domain }}\n"
+    dest: /var/spool/mlmmj/helpdesk/control/moderators
+    mode: '0600'
+    owner: mlmmj
+    group: mlmmj
+  delegate_to: mail
+
+- name: Set necessary boolean parameters on helpdesk mlmmj control
+  ansible.builtin.file:
+    name: '/var/spool/mlmmj/helpdesk/control/{{ item }}'
+    state: touch
+    mode: '0600'
+    owner: mlmmj
+    group: mlmmj
   loop:
-    - it
-    - empthelper
+    - closedlist
+    - noget
+    - notifymod
+    - notmetoo
+  delegate_to: mail
+
+- name: Install the moderation rules on helpdesk email operations
+  ansible.builtin.template:
+    src: mlmmj_access.j2
+    dest: /var/spool/mlmmj/helpdesk/control/access
+    mode: '0600'
+    owner: mlmmj
+    group: mlmmj
+  delegate_to: mail
+
+- name: Silently subscribe the empthelper to the helpdesk mailing list
+  ansible.builtin.command: '/usr/local/bin/mlmmj-sub -L /var/spool/mlmmj/helpdesk -a empthelper@{{ org_domain }} -fqs'
   delegate_to: mail
   register: setup_jail_helpdesk_mlmmj_sub_output
   changed_when: setup_jail_helpdesk_mlmmj_sub_output.rc == 0

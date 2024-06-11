@@ -125,7 +125,6 @@
     - /empt/synced/bin
     - /empt/synced/rw/fstab.d
     - /empt/synced/rw/groups
-    - /empt/synced/rw/helpdesk
     - /empt/synced/rw/humans
     - /empt/synced/rw/jail.conf.d
     - /empt/synced/rw/krb5data

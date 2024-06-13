@@ -16,12 +16,12 @@ _helpdesk_reply() {
     {
         cat <<EOF
 To: ${HELPDESK_FROM}
-Cc: ${HELPDESK_CC}, Helpdesk <helpdesk@empt.siva>
 Subject: [HELPDESK] Re: ${HELPDESK_SUBJECT}
 In-Reply-To: ${HELPDESK_MESSAGE_ID}
 References: ${HELPDESK_REFERENCES} ${HELPDESK_MESSAGE_ID}
+${HELPDESK_CC:+Cc: "${HELPDESK_CC}"}
 
 EOF
         cat
-    } | /usr/libexec/dma -f 'empthelper@empt.siva' -t
+    } | /usr/libexec/dma -f 'it@empt.siva' -t
 }

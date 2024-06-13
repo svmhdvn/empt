@@ -3,6 +3,7 @@
 # TODO
 # * Create a shared calendar
 # * Create a group-private IRC channel (possibly with a shared password)
+# * Ensure that a group is not created with the same name as a user just for sanity
 # * validate HELPDESK_* variables input
 
 set -e
@@ -14,6 +15,7 @@ _usage() {
 usage:
     groups.sh list
     groups.sh invite <groupname>
+    groups.sh quota <groupname> <newquota>
 
 environment: HELPDESK_*
 EOF
@@ -36,7 +38,7 @@ _invite() {
     readonly group_name
 
     # If the group doesn't exist, then get the next available GID
-    if shown_group="$(jexec -l cifs pw groupshow "${group_name}")"; then
+    if shown_group="$(jexec -l cifs pw groupshow "${group_name}" -q)"; then
         group_gid="$(echo "${shown_group}" | cut -f 3 -d :)"
     else
         group_gid="$(jexec -l cifs pw groupnext)"
@@ -108,12 +110,8 @@ EOF
     cifs_mount_dst="/empt/jails/cifs/groups/${group_name}"
     readonly cifs_mount_dst
     _append_if_missing "${cifs_mount_src} ${cifs_mount_dst} nullfs rw 0 0" /empt/synced/rw/fstab.d/cifs.fstab
-    # TODO idempotency
-    mount -t nullfs "${cifs_mount_src}" "${cifs_mount_dst}" || true
-
-    # create a welcome file
-    echo "welcome, ${HELPDESK_FROM_USER} & ${other_members}" | jexec -l -U "${HELPDESK_FROM_USER}" cifs tee "/groups/${group_name}/WELCOME.txt"
-    chmod 0660 "${group_mount}/home/WELCOME.txt"
+    # TODO idempotency and proper error handling
+    mount -t nullfs "${cifs_mount_src}" "${cifs_mount_dst}" 2>/dev/null || true
 
     # TODO radicale
     # ==========================================================================
@@ -137,17 +135,50 @@ EOF
     done
     # ================================================
 
-    # TODO figure out the proper way to use DMA without using the absolute command
+    # create a welcome file
+    jexec -l cifs install -o "${HELPDESK_FROM_USER}" -g "${group_name}" -m 0660 /dev/null "/groups/${group_name}/WELCOME.txt"
+    echo "Welcome to the '${group_name}' group!" > "${cifs_mount_src}/WELCOME.txt"
+
     _helpdesk_reply <<EOF
 You are now part of the new group '${group_name}'!
 EOF
 }
 
+# $1 = group name
+# $2 = requested quota (in whole number GiB units)
+# Assumes that IT has already verified that there is enough storage to support
+# this request
+# TODO if IT has already moderated and checked this request manually, does it
+# matter that we do all this input validation programmatically?
+_quota() {
+    # Ensure the group dataset exists
+    group_dataset="zroot/empt/synced/rw/group:$1"
+    readonly group_dataset
+    if ! zfs list -H -o name "${group_dataset}"; then
+        echo "$0: ERROR: nonexistent dataset for group '$1'" >&2
+        exit 65 # EX_DATAERR
+    fi
+
+    # Ensure that the requested quota is a whole number
+    case "$2" in
+        ''|0*|*[!0-9]*)
+            echo "$0: ERROR: invalid requested quota '$2'" >&2
+            exit 65 # EX_DATAERR
+    esac
+
+    zfs set "quota=${2}G" "${group_dataset}"
+    _helpdesk_reply <<EOF
+Group '${group_name}' now has a maximum storage allowance of ${2} GiB.
+EOF
+}
+
 # TODO turn this into a case/esac statement
 # TODO verify that the subject is already whitespace-trimmed on both sides
+# TODO input validation
 case "$1" in
     list|show) _list ;;
     create|invite|form) _invite "$2" ;;
+    quota) _quota "$2" "$3" ;;
     *)
         echo "$0: ERROR: invalid verb '$1'" >&2
         _usage >&2

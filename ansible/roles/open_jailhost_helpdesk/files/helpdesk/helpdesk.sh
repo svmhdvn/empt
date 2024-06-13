@@ -13,14 +13,15 @@ if test -z "${HELPDESK_FROM_USER}"; then
 fi
 
 # parse the subject line
-read -r verb object param1 <<EOF
+read -r verb object param1 param2 <<EOF
 ${HELPDESK_SUBJECT}
 EOF
 
 # triage the task based on the type of object
 case "${object}" in
     group*) taskname=groups ;;
+    dashboard) taskname=dashboard ;;
     *) taskname=helpdesk_usage ;;
 esac
 
-doas "/empt/synced/helpdesk/tasks/${taskname}.sh" "${verb}" "${param1}"
+doas "/empt/synced/helpdesk/tasks/${taskname}.sh" "${verb}" "${param1}" "${param2}"

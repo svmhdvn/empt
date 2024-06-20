@@ -47,9 +47,11 @@ kerberos_service_principals:
     host: mail
   - service: smtp
     host: mail
-  - service: host
+  - service: irc
     host: irc
   - service: HTTP
+    host: radicale
+  - service: radicale
     host: radicale
 
 zrep_synced_dataset_properties:

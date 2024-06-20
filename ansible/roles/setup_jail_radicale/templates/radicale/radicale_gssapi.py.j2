@@ -1,13 +1,24 @@
-import logging
-import socket
-
 import radicale
-import wsgi_kerberos
+from wsgi_auth_middleware import HttpAuthWsgiMiddleware
+from wsgi_auth_middleware.frontends import BasicFrontend, NegotiateFrontend
+from wsgi_auth_middleware.backends import PamBackend, GssapiBackend
 
-logger = logging.getLogger('gunicorn.error')
+class AuthRequired:
+    def __init__(self, app):
+        self.app = app
+    def __call__(self, environ, start_response):
+        if "REMOTE_USER" not in environ:
+            start_response("401 Unauthorized", [("content-type", "text/plain")])
+            return [b"Please Authenticate"]
+        return self.app(environ, start_response)
 
-app = wsgi_kerberos.KerberosAuthMiddleware(
-    app=radicale.application,
-    hostname=socket.gethostname(),
-    logger=logger,
+pam_backend = PamBackend(service='radicale')
+basic_frontend = BasicFrontend(auth_backends=[pam_backend], realm='{{ inventory_hostname }}.{{ org_domain }}')
+
+gssapi_backend = GssapiBackend()
+negotiate_frontend = NegotiateFrontend(auth_backends=[gssapi_backend])
+
+app = HttpAuthWsgiMiddleware(
+    app=AuthRequired(radicale.application),
+    auth_frontends=[negotiate_frontend, basic_frontend]
 )

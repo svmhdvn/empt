@@ -9,32 +9,32 @@ mailing_lists:
 humans:
   - username: alice
     fullname: Alice Crypto
-    uid: 4676
+    uid: 2001
     mailing_lists:
       - everyone
       - cryptoppl
   - username: bob
     fullname: Bob Crypto
-    uid: 11522
+    uid: 2002
     mailing_lists:
       - everyone
       - cryptoppl
   - username: carol
     fullname: Carol Crypto
-    uid: 23508
+    uid: 2003
     mailing_lists:
       - everyone
       - cryptoppl
   - username: dan
     fullname: Dan Crypto
-    uid: 39926
+    uid: 2004
     mailing_lists:
       - everyone
       - cryptoppl
       - it
   - username: eve
     fullname: Eve Crypto
-    uid: 7812
+    uid: 2005
     mailing_lists:
       - everyone
       - cryptoppl

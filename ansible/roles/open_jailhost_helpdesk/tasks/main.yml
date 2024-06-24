@@ -9,17 +9,6 @@
     uid: 21891
   register: setup_jail_empthelper_user
 
-# TODO turn these scripts into a FreeBSD ports pkg
-# =======================================
-- name: Copy helpdesk scripts to synced dir
-  ansible.builtin.copy:
-    src: helpdesk
-    dest: /empt/synced/
-    mode: '0700'
-    owner: empthelper
-    group: empthelper
-# =======================================
-
 - name: Create maildir layout under helpdesk dataset
   ansible.builtin.file:
     name: '/empt/synced/helpdesk/mail/{{ item }}'
@@ -109,14 +98,11 @@
 - name: Allow the empthelper to only run helpdesk task scripts
   ansible.builtin.lineinfile:
     path: /usr/local/etc/doas.conf
-    line: 'permit nopass keepenv empthelper cmd /empt/synced/helpdesk/tasks/{{ item }}.sh'
+    line: 'permit nopass empthelper cmd /usr/local/libexec/empt/helpdesk'
     create: true
     mode: '0600'
     owner: root
     group: wheel
-  # TODO generate the loop from the files inside the tasks folder
-  loop:
-    - groups
 
 - name: Enable cronjob to periodically process helpdesk queue with fdm
   ansible.builtin.cron:

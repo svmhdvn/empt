@@ -6,29 +6,17 @@
     home: /nonexistent
     create_home: false
 
-# TODO add a bunch of checks to cover all cases
-# - name: Authorize emptmonitor with doas to run various monitoring scripts
-#   ansible.builtin.lineinfile:
-#     path: /usr/local/etc/doas.conf
-#     line: 'permit nopass emptmonitor cmd /usr/local/libexec/nagios/check_load'
-#     create: true
-#     mode: '0600'
-#     owner: root
-#     group: wheel
+- name: Authorize emptmonitor with doas to run monitoring script
+  ansible.builtin.lineinfile:
+    path: /usr/local/etc/doas.conf
+    line: 'permit nopass emptmonitor cmd /usr/local/libexec/empt/monitor'
+    create: true
+    mode: '0600'
+    owner: root
+    group: wheel
 
-- name: Setup crontab with useful checks
+- name: Setup crontab with to run monitoring
   ansible.builtin.cron:
     user: emptmonitor
     name: check load average
-    job: -n -q /usr/local/libexec/nagios/check_load -r -w 0.90 -c 0.95
-
-# TODO monitoring tasks
-# * check memory usage
-# * check zpool health
-# * warn on zpool space usage >= 75%
-# * check TLS cert expiry
-# * check S.M.A.R.T. status on storage drives
-# * check IMAP and SMTP availability
-# * check IRC availability
-# * ensure swap usage is low
-# * monitor the uptime in some way if possible, ensure no reboots
+    job: -n -q /usr/local/libexec/empt/monitor

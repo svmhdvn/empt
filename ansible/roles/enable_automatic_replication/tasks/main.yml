@@ -104,36 +104,13 @@
   changed_when: true
   delegate_to: jailhost-secondary
 
-# TODO turn this into a FreeBSD ports pkg
-# =======================================
-- name: Copy the downtime script to the root home directory
-  ansible.builtin.copy:
-    src: downtime.sh
-    dest: /root
-    mode: '0700'
-    owner: root
-    group: wheel
-  delegate_to: '{{ item }}'
-  loop: '{{ groups["jailhosts"] }}'
-
-- name: Copy the replication script to the replicator user home directory
-  ansible.builtin.copy:
-    src: replication.sh
-    dest: /home/emptreplicator
-    mode: '0700'
-    owner: emptreplicator
-    group: emptreplicator
-  delegate_to: '{{ item }}'
-  loop: '{{ groups["jailhosts"] }}'
-# =======================================
-
 - name: Failover on the secondary first
-  ansible.builtin.command: /root/downtime.sh failover
+  ansible.builtin.command: /usr/local/libexec/empt/downtime failover
   changed_when: true
   delegate_to: jailhost-secondary
 
 - name: Then takeover on the primary
-  ansible.builtin.command: /root/downtime.sh takeover
+  ansible.builtin.command: /usr/local/libexec/empt/downtime failover
   changed_when: true
   delegate_to: jailhost-primary
 
@@ -141,7 +118,7 @@
 - name: Setup automatic backup cronjobs
   ansible.builtin.lineinfile:
     path: /var/cron/tabs/emptreplicator
-    line: '@60 -n -q /home/emptreplicator/replication.sh backup'
+    line: '@60 -n -q /usr/local/libexec/empt/replication backup'
     create: true
     mode: '0600'
     owner: root

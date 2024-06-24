@@ -1,5 +1,5 @@
 - name: Install jailhost required packages
-  ansible.builtin.command: pkg install -y cpu-microcode nagios-plugins rsync fdm py311-cryptography
+  ansible.builtin.command: pkg install -y cpu-microcode nagios-plugins rsync fdm py311-cryptography empt-scripts
   changed_when: true
 
 # TODO query intel or AMD, currently hardcoding for wyse
@@ -122,7 +122,6 @@
     owner: root
     group: wheel
   loop:
-    - /empt/synced/bin
     - /empt/synced/rw/fstab.d
     - /empt/synced/rw/groups
     - /empt/synced/rw/humans

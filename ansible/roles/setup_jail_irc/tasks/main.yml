@@ -1,6 +1,12 @@
 - name: Install irc required ports
-  ansible.builtin.command: pkg install -y ngircd soju kimchi tlstunnel
+  ansible.builtin.command: pkg -r /empt/jails/irc install -y ngircd soju kimchi tlstunnel
+  delegate_to: jailhost
   changed_when: true
+
+- name: Refresh ldconfig
+  ansible.builtin.service:
+    name: ldconfig
+    state: started
 
 - name: Query new soju user
   ansible.builtin.user:

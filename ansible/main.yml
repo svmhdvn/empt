@@ -13,16 +13,9 @@
       ansible.builtin.command: service jail onerestart # noqa: command-instead-of-module
       changed_when: true
 
-# TODO clean this up
-- name: Install all jail-required ports
-  hosts: jailhost
-  roles:
-    - install_jail_required_ports
-
-- name: Bootstrap all jails and refresh hosts
+- name: Refresh /etc/hosts in all jails
   hosts: jails
   roles:
-    - bootstrap
     - refresh_etc_hosts
 
 # TODO organize this better maybe

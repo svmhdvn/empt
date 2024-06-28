@@ -1,3 +1,13 @@
+- name: Install dns required ports
+  ansible.builtin.command: pkg -r /empt/jails/dns install -y nsd
+  delegate_to: jailhost
+  changed_when: true
+
+- name: Refresh ldconfig
+  ansible.builtin.service:
+    name: ldconfig
+    state: started
+
 - name: Configure nsd
   ansible.builtin.template:
     src: '{{ item.src }}'

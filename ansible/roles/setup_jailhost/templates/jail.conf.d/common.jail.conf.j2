@@ -1,3 +1,7 @@
+# Ensure the jail stays alive even if no processes are running inside.
+# This is to keep the mounts alive in case nothing is inside during setup
+persist;
+
 # TODO choose a devfs_ruleset
 mount.devfs;
 

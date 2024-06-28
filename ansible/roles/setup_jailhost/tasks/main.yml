@@ -40,7 +40,11 @@
     group: wheel
 
 - name: Install pkgbase to temporary base jail
-  ansible.builtin.command: pkg --rootdir /tmp/base_jail install -y --repository jail_pkgbase -g 'FreeBSD-*'
+  ansible.builtin.command: pkg -r /tmp/base_jail install -y -r jail_pkgbase -g 'FreeBSD-*'
+  changed_when: true
+
+- name: Install basic dependencies for ansible builtin modules to base jail
+  ansible.builtin.command: pkg -r /tmp/base_jail install -y -r ports python doas gtar unzip tree py311-cryptography
   changed_when: true
 
 - name: Create all missing directories in base jail
@@ -50,8 +54,6 @@
     mode: '0755'
   loop:
     - /tmp/base_jail/home
-    - /tmp/base_jail/usr/local/etc/pkg/repos
-    - /tmp/base_jail/usr/local/poudriere_repos
     # TODO don't use root for ssh between systems
     - /tmp/base_jail/root/.ssh
 
@@ -64,31 +66,6 @@
     group: wheel
   with_community.general.filetree: '{{ "templates/common_etc/" }}'
   when: item.state == 'file'
-
-- name: Configure jail to use jail pkgbase and ports
-  ansible.builtin.copy:
-    content: |
-      pkgbase: {
-        url: "file:///usr/local/poudriere_repos/jail_pkgbase"
-        enabled: yes
-      }
-
-      ports: {
-        url: "file:///usr/local/poudriere_repos/ports"
-        enabled: yes
-      }
-
-      FreeBSD: {
-        url: "pkg+https://pkg.FreeBSD.org/${ABI}/latest",
-        mirror_type: "srv",
-        signature_type: "fingerprints",
-        fingerprints: "/usr/share/keys/pkg",
-        enabled: no
-      }
-    dest: /tmp/base_jail/usr/local/etc/pkg/repos/FreeBSD.conf
-    owner: root
-    group: wheel
-    mode: '0600'
 
 - name: Create top level dataset for empt
   community.general.zfs:
@@ -122,20 +99,21 @@
     owner: root
     group: wheel
   loop:
+    - /empt/synced/rw/logs
     - /empt/synced/rw/fstab.d
     - /empt/synced/rw/groups
     - /empt/synced/rw/humans
     - /empt/synced/rw/jail.conf.d
     - /empt/synced/rw/krb5data
 
-- name: Prepare directories for jail nullfs-mounted logs and etc
+- name: Prepare directories for jail nullfs-mounted etc
   ansible.builtin.file:
     path: '{{ item }}'
     state: directory
     mode: '0755'
     owner: root
     group: wheel
-  loop: '{{ ["/empt/synced/rw/logs/", "/empt/synced/etc/"] | product(groups["jails"]) | map("join") }}'
+  loop: '{{ ["/empt/synced/etc/"] | product(groups["jails"]) | map("join") }}'
 
 - name: Install all jail.conf files
   ansible.builtin.template:
@@ -151,8 +129,6 @@
   ansible.builtin.copy:
     # TODO is it possible to mount the jail /etc as 'ro'? it seems better
     content: |
-      /usr/local/poudriere_repos /empt/jails/{{ item }}/usr/local/poudriere_repos nullfs ro 0 0
-      /empt/synced/rw/logs/{{ item }} /empt/jails/{{ item }}/var/log nullfs rw 0 0
       /empt/synced/etc/{{ item }} /empt/jails/{{ item }}/etc nullfs rw 0 0
     dest: '/empt/synced/rw/fstab.d/{{ item }}.fstab'
     mode: '0600'

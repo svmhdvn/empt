@@ -1,6 +1,12 @@
 - name: Install radicale required ports
-  ansible.builtin.command: pkg install -y py311-gunicorn py311-radicale py311-wsgi-auth-middleware
+  ansible.builtin.command: pkg -r /empt/jails/radicale install -y py311-gunicorn py311-radicale py311-wsgi-auth-middleware
+  delegate_to: jailhost
   changed_when: true
+
+- name: Refresh ldconfig
+  ansible.builtin.service:
+    name: ldconfig
+    state: started
 
 - name: Configure radicale
   ansible.builtin.template:

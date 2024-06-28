@@ -1,8 +1,8 @@
-- name: "Install useful testing and debug packages"
-  ansible.builtin.command: 'pkg install -y tmux wget htop tree'
+- name: Install useful testing and debug packages
+  ansible.builtin.command: pkg install -y tmux wget htop tree
   changed_when: true
 
-- name: "Configure tmux"
+- name: Configure tmux
   ansible.builtin.copy:
     src: tmux.conf
     dest: '/home/{{ fresh_install_user }}/.tmux.conf'

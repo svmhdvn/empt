@@ -12,7 +12,10 @@ zfs_enable="YES"
 dumpdev="AUTO"
 
 syslogd_enable="YES"
-syslogd_flags="-8 -O syslog -N -s -s"
+syslogd_flags="-8HNnss -O rfc5424"
+{% for j in groups["jails"] %}
+syslogd_flags="${syslogd_flags} -l /empt/jails/{{ j }}/var/run/log"
+{% endfor %}
 
 # TODO do we need cron task jitter?
 cron_flags="-m it@{{ org_domain }}"

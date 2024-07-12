@@ -13,7 +13,9 @@
         realm = EMPT.SIVA
         # TODO see if a different workgroup name is necessary
         workgroup = EMPT
+
         disable netbios = yes
+	smb ports = 445
 
         client use kerberos = required
         ntlm auth = disabled

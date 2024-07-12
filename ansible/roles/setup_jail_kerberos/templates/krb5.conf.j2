@@ -5,5 +5,8 @@
 [domain_realm]
 	.{{ org_domain }} = {{ org_domain | upper }}
 [logging]
-        libkrb5 = 0-/SYSLOG:
-        kdc = 0-/SYSLOG:
+        default = 0/SYSLOG:CRIT
+	default = 1/SYSLOG:ERR
+	default = 2/SYSLOG:WARNING
+	default = 3/SYSLOG:INFO
+	default = 4-/SYSLOG:DEBUG

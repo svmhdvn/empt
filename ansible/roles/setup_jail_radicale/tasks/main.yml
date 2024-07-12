@@ -31,6 +31,12 @@
     name: gunicorn_config
     value: /usr/local/etc/radicale/gunicorn_radicale.conf.py
 
+# TODO remove once https://bugs.freebsd.org/bugzilla/show_bug.cgi?id=277210 is resolved
+- name: Configure gunicorn to run inside the config directory
+  community.general.sysrc:
+    name: gunicorn_chdir
+    value: /usr/local/etc/radicale
+
 - name: Change keytab ownership strictly to radicale user
   ansible.builtin.file:
     name: /etc/krb5.keytab

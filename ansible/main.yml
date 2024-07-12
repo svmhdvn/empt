@@ -26,12 +26,19 @@
   vars_files:
     - vars/shared.yml
   tasks:
+    - name: Create locally trusted CA certs directory
+      ansible.builtin.file:
+        path: /usr/local/etc/ssl/certs
+        state: directory
+        mode: '0755'
+        owner: root
+        group: wheel
+
     # TODO waiting on https://bugzilla.mozilla.org/show_bug.cgi?id=1325335 for ED25519 support
     # generating P-256 keys in the meantime
     - name: Create CA private key with password protection
       community.crypto.openssl_privatekey:
         path: '{{ certauth_cakey_path }}'
-        backup: true
         passphrase: "{{ secret_ca_passphrase }}"
         type: ECC
         curve: secp256r1
@@ -41,7 +48,7 @@
       community.crypto.openssl_csr_pipe:
         privatekey_path: '{{ certauth_cakey_path }}'
         privatekey_passphrase: "{{ secret_ca_passphrase }}"
-        common_name: '{{ org_domain }} (CA)'
+        common_name: '{{ org_domain }} CA'
         use_common_name_for_san: false # since we do not specify SANs, don't use CN as a SAN
         basic_constraints:
           - 'CA:TRUE'
@@ -58,6 +65,10 @@
         privatekey_path: '{{ certauth_cakey_path }}'
         privatekey_passphrase: "{{ secret_ca_passphrase }}"
         provider: selfsigned
+
+    - name: Rehash trusted certs on system
+      ansible.builtin.command: certctl rehash
+      changed_when: true
 
 - name: Generate host certs for each jail
   hosts: jails

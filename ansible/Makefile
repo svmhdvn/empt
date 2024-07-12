@@ -20,7 +20,7 @@ fresh_start:
 		-i remote_inventory.ini \
 		-b -K --become-method ansible.builtin.su \
 		fresh_start.yml
-	ssh $(FRESH_INSTALL_USER)@jailhost-$(TARGET).home.arpa 'cd /tmp/empt-ansible/ansible && \
+	ssh $(FRESH_INSTALL_USER)@jailhost-$(TARGET).home.arpa 'cd /var/tmp/empt-ansible/ansible && \
 		doas env CRYPTOGRAPHY_OPENSSL_NO_LEGACY=1 ansible-playbook \
 		-i local_inventory.ini \
 		-e responsibility=$(TARGET) \
@@ -28,7 +28,7 @@ fresh_start:
 		main.yml'
 
 start_fake_company:
-	ssh $(FRESH_INSTALL_USER)@jailhost-$(TARGET).home.arpa 'cd /tmp/empt-ansible/ansible && \
+	ssh $(FRESH_INSTALL_USER)@jailhost-$(TARGET).home.arpa 'cd /var/tmp/empt-ansible/ansible && \
 		doas env CRYPTOGRAPHY_OPENSSL_NO_LEGACY=1 ansible-playbook \
 		-i remote_inventory.ini \
 		-i local_inventory.ini \

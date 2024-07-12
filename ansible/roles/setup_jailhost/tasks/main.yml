@@ -1,11 +1,12 @@
 - name: Install jailhost required packages
-  ansible.builtin.command: pkg install -y cpu-microcode nagios-plugins rsync fdm py311-cryptography empt-scripts
+  ansible.builtin.command: pkg install -y cpu-microcode rsync fdm py311-cryptography empt-scripts
   changed_when: true
 
 # TODO query intel or AMD, currently hardcoding for wyse
 - name: Enable early CPU microcode update at boot
   ansible.builtin.blockinfile:
     path: /boot/loader.conf
+    create: true
     block: |
       cpu_microcode_load="YES"
       cpu_microcode_name="/boot/firmware/amd-ucode.bin"
@@ -19,16 +20,6 @@
     owner: root
     group: wheel
   with_community.general.filetree: '{{ "templates/jailhost_etc/" }}'
-  when: item.state == 'file'
-
-- name: Populate jailhost /usr/local/etc files
-  ansible.builtin.template:
-    src: '{{ item.src }}'
-    dest: '/usr/local/etc/{{ item.path | replace(".j2", "") }}'
-    mode: '0644'
-    owner: root
-    group: wheel
-  with_community.general.filetree: '{{ "templates/jailhost_usr_local_etc/" }}'
   when: item.state == 'file'
 
 - name: Create empty directory for base jail
@@ -46,6 +37,16 @@
 - name: Install basic dependencies for ansible builtin modules to base jail
   ansible.builtin.command: pkg -r /tmp/base_jail install -y -r ports python doas gtar unzip tree py311-cryptography
   changed_when: true
+
+# TODO remove once done
+- name: Temporarily setup doas.conf for :wheel
+  ansible.builtin.lineinfile:
+    line: permit nopass :wheel
+    path: /tmp/base_jail/usr/local/etc/doas.conf
+    create: true
+    owner: root
+    group: wheel
+    mode: '0600'
 
 - name: Create all missing directories in base jail
   ansible.builtin.file:
@@ -91,26 +92,27 @@
     state: present
     extra_zfs_properties: '{{ zrep_synced_dataset_properties["zroot/empt/synced/rw"] }}'
 
-- name: Populate rough EMPT directory structure
+- name: Populate rough EMPT data directory structure
   ansible.builtin.file:
-    path: '{{ item }}'
+    path: '/empt/synced/rw/{{ item }}'
     state: directory
-    mode: '0755'
+    mode: '0700'
     owner: root
     group: wheel
   loop:
-    - /empt/synced/rw/logs
-    - /empt/synced/rw/fstab.d
-    - /empt/synced/rw/groups
-    - /empt/synced/rw/humans
-    - /empt/synced/rw/jail.conf.d
-    - /empt/synced/rw/krb5data
+    - fstab.d
+    - groups
+    - humans
+    - jail.conf.d
+    - krb5data
+    - logs
+    - mlmmj_spool
 
 - name: Prepare directories for jail nullfs-mounted etc
   ansible.builtin.file:
     path: '{{ item }}'
     state: directory
-    mode: '0755'
+    mode: '0700'
     owner: root
     group: wheel
   loop: '{{ ["/empt/synced/etc/"] | product(groups["jails"]) | map("join") }}'
@@ -135,6 +137,11 @@
     owner: root
     group: wheel
   loop: '{{ groups["jails"] }}'
+
+# TODO add WITHOUT_* knobs upstream for some of these useless things
+# - name: Remove unnecessary /etc files in the base jail
+#   ansible.builtin.file:
+#     path: '/tmp/base_jail/etc/{{ item }}'
 
 - name: Copy base jail /etc to synced jail etc directory under EMPT
   # NOTE the trailing slash on /tmp/base_jail/etc/ is required to copy its contents

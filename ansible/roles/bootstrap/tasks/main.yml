@@ -2,6 +2,7 @@
   ansible.builtin.raw: pkg install -y python doas gtar unzip tree
   changed_when: true
 
+# TODO remove once done
 - name: Temporarily setup doas.conf for :wheel
   ansible.builtin.lineinfile:
     line: permit nopass :wheel

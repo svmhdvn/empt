@@ -19,4 +19,4 @@
   ansible.builtin.cron:
     user: emptmonitor
     name: check load average
-    job: -n -q /usr/local/libexec/empt/monitor
+    job: -n -q /usr/local/libexec/empt/monitor every_minute

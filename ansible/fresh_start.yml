@@ -10,6 +10,9 @@
     - update_poudriere
 
     - bootstrap
+  tasks:
+    - name: Reboot to new ports userland
+      ansible.builtin.reboot:
 
 - name: Install ansible with dependencies and copy EMPT ansible setup
   hosts: jailhosts
@@ -21,4 +24,4 @@
     - name: Copy EMPT ansible setup directory to tmp
       ansible.posix.synchronize:
         src: .
-        dest: /tmp/empt-ansible
+        dest: /var/tmp/empt-ansible

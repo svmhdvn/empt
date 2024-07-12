@@ -2,7 +2,7 @@
   ansible.builtin.user:
     name: empthelper
     comment: EMPT Helpdesk Agent
-    home: /empt/synced/helpdesk
+    home: /empt/synced/rw/helpdesk
     create_home: false
     shell: /usr/sbin/nologin
 # TODO find a way to create a globally unique UID, currently hardcoding
@@ -11,7 +11,7 @@
 
 - name: Create maildir layout under helpdesk dataset
   ansible.builtin.file:
-    name: '/empt/synced/helpdesk/mail/{{ item }}'
+    name: '{{ setup_jail_empthelper_user.home }}/mail/{{ item }}'
     state: directory
     mode: '0700'
     owner: empthelper
@@ -42,7 +42,7 @@
 - name: Add empthelper maildir directory nullfs mount to mail jail
   ansible.posix.mount:
     fstab: /empt/synced/rw/fstab.d/mail.fstab
-    src: /empt/synced/helpdesk/mail
+    src: '{{ setup_jail_empthelper_user.home }}/mail'
     path: /empt/jails/mail/home/empthelper/mail
     fstype: nullfs
     opts: rw
@@ -89,7 +89,7 @@
 - name: Install fdm configuration
   ansible.builtin.template:
     src: fdm.conf.j2
-    dest: /empt/synced/helpdesk/.fdm.conf
+    dest: '{{ setup_jail_empthelper_user.home }}/.fdm.conf'
     mode: '0600'
     owner: empthelper
     group: empthelper

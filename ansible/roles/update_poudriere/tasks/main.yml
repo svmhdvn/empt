@@ -91,12 +91,6 @@
     IGNORE_OSVERSION: "yes"
   changed_when: true
 
-- name: Reboot to new Pkgbase base system and (possibly) ABI
-  ansible.builtin.reboot:
-
 - name: Upgrade all ports on host system
   ansible.builtin.command: pkg upgrade -y -f -r ports
   changed_when: true
-
-- name: Reboot to new ports userland
-  ansible.builtin.reboot:

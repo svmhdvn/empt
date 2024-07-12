@@ -63,5 +63,5 @@ zrep_synced_dataset_properties:
 
 # TODO secure
 secret_ca_passphrase: cakey
-certauth_cacrt_path: '/empt/synced/rw/{{ org_domain }}.cacrt.pem'
-certauth_cakey_path: '/empt/synced/rw/{{ org_domain }}.cakey.pem'
+certauth_cacrt_path: '/usr/local/etc/ssl/certs/{{ org_domain | upper | replace(".", "_")}}_PRIVATE_CA.crt.pem'
+certauth_cakey_path: '/empt/synced/rw/{{ org_domain | upper | replace(".", "_")}}_PRIVATE_CA.key.pem'

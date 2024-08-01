@@ -47,6 +47,8 @@ kerberos_service_principals:
     host: mail
   - service: smtp
     host: mail
+  - service: HTTP
+    host: mail
   - service: irc
     host: irc
   - service: HTTP

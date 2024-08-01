@@ -75,12 +75,6 @@
     extra_zfs_properties:
       mountpoint: /empt
 
-# TODO benchmark lz4 (default) vs no compression here
-- name: Create ZFS dataset for all non-synced jail storage
-  community.general.zfs:
-    name: zroot/empt/jails
-    state: present
-
 - name: Create dataset for all synced (replicated with backup) data
   community.general.zfs:
     name: zroot/empt/synced
@@ -92,30 +86,31 @@
     state: present
     extra_zfs_properties: '{{ zrep_synced_dataset_properties["zroot/empt/synced/rw"] }}'
 
-- name: Populate rough EMPT data directory structure
+- name: Populate rough EMPT directory layout
   ansible.builtin.file:
-    path: '/empt/synced/rw/{{ item }}'
+    path: '/empt/{{ item }}'
     state: directory
     mode: '0700'
     owner: root
     group: wheel
   loop:
-    - fstab.d
-    - groups
-    - humans
-    - jail.conf.d
-    - krb5data
-    - logs
-    - mlmmj_spool
+    - jails
+    - synced/rw/fstab.d
+    - synced/rw/groups
+    - synced/rw/humans
+    - synced/rw/jail.conf.d
+    - synced/rw/krb5data
+    - synced/rw/logs
+    - synced/rw/mlmmj_spool
 
 - name: Prepare directories for jail nullfs-mounted etc
   ansible.builtin.file:
-    path: '{{ item }}'
+    path: '/empt/synced/etc/{{ item }}'
     state: directory
     mode: '0700'
     owner: root
     group: wheel
-  loop: '{{ ["/empt/synced/etc/"] | product(groups["jails"]) | map("join") }}'
+  loop: '{{ groups["jails"] }}'
 
 - name: Install all jail.conf files
   ansible.builtin.template:
@@ -127,12 +122,10 @@
   with_community.general.filetree: '{{ "templates/jail.conf.d" }}'
   when: item.state == 'file'
 
-- name: Create an fstab for every jail
-  ansible.builtin.copy:
-    # TODO is it possible to mount the jail /etc as 'ro'? it seems better
-    content: |
-      /empt/synced/etc/{{ item }} /empt/jails/{{ item }}/etc nullfs rw 0 0
-    dest: '/empt/synced/rw/fstab.d/{{ item }}.fstab'
+- name: Create an empty fstab for every jail
+  ansible.builtin.file:
+    path: '/empt/synced/rw/fstab.d/{{ item }}.fstab'
+    state: touch
     mode: '0600'
     owner: root
     group: wheel
@@ -150,16 +143,28 @@
   loop: '{{ groups["jails"] }}'
   changed_when: true
 
+# TODO is there really no way to simply "truncate" a directory?
+# =============================================================
 - name: Remove /etc from base jail
   ansible.builtin.file:
     path: /tmp/base_jail/etc
     state: absent
+
+- name: Create empty /etc nullfs mountpoint in base jail
+  ansible.builtin.file:
+    path: /tmp/base_jail/etc
+    state: directory
+# =============================================================
 
 - name: Clone (thick) base jail to installed locations
   # NOTE the trailing slash on /tmp/base_jail/ is required to copy its contents
   # rather than the entire directory. See cp(1).
   ansible.builtin.command: 'cp -a /tmp/base_jail/ /empt/jails/{{ item }}'
   loop: '{{ groups["jails"] }}'
+  changed_when: true
+
+- name: Mount all etc directories to their respective jails
+  ansible.builtin.command: mount -al
   changed_when: true
 
 # NOTE needed to clear immutable flags

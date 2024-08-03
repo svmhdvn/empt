@@ -3,50 +3,38 @@
     name: empthelper
     comment: EMPT Helpdesk Agent
     home: /empt/synced/rw/helpdesk
-    create_home: false
     shell: /usr/sbin/nologin
 # TODO find a way to create a globally unique UID, currently hardcoding
     uid: 21891
   register: setup_jail_empthelper_user
 
-- name: Create maildir layout under helpdesk dataset
-  ansible.builtin.file:
-    name: '{{ setup_jail_empthelper_user.home }}/mail/{{ item }}'
-    state: directory
-    mode: '0700'
-    owner: empthelper
-    group: empthelper
-  loop:
-    - cur
-    - new
-    - tmp
-
-- name: Create empthelper mail delivery local account in the mail jail
+- name: Create empthelper mail delivery local account in the smtp and imap jails
   ansible.builtin.user:
     name: empthelper
     comment: EMPT Helpdesk Agent
     shell: /usr/sbin/nologin
-    home: /home/empthelper
+    home: /nonexistent
     create_home: false
     uid: '{{ setup_jail_empthelper_user.uid }}'
-  delegate_to: mail
+  delegate_to: '{{ item }}'
+  loop:
+    - smtp
+    - imap
 
-- name: Create helpdesk maildir mountpoint in mail jail
-  ansible.builtin.file:
-    name: /empt/jails/mail/home/empthelper/mail
-    state: directory
-    mode: '0700'
-    owner: empthelper
-    group: empthelper
+- name: Check if empthelper kerberos principal exists
+  ansible.builtin.command: kadmin --local get --short empthelper
+  delegate_to: kerberos
+  register: open_jailhost_helpdesk_empthelper_principal_exists
+  failed_when: open_jailhost_helpdesk_empthelper_principal_exists.rc >= 2
+  changed_when: false
 
-- name: Add empthelper maildir directory nullfs mount to mail jail
-  ansible.posix.mount:
-    fstab: /empt/synced/rw/fstab.d/mail.fstab
-    src: '{{ setup_jail_empthelper_user.home }}/mail'
-    path: /empt/jails/mail/home/empthelper/mail
-    fstype: nullfs
-    opts: rw
-    state: mounted
+# TODO secure
+- name: Add new kerberos principal if nonexistent
+  ansible.builtin.command: kadmin --local add --password=empthelper --use-defaults empthelper
+  delegate_to: kerberos
+  when: '"Principal does not exist" in open_jailhost_helpdesk_empthelper_principal_exists.stderr'
+  register: open_jailhost_helpdesk_add_empthelper_principal_output
+  changed_when: open_jailhost_helpdesk_add_empthelper_principal_output.rc == 0
 
 - name: Assign the IT staff to moderate the helpdesk list
   ansible.builtin.copy:
@@ -55,7 +43,7 @@
     mode: '0600'
     owner: mlmmj
     group: mlmmj
-  delegate_to: mail
+  delegate_to: smtp
 
 - name: Set necessary boolean parameters on helpdesk mlmmj control
   ansible.builtin.file:
@@ -69,7 +57,7 @@
     - noget
     - notifymod
     - notmetoo
-  delegate_to: mail
+  delegate_to: smtp
 
 - name: Install the moderation rules on helpdesk email operations
   ansible.builtin.template:
@@ -78,11 +66,11 @@
     mode: '0600'
     owner: mlmmj
     group: mlmmj
-  delegate_to: mail
+  delegate_to: smtp
 
 - name: Silently subscribe the empthelper to the helpdesk mailing list
   ansible.builtin.command: '/usr/local/bin/mlmmj-sub -L /var/spool/mlmmj/helpdesk -a empthelper@{{ org_domain }} -fqs'
-  delegate_to: mail
+  delegate_to: smtp
   register: setup_jail_helpdesk_mlmmj_sub_output
   changed_when: setup_jail_helpdesk_mlmmj_sub_output.rc == 0
 

@@ -1,5 +1,6 @@
+# TODO use scope identifier instead of scope index
 {% for jail in groups['jails'] %}
-fe80::eeee:{{ hostvars[jail].jid }}%lo0 {{ jail }}.{{ org_domain }} {{ jail }}.home.arpa {{ jail }}
+fe80:2::eeee:{{ hostvars[jail].jid }} {{ jail }}.{{ org_domain }} {{ jail }}.home.arpa {{ jail }}
 {% endfor %}
 
-fe80::eeee:{{ jid }}%lo0 {{ inventory_hostname }}.{{ org_domain }} {{ inventory_hostname }}.home.arpa {{ inventory_hostname }} localhost
+fe80:2::eeee:{{ jid }} {{ inventory_hostname }}.{{ org_domain }} {{ inventory_hostname }}.home.arpa {{ inventory_hostname }} localhost

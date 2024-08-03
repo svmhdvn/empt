@@ -107,22 +107,22 @@
   roles:
     - setup_jail_cifs
 
-- name: Setup mail server jail
-  hosts: mail
+- name: Setup smtp server jail
+  hosts: smtp
   vars_files:
     - vars/shared.yml
   roles:
-    - setup_jail_mail
+    - setup_jail_smtp
 
-- name: Setup radicale jail
-  hosts: radicale
+- name: Setup imap server jail
+  hosts: imap
   vars_files:
     - vars/shared.yml
   roles:
-    - setup_jail_radicale
+    - setup_jail_imap
 
 - name: Create all pre-configured mailing lists
-  hosts: mail
+  hosts: smtp
   vars_files:
     - vars/shared.yml
   tasks:

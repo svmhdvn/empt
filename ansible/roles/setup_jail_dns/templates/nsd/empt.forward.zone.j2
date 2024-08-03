@@ -9,7 +9,7 @@ $TTL 1m
   4m ) ; negative caching TTL
 
   IN NS dns
-  MX 10 mail
+  MX 10 smtp
 
 {% for jail in groups['jails'] %}
 {{ jail }} IN A {{ ipv4_prefix }}.20{{ hostvars[jail].jid }}

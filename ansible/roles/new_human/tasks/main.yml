@@ -23,41 +23,6 @@
     group: '{{ human.uid }}'
   loop:
     - home
-    - mail/cur
-    - mail/new
-    - mail/tmp
-
-- name: Query radicale UNIX system account UID
-  ansible.builtin.user:
-    name: radicale
-  delegate_to: radicale
-  register: new_human_radicale_system_account
-
-- name: Populate human calendar/contacts directories
-  ansible.builtin.file:
-    name: '/empt/synced/rw/humans/{{ human.username }}/diary/{{ item }}'
-    state: directory
-    mode: '0700'
-    owner: '{{ new_human_radicale_system_account.uid }}'
-    group: '{{ new_human_radicale_system_account.uid }}'
-  loop:
-    - calendar
-    - contacts
-    - journal
-    - todo
-
-- name: Initialize radicale properties for each new collection
-  ansible.builtin.template:
-    src: 'radicale/{{ item }}/Radicale.props.json.j2'
-    dest: '/empt/synced/rw/humans/{{ human.username }}/diary/{{ item }}/.Radicale.props'
-    mode: '0600'
-    owner: '{{ new_human_radicale_system_account.uid }}'
-    group: '{{ new_human_radicale_system_account.uid }}'
-  loop:
-    - calendar
-    - contacts
-    - journal
-    - todo
 
 - name: Create login-incapable unix accounts for the human in the required hosts
   ansible.builtin.user:
@@ -71,7 +36,8 @@
   loop:
     # TODO do I need cifs here?
     - cifs
-    - mail
+    - smtp
+    - imap
 
 - name: Create missing nullfs mountpoint for the home directory in cifs
   ansible.builtin.file:
@@ -82,27 +48,6 @@
     group: '{{ human.uid }}'
   delegate_to: cifs
 
-- name: Create missing nullfs mountpoint for Maildir
-  ansible.builtin.file:
-    name: '/home/{{ human.username }}/mail'
-    state: directory
-    mode: '0700'
-    owner: '{{ human.uid }}'
-    group: '{{ human.uid }}'
-  delegate_to: mail
-
-# TODO can we change wsgi-kerberos to return REMOTE_USER=<username> instead of
-# REMOTE_USER=<username>@<REALM>?
-- name: Create missing nullfs mountpoint for radicale collections
-  ansible.builtin.file:
-    name: '/var/db/radicale/collection-root/{{ human.username }}@{{ org_domain | upper }}'
-    state: directory
-    recurse: true
-    mode: '0700'
-    owner: '{{ new_human_radicale_system_account.uid }}'
-    group: '{{ new_human_radicale_system_account.uid }}'
-  delegate_to: radicale
-
 - name: Add human home directory nullfs mount to cifs jail
   ansible.posix.mount:
     fstab: /empt/synced/rw/fstab.d/cifs.fstab
@@ -112,25 +57,7 @@
     opts: rw
     state: mounted
 
-- name: Add Maildir nullfs mount to mail jail
-  ansible.posix.mount:
-    fstab: /empt/synced/rw/fstab.d/mail.fstab
-    src: '/empt/synced/rw/humans/{{ human.username }}/mail'
-    path: '/empt/jails/mail/home/{{ human.username }}/mail'
-    fstype: nullfs
-    opts: rw
-    state: mounted
-
-- name: Nullfs mount diary collections to radicale jail
-  ansible.posix.mount:
-    fstab: /empt/synced/rw/fstab.d/radicale.fstab
-    src: '/empt/synced/rw/humans/{{ human.username }}/diary'
-    path: '/empt/jails/radicale/var/db/radicale/collection-root/{{ human.username }}@{{ org_domain | upper }}'
-    fstype: nullfs
-    opts: rw
-    state: mounted
-
-# TODO a lot of bugs with Heimdal's `get` and `list` commands, fix them.
+# TODO switch to MIT krb5
 - name: Check which user principals are missing
   ansible.builtin.command: 'kadmin --local get --short {{ human.username }}'
   delegate_to: kerberos
@@ -148,6 +75,6 @@
 - name: Subscribe to selected mailing lists
   ansible.builtin.command: '/usr/local/bin/mlmmj-sub -L /var/spool/mlmmj/{{ item }} -a {{ human.username }}@{{ org_domain }} -c -f -s'
   loop: '{{ human.mailing_lists }}'
-  delegate_to: mail
+  delegate_to: smtp
   register: mlmmj_sub_output
   changed_when: mlmmj_sub_output.rc == 0

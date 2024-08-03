@@ -1,0 +1,123 @@
+# TODO example nullfs mount idea
+# =====================================================
+#- name: Add mlmmj user for postfix transport
+#  ansible.builtin.user:
+#    name: mlmmj
+#    comment: Mlmmj Transport
+#    home: /var/spool/mlmmj
+#    shell: /usr/sbin/nologin
+#    create_home: false
+#  register: setup_jail_mail_mlmmj_user
+#
+#- name: Create mlmmj spool directory in jailhost
+#  ansible.builtin.file:
+#    path: /empt/synced/rw/mlmmj_spool
+#    state: directory
+#    mode: '0700'
+#    owner: '{{ setup_jail_mail_mlmmj_user.uid }}'
+#    group: '{{ setup_jail_mail_mlmmj_user.uid }}'
+#  delegate_to: jailhost
+#
+#- name: Create empty mountpoint for mlmmj spool
+#  ansible.builtin.file:
+#    path: /var/spool/mlmmj
+#    state: directory
+#    mode: '0700'
+#    owner: mlmmj
+#    group: mlmmj
+#
+#- name: Nullfs mount the mlmmj spool storage
+#  ansible.posix.mount:
+#    fstab: /empt/synced/rw/fstab.d/imap.fstab
+#    src: /empt/synced/rw/mlmmj_spool
+#    path: /empt/jails/imap/var/spool/mlmmj
+#    fstype: nullfs
+#    opts: rw
+#    state: mounted
+#  delegate_to: jailhost
+# =====================================================
+
+- name: Install required ports
+  ansible.builtin.command: pkg -r /empt/jails/imap install -y cyrus-imapd38
+  delegate_to: jailhost
+  changed_when: true
+
+- name: Refresh ldconfig
+  ansible.builtin.service:
+    name: ldconfig
+    state: started
+
+# - name: Query new cyrus user
+#   ansible.builtin.user:
+#     name: cyrus
+#   register: setup_jail_imap_cyrus_user
+# 
+# - name: Change ownership and permissions on cyrus spool data and mountpoint directories
+#   ansible.builtin.file:
+#     path: '{{ item }}'
+#     state: directory
+#     mode: '0700'
+#     owner: '{{ setup_jail_mail_postfix_user.uid }}'
+#     group: '{{ setup_jail_mail_postfix_user.uid }}'
+#   loop:
+#     - /empt/synced/postfix_spool
+#     - /empt/jails/imap/var/spool/postfix
+
+# TODO run validation on config files
+- name: Configure cyrus imap
+  ansible.builtin.template:
+    src: '{{ item.src }}'
+    dest: '/usr/local/etc/{{ item.path | replace(".j2", "") }}'
+    mode: '0644'
+  with_community.general.filetree: '{{ "templates/cyrus" }}'
+  when: item.state == 'file'
+
+- name: Configure PAM with krb5 for cyrus saslauthd
+  ansible.builtin.copy:
+    content: |
+      auth required pam_krb5.so
+      account required pam_nologin.so
+    dest: '/etc/pam.d/{{ item }}'
+    mode: '0644'
+    owner: root
+    group: wheel
+  loop:
+    - imap
+    - HTTP
+
+- name: Ensure keytab and TLS certs can only be read by cyrus
+  ansible.builtin.file:
+    path: '{{ item }}'
+    mode: '0400'
+    owner: cyrus
+    group: cyrus
+  loop:
+    - /etc/krb5.keytab
+    - /etc/ssl/imap.crt.pem
+    - /etc/ssl/imap.key.pem
+
+- name: Initialize cyrus IMAP directories
+  ansible.builtin.command: /usr/local/cyrus/sbin/mkimap
+  changed_when: true
+
+- name: Ensure cyrus directories are owned by cyrus user
+  ansible.builtin.file:
+    path: '{{ item }}'
+    state: directory
+    recurse: true
+    mode: '0750'
+    owner: cyrus
+    group: mail
+  loop:
+    - /var/db/cyrusimap
+    - /var/run/cyrusimap
+    - /var/spool/cyrusimap
+
+- name: Enable and start cyrus services
+  ansible.builtin.service:
+    name: '{{ item }}'
+    enabled: true
+    state: started
+  loop:
+    - imapd
+    - saslauthd

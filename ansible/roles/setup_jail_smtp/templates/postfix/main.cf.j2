@@ -648,13 +648,6 @@ strict_rfc821_envelopes = yes
 tls_append_default_CA = no
 tls_preempt_cipherlist = yes
 
-# TODO enable smtp sasl for outgoing smtp to external places
-#smtp_sasl_auth_enable = yes
-#smtp_sasl_password_maps = hash:$config_directory/sasl_passwd
-#smtp_sasl_tls_security_options = noanonymous
-#smtp_tls_security_level = encrypt
-#smtp_tls_wrappermode = yes
-
 smtpd_tls_auth_only = yes
 smtpd_tls_received_header = yes
 smtpd_tls_cert_file = /etc/ssl/{{ inventory_hostname }}.crt.pem
@@ -663,12 +656,6 @@ smtpd_tls_received_header = yes
 
 # TODO change if some desired TLS implementations don't support 1.3
 smtpd_tls_protocols = >=TLSv1.3
-
-# enable SMTPD SASL AUTH. Dovecot will place an `auth` socket in postfix's
-# runtime directory that we will use for authentication.
-smtpd_sasl_path = private/auth
-smtpd_sasl_type = dovecot
-smtpd_sasl_local_domain = $mydomain
 
 # pre-restrictions for recipients
 # TODO figure this out to only allow sasl authenticated access
@@ -691,8 +678,18 @@ virtual_alias_maps = hash:$config_directory/mlmmj_aliases
 # A map to forward local mail to mlmmj transport
 transport_maps = hash:$config_directory/mlmmj_transport
 
-smtp_generic_maps = hash:$config_directory/generic
+# LMTP to cyrus
+mailbox_transport = lmtp:inet:[imap.{{ org_domain }}]
+# only use /etc/hosts to resolve hostnames
+lmtp_host_lookup = native
 
+# TODO enable smtp sasl for outgoing smtp to external places
 # TODO change to a secret later
 #default_transport = smtp:[smtp.migadu.com]:465
-default_transport = smtp:[smtp.gmail.com]:465
+#default_transport = smtp:[smtp.gmail.com]:465
+#smtp_sasl_auth_enable = yes
+#smtp_sasl_password_maps = hash:$config_directory/sasl_passwd
+#smtp_sasl_tls_security_options = noanonymous
+#smtp_tls_security_level = encrypt
+#smtp_tls_wrappermode = yes
+#smtp_generic_maps = hash:$config_directory/generic

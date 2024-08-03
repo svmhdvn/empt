@@ -148,12 +148,12 @@
     owner: root
     group: wheel
 
-- name: Ensure keytab can only be read by cyrus
+- name: Ensure keytab can only be read by postfix
   ansible.builtin.file:
     path: /etc/krb5.keytab
     mode: '0400'
-    owner: cyrus
-    group: cyrus
+    owner: postfix
+    group: postfix
 
 - name: Add mlmmj maintenance task to cron
   ansible.builtin.cron:

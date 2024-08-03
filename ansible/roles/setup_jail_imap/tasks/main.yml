@@ -18,23 +18,6 @@
 #    group: '{{ setup_jail_mail_mlmmj_user.uid }}'
 #  delegate_to: jailhost
 #
-#- name: Create empty mountpoint for mlmmj spool
-#  ansible.builtin.file:
-#    path: /var/spool/mlmmj
-#    state: directory
-#    mode: '0700'
-#    owner: mlmmj
-#    group: mlmmj
-#
-#- name: Nullfs mount the mlmmj spool storage
-#  ansible.posix.mount:
-#    fstab: /empt/synced/rw/fstab.d/imap.fstab
-#    src: /empt/synced/rw/mlmmj_spool
-#    path: /empt/jails/imap/var/spool/mlmmj
-#    fstype: nullfs
-#    opts: rw
-#    state: mounted
-#  delegate_to: jailhost
 # =====================================================
 
 - name: Install required ports
@@ -47,21 +30,37 @@
     name: ldconfig
     state: started
 
-# - name: Query new cyrus user
-#   ansible.builtin.user:
-#     name: cyrus
-#   register: setup_jail_imap_cyrus_user
-# 
-# - name: Change ownership and permissions on cyrus spool data and mountpoint directories
-#   ansible.builtin.file:
-#     path: '{{ item }}'
-#     state: directory
-#     mode: '0700'
-#     owner: '{{ setup_jail_mail_postfix_user.uid }}'
-#     group: '{{ setup_jail_mail_postfix_user.uid }}'
-#   loop:
-#     - /empt/synced/postfix_spool
-#     - /empt/jails/imap/var/spool/postfix
+- name: Create empty cyrus imap directories
+  ansible.builtin.file:
+    path: '{{ item }}'
+    state: directory
+    mode: '0700'
+    owner: cyrus
+    group: cyrus
+  loop:
+    - /var/db/cyrusimap
+    - /var/run/cyrusimap
+    - /var/spool/cyrusimap
+
+- name: Nullfs mount the cyrusimap DB directory
+  ansible.posix.mount:
+    fstab: /empt/synced/rw/fstab.d/imap.fstab
+    src: /empt/synced/rw/cyrusimap/db
+    path: /empt/jails/imap/var/db/cyrusimap
+    fstype: nullfs
+    opts: rw
+    state: mounted
+  delegate_to: jailhost
+
+- name: Nullfs mount the cyrusimap mail spool directory
+  ansible.posix.mount:
+    fstab: /empt/synced/rw/fstab.d/imap.fstab
+    src: /empt/synced/rw/cyrusimap/spool
+    path: /empt/jails/imap/var/spool/cyrusimap
+    fstype: nullfs
+    opts: rw
+    state: mounted
+  delegate_to: jailhost
 
 # TODO run validation on config files
 - name: Configure cyrus imap
@@ -105,9 +104,9 @@
     path: '{{ item }}'
     state: directory
     recurse: true
-    mode: '0750'
+    mode: '0700'
     owner: cyrus
-    group: mail
+    group: cyrus
   loop:
     - /var/db/cyrusimap
     - /var/run/cyrusimap

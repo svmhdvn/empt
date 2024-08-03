@@ -102,6 +102,8 @@
     - synced/rw/krb5data
     - synced/rw/logs
     - synced/rw/mlmmj_spool
+    - synced/rw/cyrusimap/db
+    - synced/rw/cyrusimap/spool
 
 - name: Prepare directories for jail nullfs-mounted etc
   ansible.builtin.file:

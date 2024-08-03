@@ -6,6 +6,13 @@ configdirectory: /var/db/cyrusimap
 #
 partition-default: /var/spool/cyrusimap
 
+# ephemeral path relocations
+duplicate_db_path: /tmp/cyrusimap/deliver.db
+tls_sessions_db_path: /tmp/cyrusimap/tls_sessions.db
+ptscache_db_path: /tmp/cyrusimap/ptscache.db
+statuscache_db_path: /tmp/cyrusimap/statuscache.db
+mboxname_lockpath: /tmp/cyrusimap/lock
+
 # The mechanism used by the server to verify plaintext passwords.  Possible
 # values include "auxprop" or "saslauthd"
 #

@@ -57,8 +57,11 @@
   delegate_to: jailhost
   loop: '{{ kerberos_service_principals }}'
 
-- name: Start the KDC
+- name: Start the KDC and kpasswdd servers
   ansible.builtin.service:
-    name: kdc
+    name: '{{ item }}'
     enabled: true
     state: started
+  loop:
+    - kdc
+    - kpasswdd

@@ -1,0 +1,3 @@
+kern.ipc.tls.enable=1
+net.inet.tcp.functions_default=rack
+vfs.zfs.min_auto_ashift=12

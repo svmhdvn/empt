@@ -1,0 +1,4 @@
+# TODO monitor the spool to ensure that mails (probably sent by cron) don't keep piling up
+SMARTHOST smtp.home.arpa
+INSECURE
+NULLCLIENT

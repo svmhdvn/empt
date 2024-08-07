@@ -1,0 +1,4 @@
+# logfilename	[owner:group]	mode	count	size	when	flags	[/pid_file]	[sig_num]
+/empt/synced/rw/logs/empt.log	600	0	*	$D0	CT
+/var/log/info.log		600	7	*	$D0	CTY
+#/var/log/debug.log		600	7	*	$D0	CTY

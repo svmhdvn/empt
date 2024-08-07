@@ -1,0 +1,3 @@
+console	none				unknown	off secure
+ttyv0	"/usr/libexec/getty Pc"		xterm	onifexists secure
+ttyv1	"/usr/libexec/getty Pc"		xterm	onifexists secure

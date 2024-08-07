@@ -1,0 +1,10 @@
+::1 localhost
+127.0.0.1 localhost
+
+# TODO use scope identifier instead of scope index
+fe80:2::eeee:1 dns.%%ORG_DOMAIN%% dns.home.arpa dns
+fe80:2::eeee:2 kerberos.%%ORG_DOMAIN%% kerberos.home.arpa kerberos
+fe80:2::eeee:3 smtp.%%ORG_DOMAIN%% smtp.home.arpa smtp
+fe80:2::eeee:4 imap.%%ORG_DOMAIN%% imap.home.arpa imap
+fe80:2::eeee:5 cifs.%%ORG_DOMAIN%% cifs.home.arpa cifs
+fe80:2::eeee:6 irc.%%ORG_DOMAIN%% irc.home.arpa irc

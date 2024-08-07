@@ -1,0 +1,44 @@
+# Ensure the jail stays alive even if no processes are running inside.
+# This is to keep the mounts alive in case nothing is inside during setup
+persist;
+
+# TODO choose a devfs_ruleset
+mount.devfs;
+
+# Needed for ping, traceroute, etc.
+allow.raw_sockets;
+
+# Maintain a clean ENV before starting each jail
+exec.clean;
+
+# Create and delete missing ephemeral nullfs mountpoints
+exec.prepare = "grep '^[ \\t]*[^#].*[ \\t]nullfs[ \\t]' ${mount.fstab} | cut -w -f2 | xargs mkdir -p";
+exec.release = "grep '^[ \\t]*[^#].*[ \\t]nullfs[ \\t]' ${mount.fstab} | cut -w -f2 | xargs rmdir";
+
+# Set timeouts to avoid startup/shutdown scripts running forever
+exec.timeout = 30;
+stop.timeout = 30;
+
+path = "/empt/jails/${name}";
+
+host.hostname = "${name}.%%ORG_DOMAIN%%";
+
+# NOTE See this in case ipv6 breaks again:
+# * https://bugs.freebsd.org/bugzilla/show_bug.cgi?id=271069
+# * https://dan.langille.org/2023/03/10/is-your-jail-not-getting-an-ipv6-address-soon-enough-blame-dad/
+#exec.start = "/bin/sleep 5";
+#exec.start += "/bin/sh /etc/rc";
+exec.start = "/bin/sh /etc/rc";
+exec.stop = "/bin/sh /etc/rc.shutdown";
+
+# Common fstab to share /usr/ports at a minimum
+mount.fstab = "/empt/synced/rw/fstab.d/${name}.fstab";
+
+# TODO use real ULA subnet prefix length instead of '64'
+# TODO programmatically query name of network interface instead of 're0'
+# TODO fix the implied upper limit of 10 jails in the 20<jid>
+# TODO figure out a way to generate link-local loopback ipv6 without the '2' scope identifier.
+# Waiting on https://bugs.freebsd.org/bugzilla/show_bug.cgi?id=206012
+# TODO narrow down fe80:: subnet range
+# TODO currently hardcoding the _random_ IPv6 addresses for convenience
+ip6.addr = "lo0|fe80:2::eeee:${jid}/128";

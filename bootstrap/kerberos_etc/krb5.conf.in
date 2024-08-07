@@ -1,0 +1,19 @@
+[libdefaults]
+	default_realm = %%REALM%%
+	allow_weak_crypto = false
+	allow-anonymous = false
+	dns_lookup_realm = false
+	dns_lookup_kdc = false
+[realms]
+	%%REALM%% = {
+		kdc = kerberos.home.arpa
+		admin_server = kerberos.home.arpa
+	}
+[kdc]
+	addresses = 0.0.0.0 ::
+[logging]
+        default = 0/SYSLOG:CRIT
+	default = 1/SYSLOG:ERR
+	default = 2/SYSLOG:WARNING
+	default = 3/SYSLOG:INFO
+	default = 4-/SYSLOG:DEBUG

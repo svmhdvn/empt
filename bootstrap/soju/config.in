@@ -1,0 +1,8 @@
+db sqlite3 /var/db/soju/main.db
+message-store fs /var/db/soju/logs/
+listen ircs://
+listen unix+admin:///var/run/soju/admin
+listen ws+insecure://irc.home.arpa:8000
+auth pam
+enable-user-on-auth true
+tls /etc/ssl/irc.crt.pem /etc/ssl/irc.key.pem

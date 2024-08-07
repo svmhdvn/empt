@@ -1,0 +1,7 @@
+site http:/// {
+        file_server /usr/local/www/gamja
+}
+
+site http:///socket {
+        reverse_proxy http://irc.home.arpa:8000
+}

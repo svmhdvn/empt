@@ -1,0 +1,37 @@
+[global]
+        log level = 1
+        logging = syslog
+
+        map to guest = never
+
+        server role = standalone
+
+        kerberos encryption types = strong
+        kerberos method = dedicated keytab
+        dedicated keytab file = /etc/krb5.keytab
+
+        realm = %%REALM%%
+        # TODO see if a different workgroup name is necessary
+        workgroup = EMPT
+
+        disable netbios = yes
+	smb ports = 445
+
+        client use kerberos = required
+        ntlm auth = disabled
+
+        vfs objects = zfsacl
+        read only = no
+[homes]
+        create mask = 0000
+        force create mode = 0600
+
+        directory mask = 0000
+        force directory mode = 1700
+[groups]
+        path = /groups
+        create mask = 0000
+        force create mode = 0640
+
+        directory mask = 0000
+        force directory mode = 1770

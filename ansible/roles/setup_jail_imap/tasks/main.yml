@@ -1,25 +1,3 @@
-# TODO example nullfs mount idea
-# =====================================================
-#- name: Add mlmmj user for postfix transport
-#  ansible.builtin.user:
-#    name: mlmmj
-#    comment: Mlmmj Transport
-#    home: /var/spool/mlmmj
-#    shell: /usr/sbin/nologin
-#    create_home: false
-#  register: setup_jail_mail_mlmmj_user
-#
-#- name: Create mlmmj spool directory in jailhost
-#  ansible.builtin.file:
-#    path: /empt/synced/rw/mlmmj_spool
-#    state: directory
-#    mode: '0700'
-#    owner: '{{ setup_jail_mail_mlmmj_user.uid }}'
-#    group: '{{ setup_jail_mail_mlmmj_user.uid }}'
-#  delegate_to: jailhost
-#
-# =====================================================
-
 - name: Install required ports
   ansible.builtin.command: pkg -r /empt/jails/imap install -y cyrus-imapd38
   delegate_to: jailhost

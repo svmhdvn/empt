@@ -1,0 +1,53 @@
+compatibility_level = 4.7
+myorigin = $mydomain
+mydestination = $myhostname, mail.home.arpa, localhost
+mynetworks_style = host
+mynetworks = [fe80::eeee:3]/128
+alias_maps = cdb:/etc/mail/aliases
+alias_database = cdb:/etc/mail/aliases
+recipient_delimiter = +
+
+# EMPT config
+
+# require properly formatted email addresses - prevents a lot of spam
+strict_rfc821_envelopes = yes
+
+#tls_append_default_CA = no
+#tls_preempt_cipherlist = yes
+
+smtpd_tls_auth_only = yes
+smtpd_tls_received_header = yes
+smtpd_tls_cert_file = /etc/ssl/mail.crt.pem
+smtpd_tls_key_file = /etc/ssl/mail.key.pem
+smtpd_tls_received_header = yes
+
+# TODO change if some desired TLS implementations don't support 1.3
+smtpd_tls_protocols = >=TLSv1.3
+
+# don't allow plaintext auth methods on unencrypted connections
+smtpd_sasl_security_options = noanonymous, noplaintext
+# but plaintext auth is fine when using TLS
+smtpd_sasl_tls_security_options = noanonymous
+
+virtual_mailbox_domains = %%ORG_DOMAIN%%
+virtual_transport = lmtp:unix:/var/run/cyrusimap/lmtp.sock
+virtual_mailbox_maps = socketmap:unix:/var/run/cyrusimap/smmap.sock:smmapd
+virtual_destination_concurrency_limit = 300
+virtual_destination_recipient_limit = 300
+
+# A map to forward local mail to mlmmj transport
+transport_maps = hash:$config_directory/mlmmj_transport
+virtual_alias_maps = hash:$config_directory/mlmmj_aliases
+# Only deliver one message to mlmmj at a time
+mlmmj_destination_recipient_limit = 1
+
+# TODO enable smtp sasl for outgoing smtp to external places
+# TODO change to a secret later
+#default_transport = smtp:[smtp.migadu.com]:465
+#default_transport = smtp:[smtp.gmail.com]:465
+#smtp_sasl_auth_enable = yes
+#smtp_sasl_password_maps = hash:$config_directory/sasl_passwd
+#smtp_sasl_tls_security_options = noanonymous
+#smtp_tls_security_level = encrypt
+#smtp_tls_wrappermode = yes
+#smtp_generic_maps = hash:$config_directory/generic

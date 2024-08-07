@@ -1,0 +1,7 @@
+frontend :443 {
+    backend tcp+proxy://irc.home.arpa:80
+    protocol h2 http/1.1
+    tls {
+        load /etc/ssl/irc.crt.pem /etc/ssl/irc.key.pem
+    }
+}

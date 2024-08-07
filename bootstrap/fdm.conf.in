@@ -1,0 +1,16 @@
+set strip-characters ""
+set unmatched-mail drop
+set lock-file "/tmp/fdm-empthelper.lock"
+set ignore-errors
+
+# TODO secure password
+account 'helpdesk' imap server 'mail.%%ORG_DOMAIN%%' user 'empthelper@%%ORG_DOMAIN%%' pass 'empthelper'
+
+match '^from:\s*(\S.*)' in headers action tag 'my_from' value '%1' continue
+match string '%[my_from]' to '\bempthelper@%%ORG_DOMAIN%%\b' action drop
+
+match '^cc:\s*(\S.*)' in headers action tag 'my_cc' value '%1' continue
+match '^subject:\s*(\S.*)' in headers action tag 'my_subject' value '%1' continue
+match '^references:\s*(\S.*)' in headers action tag 'my_references' value '%1' continue
+
+match exec "doas /usr/local/libexec/empt/helpdesk -f '%[my_from]' -c '%[my_cc]' -m '%[message_id]' -s '%[my_subject]' -r '%[my_references]'" returns (0, ) action drop

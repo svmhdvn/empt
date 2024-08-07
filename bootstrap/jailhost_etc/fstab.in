@@ -1,0 +1,5 @@
+/empt/synced/etc/dns /empt/jails/dns/etc nullfs rw,late 0 0
+/empt/synced/etc/kerberos /empt/jails/kerberos/etc nullfs rw,late 0 0
+/empt/synced/etc/mail /empt/jails/mail/etc nullfs rw,late 0 0
+/empt/synced/etc/cifs /empt/jails/cifs/etc nullfs rw,late 0 0
+/empt/synced/etc/irc /empt/jails/irc/etc nullfs rw,late 0 0

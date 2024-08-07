@@ -1,0 +1,4 @@
+!-devd
+*.notice;	/empt/synced/rw/logs/empt.log
+*.info;		/var/log/info.log
+#*.=debug;	/var/log/debug.log

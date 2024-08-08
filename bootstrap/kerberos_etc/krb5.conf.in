@@ -2,8 +2,11 @@
 	default_realm = %%REALM%%
 	allow_weak_crypto = false
 	allow-anonymous = false
-[domain_realm]
-	.%%ORG_DOMAIN%% = %%REALM%%
+[realms]
+	%%REALM%% = {
+		kdc = kerberos.home.arpa
+		admin_server = kerberos.home.arpa
+	}
 [logging]
         default = 0/SYSLOG:CRIT
 	default = 1/SYSLOG:ERR

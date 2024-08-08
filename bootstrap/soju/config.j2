@@ -1,0 +1,8 @@
+db sqlite3 /var/db/soju/main.db
+message-store fs /var/db/soju/logs/
+listen ircs://
+listen unix+admin:///var/run/soju/admin
+listen ws+insecure://[fe80::eeee:{{ jid }}%25lo0]:8000
+auth pam
+enable-user-on-auth true
+tls /etc/ssl/{{ inventory_hostname }}.crt.pem /etc/ssl/{{ inventory_hostname }}.key.pem

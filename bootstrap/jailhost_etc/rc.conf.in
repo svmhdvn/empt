@@ -15,7 +15,6 @@ dumpdev="AUTO"
 syslogd_enable="YES"
 syslogd_flags="-8HNnss -O rfc5424"
 
-syslogd_flags="${syslogd_flags} -l /empt/jails/dns/var/run/log"
 syslogd_flags="${syslogd_flags} -l /empt/jails/kerberos/var/run/log"
 syslogd_flags="${syslogd_flags} -l /empt/jails/smtp/var/run/log"
 syslogd_flags="${syslogd_flags} -l /empt/jails/imap/var/run/log"

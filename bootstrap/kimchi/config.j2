@@ -1,0 +1,7 @@
+site http:/// {
+        file_server /usr/local/www/gamja
+}
+
+site http:///socket {
+        reverse_proxy http://[fe80::eeee:{{ jid }}%25lo0]:8000
+}

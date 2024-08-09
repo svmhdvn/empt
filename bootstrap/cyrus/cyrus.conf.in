@@ -8,7 +8,7 @@ START {
 # UNIX sockets start with a slash and are put into /var/imap/socket
 SERVICES {
   # add or remove based on preferences
-  imap          cmd="imapd" listen="localhost:143" prefork=0
+  imap          cmd="imapd -N" listen="localhost:143" prefork=0
   imaps         cmd="imapd -s" listen="imaps" prefork=0
 #  pop3          cmd="pop3d" listen="pop3" prefork=0
 #  pop3s         cmd="pop3d -s" listen="pop3s" prefork=0

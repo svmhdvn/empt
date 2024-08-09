@@ -19,6 +19,10 @@ JAILS='kerberos smtp imap cifs irc'
 SERVICE_PRINCIPALS='cifs/cifs smtp/smtp imap/imap HTTP/imap irc/irc'
 KEYTABS='cifs smtp imap irc'
 
+_random_password() {
+    LC_CTYPE=C tr -cd '[[:graph:]]' < /dev/random | head -c 16
+}
+
 # $1 = dir
 _truncate_dir() {
     rm -rf "$1"
@@ -238,6 +242,65 @@ account required pam_nologin.so
 EOF
 }
 
+create_mailing_lists() {
+    for m in $(cat mailing_lists.txt); do
+        sed \
+            -e "s,%%ORG_DOMAIN%%,${ORG_DOMAIN},g" \
+            -e "s,%%LISTNAME%%,${m},g" \
+            mlmmj-answers.txt.in > /empt/jails/smtp/tmp/mlmmj-answers.txt
+        jexec -l -U mlmmj smtp /usr/local/bin/mlmmj-make-ml -f /tmp/mlmmj-answers.txt
+        echo 'fe80::eeee:2' > "/empt/jails/smtp/var/spool/mlmmj/${m}/control/relayhost"
+        touch "/empt/jails/smtp/var/spool/mlmmj/${m}/control/tocc"
+        echo "${m}@${ORG_DOMAIN} ${m}@localhost.mlmmj" > /empt/jails/smtp/usr/local/etc/postfix/mlmmj_aliases
+        echo "${m}@localhost.mlmmj mlmmj:${m}" > /empt/jails/smtp/usr/local/etc/postfix/mlmmj_transport
+        jexec -l smtp postmap /usr/local/etc/postfix/mlmmj_aliases
+        jexec -l smtp postmap /usr/local/etc/postfix/mlmmj_transport
+    done
+}
+
+open_helpdesk() {
+    # TODO randomly generate this
+    helpdesk_uid=21891
+    # TODO create empthelper user in jailhost and smtp
+    pw useradd empthelper -u "${helpdesk_uid}" -c 'EMPT helpdesk agent' -d /empt/synced/rw/helpdesk -s /usr/sbin/nologin -h -
+    jexec -l smtp pw useradd empthelper -u "${helpdesk_uid}" -c 'EMPT helpdesk agent' -d /nonexistent -s /usr/sbin/nologin -h -
+    touch \
+        /empt/jails/smtp/var/spool/mlmmj/helpdesk/control/closedlist
+        /empt/jails/smtp/var/spool/mlmmj/helpdesk/control/noget
+        /empt/jails/smtp/var/spool/mlmmj/helpdesk/control/notifymod
+        /empt/jails/smtp/var/spool/mlmmj/helpdesk/control/notmetoo
+    echo "it@${ORG_DOMAIN}" > /empt/jails/smtp/var/spool/mlmmj/helpdesk/control/moderators
+    cat > /empt/jails/smtp/var/spool/mlmmj/helpdesk/control/access <<EOF
+allow ^subject:[ \t]*(list|show)[ \t]*group
+allow ^subject:[ \t]*(show|display|my)[ \t]*(dashboard|summary)
+moderate
+EOF
+    jexec -l -U mlmmj smtp \
+        /usr/local/bin/mlmmj-sub -L /var/spool/mlmmj/helpdesk -a "empthelper@${ORG_DOMAIN}" -fqs
+    _append_if_missing \
+        'permit nopass empthelper cmd /usr/local/libexec/empt/helpdesk' \
+        /usr/local/etc/doas.conf
+    _append_if_missing \
+        '* * * * * -q fdm -q fetch' \
+        /var/cron/tabs/empthelper
+}
+
+start_monitor() {
+    pw useradd emptmonitor -c 'EMPT monitoring agent' -d /nonexistent -s /usr/sbin/nologin -h -
+    _append_if_missing \
+        'permit nopass emptmonitor cmd /usr/local/libexec/empt/monitor' \
+        /usr/local/etc/doas.conf
+    _append_if_missing \
+        '* * * * * -n -q /usr/local/libexec/empt/monitor every_minute' \
+        /var/cron/tabs/emptmonitor
+    _append_if_missing \
+        '0 * * * * -n -q /usr/local/libexec/empt/monitor every_hour' \
+        /var/cron/tabs/emptmonitor
+    _append_if_missing \
+        '0 0 * * * -n -q /usr/local/libexec/empt/monitor every_day' \
+        /var/cron/tabs/emptmonitor
+}
+
 # setup convenience tools
 boot3() {
     pkg install -y \
@@ -313,4 +376,7 @@ boot3() {
     init_jail_imap
     init_jail_cifs
     init_jail_irc
+    create_mailing_lists
+    open_helpdesk
+    start_monitor
 }

@@ -301,6 +301,30 @@ start_monitor() {
         /var/cron/tabs/emptmonitor
 }
 
+hire_humans() {
+    while IFS=$'\t' read -r username fullname uid lists; do
+        cifs_userhome="/empt/jails/cifs/home/${username}"
+        pw -R /empt/jails/cifs useradd "${username}" -u "${uid}" -c "${fullname}" -d "${cifs_userhome}" -s /usr/sbin/nologin -h -
+        for j in smtp imap; do
+            pw -R "/empt/jails/${j}" useradd "${username}" -u "${uid}" -c "${fullname}" -d /nonexistent -s /usr/sbin/nologin -h -
+        done
+
+        # TODO change mountpoint into a nullfs mount if needed
+        install -d -o "${username}" -g "${username}" -m 0700 "${cifs_userhome}"
+        zfs create \
+            -o quota=1G \
+            -o reservation=1G \
+            -o "mountpoint=${cifs_userhome}"
+
+        # TODO secure password
+        jexec -l kerberos kadmin -l add --use-defaults "${username}"
+        for l in ${lists}; do
+            jexec -l -U mlmmj smtp \
+                /usr/local/bin/mlmmj-sub -L "/var/spool/mlmmj/${l}" -a "${username}@${ORG_DOMAIN}" -cfs
+        done
+    done < humans.tsv
+}
+
 # setup convenience tools
 boot3() {
     pkg install -y \
@@ -379,4 +403,5 @@ boot3() {
     create_mailing_lists
     open_helpdesk
     start_monitor
+    hire_humans
 }

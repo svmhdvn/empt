@@ -1,12 +1,14 @@
 #!/bin/sh
 
-set -eu
+set -eux
 
 # Notes:
 # * must be run as root
 
 # TODO:
 # * add validation to every service's config files
+
+TABCHAR='	'
 
 ABI=FreeBSD:15:amd64
 ORG_DOMAIN=empt.siva
@@ -20,13 +22,13 @@ SERVICE_PRINCIPALS='cifs/cifs smtp/smtp imap/imap HTTP/imap irc/irc'
 KEYTABS='cifs smtp imap irc'
 
 _random_password() {
-    LC_CTYPE=C tr -cd '[[:graph:]]' < /dev/random | head -c 16
+    LC_CTYPE=C tr -cd '[:graph:]' < /dev/random | head -c 16
 }
 
-# $1 = dir
-_truncate_dir() {
-    rm -rf "$1"
-    mkdir -p "$1"
+# $@ = dirs
+_truncate_dirs() {
+    rm -rf "$@"
+    mkdir -p "$@"
 }
 
 # $1 = line
@@ -49,30 +51,32 @@ _template() {
 # $2 = dest
 _copytree() {
     (cd "$1" && find . -type d -exec mkdir -p "$2/{}" \;)
-    for f in $(find "$1" -type -f | sed "s,^$1/,,g"); do
-        _template "$1/${f}" "$2/${f}"
+    for f in $(find "$1" -type f | sed "s,^$1/,,g"); do
+        _template "$1/${f}" "$2/${f%%.in}"
     done
 }
 
+factory_reset() {
+    bectl activate default
+}
+
 # create a boot environment for a fresh EMPT setup
-boot1() {
+fresh_boot_environment() {
+    bectl destroy empt_fresh || true
+    zfs destroy -Rf zroot/empt || true
     bectl create empt_fresh
     bectl activate empt_fresh
-
-    reboot
 }
 
 # setup poudriere repos
-boot2() {
+# TODO scp the poudriere tarballs to /tmp
+upgrade_to_poudriere() {
     # cleanup stale repos
-    rm -rf /usr/local/poudriere_repos
-    install -d -m 0700 \
+    _truncate_dirs \
         /usr/local/etc/pkg/repos \
         /usr/local/poudriere_repos/host_pkgbase \
         /usr/local/poudriere_repos/jail_pkgbase \
         /usr/local/poudriere_repos/ports
-
-    # TODO scp the poudriere tarballs to /tmp
 
     tar -C /usr/local/poudriere_repos/host_pkgbase -xf /tmp/wyse-host-pkgbase.tar.zst
     tar -C /usr/local/poudriere_repos/jail_pkgbase -xf /tmp/wyse-jail-pkgbase.tar.zst
@@ -81,21 +85,92 @@ boot2() {
     install -m 0700 empt-repos.conf /usr/local/etc/pkg/repos/empt.conf
 
     ABI="${ABI}" IGNORE_OSVERSION=yes pkg install -y -r host_pkgbase -g 'FreeBSD-*'
-    cp /etc/master.passwd.pkgsave /etc/master.passwd
-    cp /etc/group.pkgsave /etc/group
-    cp /etc/sysctl.conf.pkgsave /etc/sysctl.conf
+    # TODO find a better solution to keep important files
+    for f in /etc/master.passwd /etc/group /etc/sysctl.conf /etc/ssh/sshd_config; do
+        test -f "${f}.pkgsave" && cp "${f}.pkgsave" "${f}"
+    done
     pwd_mkdb -p /etc/master.passwd
     find / -type f -name '*.pkgsave' -delete
 
     pkg upgrade -y -f -r ports
+}
 
-    reboot
+prep_jailhost() {
+    pkg install -y \
+        tmux htop tree curl \
+        cpu-microcode fdm empt-scripts
+    cp tmux.conf ~/.tmux.conf
+
+    sysrc -f /boot/loader.conf \
+        cpu_microcode_load=YES \
+        cpu_microcode_name=/boot/firmware/amd-ucode.bin
+
+    _copytree jailhost_etc /etc
+
+    mkdir -p /tmp/base_jail
+    pkg -r /tmp/base_jail install -y -r jail_pkgbase -g 'FreeBSD-*'
+    _copytree common_etc /tmp/base_jail/etc
+
+    zfs create -o mountpoint=/empt zroot/empt
+    zfs create zroot/empt/synced
+    zfs create \
+        -o exec=off \
+        -o setuid=off \
+        -o compression=zstd \
+        zroot/empt/synced/rw
+
+    _truncate_dirs \
+        /empt/jails \
+        /empt/synced/etc \
+        /empt/synced/rw/fstab.d \
+        /empt/synced/rw/groups \
+        /empt/synced/rw/humans \
+        /empt/synced/rw/logs
+
+    _copytree jail.conf.d /empt/synced/rw/jail.conf.d
+
+    for j in ${JAILS}; do
+        cp -a /tmp/base_jail/etc "/empt/synced/etc/${j}"
+    done
+    _truncate_dirs /tmp/base_jail/etc
+
+    for j in ${JAILS}; do
+        cp -a /tmp/base_jail "/empt/jails/${j}"
+        touch "/empt/synced/rw/fstab.d/${j}.fstab"
+    done
+    chflags -R 0 /tmp/base_jail
+    rm -rf /tmp/base_jail
+
+    mount -al
+
+    ca_key_path="/empt/synced/rw/${ORG_DOMAIN}_PRIVATE_CA.key.pem"
+    ca_crt_path="/usr/local/etc/ssl/certs/${ORG_DOMAIN}_PRIVATE_CA.crt.pem"
+    _truncate_dirs /usr/local/etc/ssl/certs
+    openssl req -x509 -newkey ec -pkeyopt ec_paramgen_curve:prime256v1 \
+        -days 3650 -nodes \
+        -keyout "${ca_key_path}" \
+        -out "${ca_crt_path}" \
+        -subj "/CN=${ORG_DOMAIN}" \
+        -addext "subjectAltName=DNS:${ORG_DOMAIN}"
+    certctl rehash
+
+    for j in ${JAILS}; do
+        openssl req -x509 -newkey ec -pkeyopt ec_paramgen_curve:prime256v1 \
+            -CAkey "${ca_key_path}" -CA "${ca_crt_path}" \
+            -days 90 -nodes \
+            -keyout "/empt/jails/${j}/etc/ssl/${j}.key.pem" \
+            -out "/empt/jails/${j}/etc/ssl/${j}.crt.pem" \
+            -subj "/CN=${j}.${ORG_DOMAIN}" \
+            -addext "subjectAltName=DNS:${j}.${ORG_DOMAIN}"
+    done
+    service jail onerestart
 }
 
 init_jail_kerberos() {
     _copytree kerberos_etc /empt/jails/kerberos/etc
-    _truncate_dir /empt/jails/kerberos/var/heimdal
-    mkdir -p /empt/synced/rw/krb5data
+    _truncate_dirs \
+        /empt/jails/kerberos/var/heimdal \
+        /empt/synced/rw/krb5data
     _append_if_missing \
         '/empt/synced/rw/krb5data /empt/jails/kerberos/var/heimdal nullfs rw,noatime 0 0' \
         /empt/synced/rw/fstab.d/kerberos.fstab
@@ -211,7 +286,7 @@ init_jail_cifs() {
     mkdir -p /usr/local/www
     cp -R gamja /usr/local/www/gamja
     sysrc -j irc \
-        kimchi_user=root kimchi_group=wheel
+        kimchi_user=root kimchi_group=wheel \
         tlstunnel_user=root tlstunnel_group=wheel
     for s in ngircd soju kimchi tlstunnel; do
         service -j irc "${s}" enable
@@ -243,7 +318,7 @@ EOF
 }
 
 create_mailing_lists() {
-    for m in $(cat mailing_lists.txt); do
+    while read -r m; do
         sed \
             -e "s,%%ORG_DOMAIN%%,${ORG_DOMAIN},g" \
             -e "s,%%LISTNAME%%,${m},g" \
@@ -255,7 +330,7 @@ create_mailing_lists() {
         echo "${m}@localhost.mlmmj mlmmj:${m}" > /empt/jails/smtp/usr/local/etc/postfix/mlmmj_transport
         jexec -l smtp postmap /usr/local/etc/postfix/mlmmj_aliases
         jexec -l smtp postmap /usr/local/etc/postfix/mlmmj_transport
-    done
+    done < mailing_lists.txt
 }
 
 open_helpdesk() {
@@ -302,7 +377,7 @@ start_monitor() {
 }
 
 hire_humans() {
-    while IFS=$'\t' read -r username fullname uid lists; do
+    while IFS="${TABCHAR}" read -r username fullname uid lists; do
         cifs_userhome="/empt/jails/cifs/home/${username}"
         pw -R /empt/jails/cifs useradd "${username}" -u "${uid}" -c "${fullname}" -d "${cifs_userhome}" -s /usr/sbin/nologin -h -
         for j in smtp imap; do
@@ -325,83 +400,30 @@ hire_humans() {
     done < humans.tsv
 }
 
-# setup convenience tools
-boot3() {
-    pkg install -y \
-        tmux htop tree curl \
-        cpu-microcode fdm empt-scripts
-    install -o tester -g tester tmux.conf /home/tester/.tmux.conf
-
-    sysrc -f /boot/loader.conf \
-        cpu_microcode_load=YES \
-        cpu_microcode_name=/boot/firmware/amd-ucode.bin
-
-    _copytree jailhost_etc /etc
-
-    mkdir -p /tmp/base_jail
-    pkg -r /tmp/base_jail install -y -r jail_pkgbase -g 'FreeBSD-*'
-    _copytree common_etc /tmp/base_jail/etc
-
-    zfs create -o mountpoint=/empt zroot/empt
-    zfs create zroot/empt/synced
-    zfs create \
-        -o exec=off \
-        -o setuid=off \
-        -o compression=zstd \
-        zroot/empt/synced/rw
-
-    mkdir -p \
-        /empt/jails \
-        /empt/synced/etc \
-        /empt/synced/rw/fstab.d \
-        /empt/synced/rw/groups \
-        /empt/synced/rw/humans \
-        /empt/synced/rw/logs \
-
-    _copytree jail.conf.d /empt/synced/rw/jail.conf.d
-
-    for j in ${JAILS}; do
-        cp -a /tmp/base_jail/etc "/empt/synced/etc/${j}"
-        #touch "/empt/synced/rw/fstab.d/${j}.fstab"
-    done
-    _truncate_dir /tmp/base_jail/etc
-
-    for j in ${JAILS}; do
-        cp -a /tmp/base_jail "/empt/jails/${j}"
-    done
-    chflags -R 0 /tmp/base_jail
-    rm -rf /tmp/base_jail
-
-    mount -al
-
-    ca_key_path="/empt/synced/rw/${ORG_DOMAIN}_PRIVATE_CA.key.pem"
-    ca_crt_path="/usr/local/etc/ssl/certs/${ORG_DOMAIN}_PRIVATE_CA.crt.pem"
-    mkdir -p /usr/local/etc/ssl/certs
-    openssl req -x509 -newkey ec -pkeyopt ec_paramgen_curve:prime256v1 \
-        -days 3650 -nodes \
-        -keyout "${ca_key_path}" \
-        -out "${ca_crt_path}" \
-        -subj "/CN=${ORG_DOMAIN}" \
-        -addext "subjectAltName=DNS:${ORG_DOMAIN}"
-    certctl rehash
-
-    for j in ${JAILS}; do
-        openssl req -x509 -newkey ec -pkeyopt ec_paramgen_curve:prime256v1 \
-            -CAkey "${ca_key_path}" -CA "${ca_crt_path}" \
-            -days 90 -nodes \
-            -keyout "/empt/jails/${j}/etc/ssl/${j}.key.pem" \
-            -out "/empt/jails/${j}/etc/ssl/${j}.crt.pem" \
-            -subj "/CN=${j}.${ORG_DOMAIN}" \
-            -addext "subjectAltName=DNS:${j}.${ORG_DOMAIN}"
-    done
-
-    init_jail_kerberos
-    init_jail_smtp
-    init_jail_imap
-    init_jail_cifs
-    init_jail_irc
-    create_mailing_lists
-    open_helpdesk
-    start_monitor
-    hire_humans
-}
+case "$1" in
+    0)
+        factory_reset
+        ;;
+    1)
+        fresh_boot_environment
+        ;;
+    2)
+        upgrade_to_poudriere
+        ;;
+    3)
+        prep_jailhost
+        init_jail_kerberos
+        init_jail_smtp
+        init_jail_imap
+        init_jail_cifs
+        init_jail_irc
+        create_mailing_lists
+        open_helpdesk
+        start_monitor
+        hire_humans
+        ;;
+    *)
+        echo "ERROR: Unrecognized boot sequence number '$1'" >&2
+        exit 64 # EX_USAGE
+esac
+reboot

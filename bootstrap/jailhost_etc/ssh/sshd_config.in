@@ -8,4 +8,4 @@ Subsystem sftp /usr/libexec/sftp-server
 PasswordAuthentication yes
 
 # TODO disable this eventually, just figuring out zrep mutual trust for now
-PermitRootLogin prohibit-password
+PermitRootLogin yes

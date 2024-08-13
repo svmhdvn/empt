@@ -1,7 +1,0 @@
-frontend :443 {
-    backend tcp+proxy://[fe80::eeee:{{ jid }}%25lo0]:80
-    protocol h2 http/1.1
-    tls {
-        load /etc/ssl/{{ inventory_hostname }}.crt.pem /etc/ssl/{{ inventory_hostname }}.key.pem
-    }
-}

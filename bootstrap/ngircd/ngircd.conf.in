@@ -25,13 +25,13 @@
 
 	# Server name in the IRC network, must contain at least one dot
 	# (".") and be unique in the IRC network. Required!
-	Name = {{ inventory_hostname }}.{{ org_domain }}
+	Name = irc.%%ORG_DOMAIN%%
 
 	# Information about the server and the administrator, used by the
 	# ADMIN command. Not required by server but by RFC!
 	AdminInfo1 = AdminInfo1
 	AdminInfo2 = AdminInfo2
-	AdminEMail = it@empt.siva
+	AdminEMail = it@%%ORG_DOMAIN%%
 
 	# Text file which contains the ngIRCd help text. This file is required
 	# to display help texts when using the "HELP <cmd>" command.
@@ -39,27 +39,28 @@
 
 	# Info text of the server. This will be shown by WHOIS and
 	# LINKS requests for example.
-	Info = {{ org_domain }} IRC chat
+	Info = %%ORG_DOMAIN%% IRC chat
 
 	# Comma separated list of IP addresses on which the server should
 	# listen. Default values are:
 	# "0.0.0.0" or (if compiled with IPv6 support) "::,0.0.0.0"
 	# so the server listens on all IP addresses of the system by default.
 	# TODO turn this into a Unix Domain Socket when ready
-	Listen = fe80::eeee:{{ jid }}%lo0
+	# TODO don't hardcode the '5' here
+	Listen = fe80::eeee:5%lo0
 
 	# Text file with the "message of the day" (MOTD). This message will
 	# be shown to all users connecting to the server:
 	;MotdFile = /usr/local/etc/ngircd.motd
 
 	# A simple Phrase (<127 chars) if you don't want to use a motd file.
-	MotdPhrase = "Hello, {{ org_domain }} employees!"
+	MotdPhrase = "Hello, %%ORG_DOMAIN%% employees!"
 
 	# The name of the IRC network to which this server belongs. This name
 	# is optional, should only contain ASCII characters, and can't contain
 	# spaces. It is only used to inform clients. The default is empty,
 	# so no network name is announced to clients.
-	Network = {{ inventory_hostname }}.{{ org_domain }}
+	Network = irc.%%ORG_DOMAIN%%
 
 	# Global password for all users needed to connect to the server.
 	# (Default: not set)
@@ -160,7 +161,7 @@
 
 	# Set this hostname for every client instead of the real one.
 	# Use %x to add the hashed value of the original hostname.
-	CloakHost = {{ org_domain }}
+	CloakHost = %%ORG_DOMAIN%%
 
 	# Use this hostname for hostname cloaking on clients that have the
 	# user mode "+x" set, instead of the name of the server.

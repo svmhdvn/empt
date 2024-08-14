@@ -9,4 +9,4 @@ copy_bootstrap:
 
 copy_poudriere:
 	ssh $(USER)@jailhost-primary.home.arpa 'rm -rf /tmp/wyse-*'
-	scp -r ../ansible/roles/update_poudriere/files/wyse-* $(USER)@jailhost-primary.home.arpa:/tmp
+	scp wyse-*.tar.zst $(USER)@jailhost-primary.home.arpa:/tmp

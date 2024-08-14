@@ -62,10 +62,16 @@ _template() {
 # $1 = src
 # $2 = dest
 _copytree() {
-    (cd "$1" && find . -type d -exec mkdir -p "$2/{}" \;)
-    for f in $(find "$1" -type f | sed "s,^$1/,,g"); do
-        _template "$1/${f}" "$2/${f%%.in}"
-    done
+    (
+        cd "$1"
+        tree_files="$(find . -type f)"
+        while IFS= read -r f; do
+            mkdir -p "$2/${f%/*}"
+            _template "${f}" "$2/${f%%.in}"
+        done <<EOF
+${tree_files}
+EOF
+    )
 }
 
 factory_reset() {
@@ -235,6 +241,7 @@ init_jail_smtp() {
     jexec -l smtp postmap /usr/local/etc/postfix/mlmmj_aliases
     jexec -l smtp postmap /usr/local/etc/postfix/mlmmj_transport
     jexec -l smtp postalias cdb:/etc/mail/aliases
+    jexec -l smtp postfix set-permissions
 
     cat > /empt/jails/smtp/etc/pam.d/smtp <<EOF
 auth required pam_krb5.so
@@ -269,6 +276,10 @@ init_jail_imap() {
 
     pkg -r /empt/jails/imap install -y cyrus-imapd38
     service -j imap ldconfig start
+
+    _copytree cyrus /empt/jails/imap/usr/local/etc
+    jexec -l imap /usr/local/cyrus/sbin/mkimap
+
     for s in imap HTTP; do
         cat > "/empt/jails/imap/etc/pam.d/${s}" <<EOF
 auth required pam_krb5.so
@@ -344,7 +355,7 @@ create_mailing_lists() {
             mlmmj-answers.txt.in > /empt/jails/smtp/tmp/mlmmj-answers.txt
 
         jexec -l -U mlmmj smtp /usr/local/bin/mlmmj-make-ml -f /tmp/mlmmj-answers.txt
-        echo irc.home.arpa > "/empt/jails/smtp/var/spool/mlmmj/${m}/control/relayhost"
+        echo smtp.home.arpa > "/empt/jails/smtp/var/spool/mlmmj/${m}/control/relayhost"
         touch "/empt/jails/smtp/var/spool/mlmmj/${m}/control/tocc"
         echo "${m}@${ORG_DOMAIN} ${m}@localhost.mlmmj" > /empt/jails/smtp/usr/local/etc/postfix/mlmmj_aliases
         echo "${m}@localhost.mlmmj mlmmj:${m}" > /empt/jails/smtp/usr/local/etc/postfix/mlmmj_transport

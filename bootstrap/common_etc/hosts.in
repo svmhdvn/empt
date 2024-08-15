@@ -1,5 +1,6 @@
 # TODO use scope identifier instead of scope index
-fe80:2::eeee:1 kerberos.%%ORG_DOMAIN%% kerberos.home.arpa kerberos
+# TODO remove kerberos trailing dot workaround after moving to MIT krb5
+fe80:2::eeee:1 kerberos.%%ORG_DOMAIN%% kerberos.home.arpa kerberos.home.arpa. kerberos
 fe80:2::eeee:2 smtp.%%ORG_DOMAIN%% smtp.home.arpa smtp
 fe80:2::eeee:3 imap.%%ORG_DOMAIN%% imap.home.arpa imap
 fe80:2::eeee:4 cifs.%%ORG_DOMAIN%% cifs.home.arpa cifs

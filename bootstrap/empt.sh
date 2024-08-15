@@ -50,6 +50,7 @@ _append_if_missing() {
 # $1 = src
 # $2 = dest
 _template() {
+    mkdir -p "${2%/*}"
     sed \
         -e "s,%%ORG_DOMAIN%%,${ORG_DOMAIN},g" \
         -e "s,%%REALM%%,${REALM},g" \
@@ -66,7 +67,6 @@ _copytree() {
         cd "$1"
         tree_files="$(find . -type f)"
         while IFS= read -r f; do
-            mkdir -p "$2/${f%/*}"
             _template "${f}" "$2/${f%%.in}"
         done <<EOF
 ${tree_files}
@@ -87,7 +87,6 @@ fresh_boot_environment() {
 }
 
 # setup poudriere repos
-# TODO scp the poudriere tarballs to /tmp
 upgrade_to_poudriere() {
     # cleanup stale repos
     _truncate_dirs \
@@ -96,9 +95,9 @@ upgrade_to_poudriere() {
         /usr/local/poudriere_repos/jail_pkgbase \
         /usr/local/poudriere_repos/ports
 
-    tar -C /usr/local/poudriere_repos/host_pkgbase -xf /tmp/wyse-host-pkgbase.tar.zst
-    tar -C /usr/local/poudriere_repos/jail_pkgbase -xf /tmp/wyse-jail-pkgbase.tar.zst
-    tar -C /usr/local/poudriere_repos/ports -xf /tmp/wyse-ports.tar.zst
+    tar -C /usr/local/poudriere_repos/host_pkgbase -xf wyse-host-pkgbase.tar.zst
+    tar -C /usr/local/poudriere_repos/jail_pkgbase -xf wyse-jail-pkgbase.tar.zst
+    tar -C /usr/local/poudriere_repos/ports -xf wyse-ports.tar.zst
 
     install -m 0700 empt-repos.conf /usr/local/etc/pkg/repos/empt.conf
 
@@ -328,8 +327,8 @@ init_jail_irc() {
 
     # TODO change this to 'soju' when it supports specifying service name
     cat > /empt/jails/irc/etc/pam.d/login <<EOF
-auth required pam_krb5.so
-account required pam_nologin.so
+auth required pam_krb5.so no_user_check
+account sufficient pam_permit.so
 EOF
 
     jexec -l irc chown soju:soju \
@@ -384,6 +383,8 @@ EOF
     _append_if_missing \
         'permit nopass empthelper cmd /usr/local/libexec/empt/helpdesk' \
         /usr/local/etc/doas.conf
+
+    _template fdm.conf.in /empt/synced/rw/helpdesk/.fdm.conf
     _append_if_missing \
         '* * * * * -q fdm -q fetch' \
         /var/cron/tabs/empthelper

@@ -320,10 +320,13 @@ init_jail_irc() {
         /empt/synced/rw/fstab.d/irc.fstab
     mount -aF /empt/synced/rw/fstab.d/irc.fstab
 
-    _copytree ngircd /empt/jails/irc/usr/local/etc/ngircd
     _copytree soju /empt/jails/irc/usr/local/etc/soju
     _copytree kimchi /empt/jails/irc/usr/local/etc/kimchi
     _copytree tlstunnel /empt/jails/irc/usr/local/etc/tlstunnel
+
+    # TODO remove the chmod after upstream patch is merged
+    _copytree ngircd /empt/jails/irc/usr/local/etc/ngircd
+    chmod 0644 /empt/jails/irc/usr/local/etc/ngircd/ngircd.conf
 
     # TODO change this to 'soju' when it supports specifying service name
     cat > /empt/jails/irc/etc/pam.d/login <<EOF

@@ -166,7 +166,8 @@ prep_jailhost() {
         -keyout "${ca_key_path}" \
         -out "${ca_crt_path}" \
         -subj "/CN=${ORG_DOMAIN}" \
-        -addext "subjectAltName=DNS:${ORG_DOMAIN}"
+        -addext "subjectAltName=DNS:${ORG_DOMAIN}" \
+        -addext "keyUsage=keyCertSign,cRLSign"
     certctl rehash
 
     for j in ${JAILS}; do
@@ -176,6 +177,7 @@ prep_jailhost() {
             -keyout "/empt/jails/${j}/etc/ssl/${j}.key.pem" \
             -out "/empt/jails/${j}/etc/ssl/${j}.crt.pem" \
             -subj "/CN=${j}.${ORG_DOMAIN}" \
+            -addext "basicConstraints=critical,CA:false" \
             -addext "subjectAltName=DNS:${j}.${ORG_DOMAIN}"
     done
     service jail onerestart
@@ -382,6 +384,12 @@ open_helpdesk() {
 
     # TODO secure
     jexec -l kerberos kadmin -l add --use-defaults --password=empthelper empthelper
+    echo cm INBOX | jexec -l mail cyradm \
+        --server mail.home.arpa \
+        --port 143 \
+        --user "empthelper@${ORG_DOMAIN}" \
+        --auth PLAIN \
+        --password empthelper
 
     touch \
         /empt/jails/mail/var/spool/mlmmj/helpdesk/control/closedlist \

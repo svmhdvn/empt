@@ -23,9 +23,9 @@ ULA_PREFIX=fd1a:7e1:6fdd
 # TODO generate from ORG_DOMAIN
 REALM=EMPT.SIVA
 
-JAILS='kerberos smtp imap cifs irc'
-SERVICE_PRINCIPALS='cifs/cifs smtp/smtp imap/imap HTTP/imap irc/irc'
-KEYTABS='cifs smtp imap irc'
+JAILS='dns kerberos mail cifs irc'
+SERVICE_PRINCIPALS='cifs/cifs smtp/mail imap/mail HTTP/mail irc/irc'
+KEYTABS='cifs mail irc'
 
 HELPDESK_UID=1001
 MLMMJ_UID=1002
@@ -107,9 +107,9 @@ upgrade_to_poudriere() {
         test -f "${f}.pkgsave" && cp "${f}.pkgsave" "${f}"
     done
     pwd_mkdb -p /etc/master.passwd
-    find / -type f -name '*.pkgsave' -delete
+    find / -type f -name '*.pkgsave' -delete || true
 
-    pkg upgrade -y -f -r ports
+    pkg upgrade -y -r ports
 }
 
 prep_jailhost() {
@@ -143,8 +143,6 @@ prep_jailhost() {
         /empt/synced/rw/groups \
         /empt/synced/rw/humans \
         /empt/synced/rw/logs
-
-    _copytree jail.conf.d /empt/synced/rw/jail.conf.d
 
     for j in ${JAILS}; do
         cp -a /tmp/base_jail/etc "/empt/synced/etc/${j}"
@@ -183,6 +181,15 @@ prep_jailhost() {
     service jail onerestart
 }
 
+init_jail_dns() {
+    pkg -r /empt/jails/dns install -y unbound
+    service -j dns ldconfig start
+
+    _copytree unbound /empt/jails/dns/usr/local/etc/unbound
+    service -j dns unbound enable
+    service -j dns unbound start
+}
+
 init_jail_kerberos() {
     _copytree kerberos_etc /empt/jails/kerberos/etc
     _truncate_dirs \
@@ -208,93 +215,92 @@ init_jail_kerberos() {
     done
     for s in kdc kpasswdd; do
         service -j kerberos "${s}" enable
+        service -j kerberos "${s}" start
     done
 }
 
-init_jail_smtp() {
+init_jail_mail() {
+#===============
+# SMTP STUFF
+#===============
     mkdir -p \
         /empt/synced/postfix_spool \
-        /empt/jails/smtp/var/spool/postfix
+        /empt/jails/mail/var/spool/postfix
     _append_if_missing \
-        '/empt/synced/postfix_spool /empt/jails/smtp/var/spool/postfix nullfs rw,noatime 0 0' \
-        /empt/synced/rw/fstab.d/smtp.fstab
+        '/empt/synced/postfix_spool /empt/jails/mail/var/spool/postfix nullfs rw,noatime 0 0' \
+        /empt/synced/rw/fstab.d/mail.fstab
 
-    pw -R /empt/jails/smtp \
+    pw -R /empt/jails/mail \
         useradd mlmmj -u "${MLMMJ_UID}" -c 'mlmmj manager' -d /var/spool/mlmmj -s /usr/sbin/nologin -h -
     install -d -o "${MLMMJ_UID}" -g "${MLMMJ_UID}" \
         /empt/synced/rw/mlmmj_spool \
-        /empt/jails/smtp/var/spool/mlmmj
+        /empt/jails/mail/var/spool/mlmmj
     _append_if_missing \
-        '/empt/synced/rw/mlmmj_spool /empt/jails/smtp/var/spool/mlmmj nullfs rw,noatime 0 0' \
-        /empt/synced/rw/fstab.d/smtp.fstab
+        '/empt/synced/rw/mlmmj_spool /empt/jails/mail/var/spool/mlmmj nullfs rw,noatime 0 0' \
+        /empt/synced/rw/fstab.d/mail.fstab
 
-    mount -aF /empt/synced/rw/fstab.d/smtp.fstab
+    mount -aF /empt/synced/rw/fstab.d/mail.fstab
 
-    pkg -r /empt/jails/smtp install -y postfix mlmmj
-    service -j smtp ldconfig start
+    pkg -r /empt/jails/mail install -y postfix mlmmj
+    service -j mail ldconfig start
 
-    _copytree postfix /empt/jails/smtp/usr/local/etc/postfix
+    _copytree postfix /empt/jails/mail/usr/local/etc/postfix
     touch \
-        /empt/jails/smtp/usr/local/etc/postfix/mlmmj_aliases \
-        /empt/jails/smtp/usr/local/etc/postfix/mlmmj_transport
-    jexec -l smtp postmap /usr/local/etc/postfix/mlmmj_aliases
-    jexec -l smtp postmap /usr/local/etc/postfix/mlmmj_transport
-    jexec -l smtp postalias cdb:/etc/mail/aliases
-    jexec -l smtp postfix set-permissions
+        /empt/jails/mail/usr/local/etc/postfix/mlmmj_aliases \
+        /empt/jails/mail/usr/local/etc/postfix/mlmmj_transport
+    jexec -l mail postmap /usr/local/etc/postfix/mlmmj_aliases
+    jexec -l mail postmap /usr/local/etc/postfix/mlmmj_transport
+    jexec -l mail postalias cdb:/etc/mail/aliases
+    jexec -l mail postfix set-permissions
 
-    cat > /empt/jails/smtp/etc/pam.d/smtp <<EOF
-auth required pam_krb5.so
-account required pam_nologin.so
-EOF
-
-    mkdir -p /empt/jails/smtp/usr/local/etc/sasl2
+    mkdir -p /empt/jails/mail/usr/local/etc/sasl2
     echo 'pwcheck_method: auxprop saslauthd' \
-        > /empt/jails/smtp/usr/local/etc/sasl2/smtpd.conf
-    jexec -l smtp chown postfix:postfix /etc/krb5.keytab
+        > /empt/jails/mail/usr/local/etc/sasl2/smtpd.conf
+    jexec -l mail chown postfix:postfix /etc/krb5.keytab
     echo '* * * * * -n -q /usr/local/bin/mlmmj-maintd -F -d /var/spool/mlmmj' \
-        > /empt/jails/smtp/var/cron/tabs/mlmmj
-    for s in postfix saslauthd cron; do
-        service -j smtp "${s}" enable
-    done
-}
+        > /empt/jails/mail/var/cron/tabs/mlmmj
 
-init_jail_imap() {
+#===============
+# IMAP STUFF
+#===============
     mkdir -p \
         /empt/synced/rw/cyrusimap/db \
         /empt/synced/rw/cyrusimap/spool \
-        /empt/jails/imap/var/db/cyrusimap \
-        /empt/jails/imap/var/spool/cyrusimap \
-        /empt/jails/imap/var/run/cyrusimap
+        /empt/jails/mail/var/db/cyrusimap \
+        /empt/jails/mail/var/spool/cyrusimap \
+        /empt/jails/mail/var/run/cyrusimap
     _append_if_missing \
-        '/empt/synced/rw/cyrusimap/db /empt/jails/imap/var/db/cyrusimap nullfs rw,noatime 0 0' \
-        /empt/synced/rw/fstab.d/imap.fstab
+        '/empt/synced/rw/cyrusimap/db /empt/jails/mail/var/db/cyrusimap nullfs rw,noatime 0 0' \
+        /empt/synced/rw/fstab.d/mail.fstab
     _append_if_missing \
-        '/empt/synced/rw/cyrusimap/spool /empt/jails/imap/var/spool/cyrusimap nullfs rw,noatime 0 0' \
-        /empt/synced/rw/fstab.d/imap.fstab
-    mount -aF /empt/synced/rw/fstab.d/imap.fstab
+        '/empt/synced/rw/cyrusimap/spool /empt/jails/mail/var/spool/cyrusimap nullfs rw,noatime 0 0' \
+        /empt/synced/rw/fstab.d/mail.fstab
+    mount -aF /empt/synced/rw/fstab.d/mail.fstab
 
-    pkg -r /empt/jails/imap install -y cyrus-imapd38
-    service -j imap ldconfig start
+    pkg -r /empt/jails/mail install -y cyrus-imapd310
+    service -j mail ldconfig start
 
-    _copytree cyrus /empt/jails/imap/usr/local/etc
-    jexec -l imap /usr/local/cyrus/sbin/mkimap
+    _copytree cyrus /empt/jails/mail/usr/local/etc
+    jexec -l mail /usr/local/cyrus/sbin/mkimap
 
-    for s in imap HTTP; do
-        cat > "/empt/jails/imap/etc/pam.d/${s}" <<EOF
-auth required pam_krb5.so
-account required pam_nologin.so
+    for s in smtp imap HTTP; do
+        cat > "/empt/jails/mail/etc/pam.d/${s}" <<EOF
+auth required pam_krb5.so no_user_check
+account sufficient pam_permit.so
 EOF
     done
 
-    jexec -l imap chown -R cyrus:mail \
+    jexec -l mail chown -R cyrus:mail \
         /etc/krb5.keytab \
-        /etc/ssl/imap.crt.pem \
-        /etc/ssl/imap.key.pem \
+        /etc/ssl/mail.crt.pem \
+        /etc/ssl/mail.key.pem \
         /var/db/cyrusimap \
         /var/spool/cyrusimap \
         /var/run/cyrusimap
-    for s in imapd saslauthd; do
-        service -j imap "${s}" enable
+
+    for s in saslauthd imapd postfix cron; do
+        service -j mail "${s}" enable
+        service -j mail "${s}" start
     done
 }
 
@@ -306,6 +312,7 @@ init_jail_cifs() {
     _template smb4.conf.in /empt/jails/cifs/usr/local/etc/smb4.conf
     sysrc -j cifs nmbd_enable=NO
     service -j cifs samba_server enable
+    service -j cifs samba_server start
 }
 
 init_jail_irc() {
@@ -344,8 +351,10 @@ EOF
     sysrc -j irc \
         kimchi_user=root kimchi_group=wheel \
         tlstunnel_user=root tlstunnel_group=wheel
+
     for s in ngircd soju kimchi tlstunnel; do
         service -j irc "${s}" enable
+        service -j irc "${s}" start
     done
 }
 
@@ -354,40 +363,46 @@ create_mailing_lists() {
         sed \
             -e "s,%%ORG_DOMAIN%%,${ORG_DOMAIN},g" \
             -e "s,%%LISTNAME%%,${m},g" \
-            mlmmj-answers.txt.in > /empt/jails/smtp/tmp/mlmmj-answers.txt
+            mlmmj-answers.txt.in > /empt/jails/mail/tmp/mlmmj-answers.txt
 
-        jexec -l -U mlmmj smtp /usr/local/bin/mlmmj-make-ml -f /tmp/mlmmj-answers.txt
-        echo smtp.home.arpa > "/empt/jails/smtp/var/spool/mlmmj/${m}/control/relayhost"
-        touch "/empt/jails/smtp/var/spool/mlmmj/${m}/control/tocc"
-        echo "${m}@${ORG_DOMAIN} ${m}@localhost.mlmmj" > /empt/jails/smtp/usr/local/etc/postfix/mlmmj_aliases
-        echo "${m}@localhost.mlmmj mlmmj:${m}" > /empt/jails/smtp/usr/local/etc/postfix/mlmmj_transport
-        jexec -l smtp postmap /usr/local/etc/postfix/mlmmj_aliases
-        jexec -l smtp postmap /usr/local/etc/postfix/mlmmj_transport
+        jexec -l -U mlmmj mail /usr/local/bin/mlmmj-make-ml -f /tmp/mlmmj-answers.txt
+        echo mail.home.arpa > "/empt/jails/mail/var/spool/mlmmj/${m}/control/relayhost"
+        touch "/empt/jails/mail/var/spool/mlmmj/${m}/control/tocc"
+        echo "${m}@${ORG_DOMAIN} ${m}@localhost.mlmmj" >> /empt/jails/mail/usr/local/etc/postfix/mlmmj_aliases
+        echo "${m}@localhost.mlmmj mlmmj:${m}" >> /empt/jails/mail/usr/local/etc/postfix/mlmmj_transport
     done < mailing_lists.txt
+
+    jexec -l mail postmap /usr/local/etc/postfix/mlmmj_aliases
+    jexec -l mail postmap /usr/local/etc/postfix/mlmmj_transport
 }
 
 open_helpdesk() {
     pw useradd empthelper -u "${HELPDESK_UID}" -c 'EMPT helpdesk agent' -d /empt/synced/rw/helpdesk -s /usr/sbin/nologin -h -
-    pw -R /empt/jails/smtp useradd empthelper -u "${HELPDESK_UID}" -c 'EMPT helpdesk agent' -d /nonexistent -s /usr/sbin/nologin -h -
+    pw -R /empt/jails/mail useradd empthelper -u "${HELPDESK_UID}" -c 'EMPT helpdesk agent' -d /nonexistent -s /usr/sbin/nologin -h -
+
+    # TODO secure
+    jexec -l kerberos kadmin -l add --use-defaults --password=empthelper empthelper
 
     touch \
-        /empt/jails/smtp/var/spool/mlmmj/helpdesk/control/closedlist \
-        /empt/jails/smtp/var/spool/mlmmj/helpdesk/control/noget \
-        /empt/jails/smtp/var/spool/mlmmj/helpdesk/control/notifymod \
-        /empt/jails/smtp/var/spool/mlmmj/helpdesk/control/notmetoo
-    echo "it@${ORG_DOMAIN}" > /empt/jails/smtp/var/spool/mlmmj/helpdesk/control/moderators
-    cat > /empt/jails/smtp/var/spool/mlmmj/helpdesk/control/access <<EOF
+        /empt/jails/mail/var/spool/mlmmj/helpdesk/control/closedlist \
+        /empt/jails/mail/var/spool/mlmmj/helpdesk/control/noget \
+        /empt/jails/mail/var/spool/mlmmj/helpdesk/control/notifymod \
+        /empt/jails/mail/var/spool/mlmmj/helpdesk/control/notmetoo
+    echo "it@${ORG_DOMAIN}" > /empt/jails/mail/var/spool/mlmmj/helpdesk/control/moderators
+    cat > /empt/jails/mail/var/spool/mlmmj/helpdesk/control/access <<EOF
 allow ^subject:[ \t]*(list|show)[ \t]*group
 allow ^subject:[ \t]*(show|display|my)[ \t]*(dashboard|summary)
 moderate
 EOF
-    jexec -l -U mlmmj smtp \
+    jexec -l -U mlmmj mail \
         /usr/local/bin/mlmmj-sub -L /var/spool/mlmmj/helpdesk -a "empthelper@${ORG_DOMAIN}" -fqs
     _append_if_missing \
         'permit nopass empthelper cmd /usr/local/libexec/empt/helpdesk' \
         /usr/local/etc/doas.conf
 
     _template fdm.conf.in /empt/synced/rw/helpdesk/.fdm.conf
+    chmod 0600 /empt/synced/rw/helpdesk/.fdm.conf
+    chown empthelper:empthelper /empt/synced/rw/helpdesk/.fdm.conf
     _append_if_missing \
         '* * * * * -q fdm -q fetch' \
         /var/cron/tabs/empthelper
@@ -413,9 +428,7 @@ hire_humans() {
     while IFS="${TABCHAR}" read -r username fullname uid lists; do
         cifs_userhome="/empt/jails/cifs/home/${username}"
         pw -R /empt/jails/cifs useradd "${username}" -u "${uid}" -c "${fullname}" -d "${cifs_userhome}" -s /usr/sbin/nologin -h -
-        for j in smtp imap; do
-            pw -R "/empt/jails/${j}" useradd "${username}" -u "${uid}" -c "${fullname}" -d /nonexistent -s /usr/sbin/nologin -h -
-        done
+        #pw -R /empt/jails/mail useradd "${username}" -u "${uid}" -c "${fullname}" -d /nonexistent -s /usr/sbin/nologin -h -
 
         # TODO change mountpoint into a nullfs mount if needed
         install -d -o "${uid}" -g "${uid}" -m 0700 "${cifs_userhome}"
@@ -427,8 +440,15 @@ hire_humans() {
 
         # TODO secure password
         jexec -l kerberos kadmin -l add --use-defaults --password="${username}" "${username}"
+        echo cm INBOX | jexec -l mail cyradm \
+            --server mail.home.arpa \
+            --port 143 \
+            --user "${username}@${ORG_DOMAIN}" \
+            --auth PLAIN \
+            --password "${username}"
+
         for l in ${lists}; do
-            jexec -l -U mlmmj smtp \
+            jexec -l -U mlmmj mail \
                 /usr/local/bin/mlmmj-sub -L "/var/spool/mlmmj/${l}" -a "${username}@${ORG_DOMAIN}" -cfs
         done
     done < humans.tsv
@@ -446,9 +466,9 @@ case "$1" in
         ;;
     3)
         prep_jailhost
+        init_jail_dns
         init_jail_kerberos
-        init_jail_smtp
-        init_jail_imap
+        init_jail_mail
         init_jail_cifs
         init_jail_irc
         create_mailing_lists

@@ -4,7 +4,7 @@ set lock-file "/tmp/fdm-empthelper.lock"
 set ignore-errors
 
 # TODO secure password
-account 'helpdesk' imap server 'imap.%%ORG_DOMAIN%%' user 'empthelper'
+account 'helpdesk' imap server 'mail.%%ORG_DOMAIN%%' user 'empthelper@%%ORG_DOMAIN%%' pass 'empthelper'
 
 match '^from:\s*(\S.*)' in headers action tag 'my_from' value '%1' continue
 match string '%[my_from]' to '\bempthelper@%%ORG_DOMAIN%%\b' action drop

@@ -13,9 +13,6 @@ ptscache_db_path: /tmp/cyrusimap/ptscache.db
 statuscache_db_path: /tmp/cyrusimap/statuscache.db
 mboxname_lockpath: /tmp/cyrusimap/lock
 
-# The mechanism used by the server to verify plaintext passwords.  Possible
-# values include "auxprop" or "saslauthd"
-#
 sasl_pwcheck_method: auxprop saslauthd
 
 # Allow PLAIN auth over trusted imap insecure port
@@ -31,31 +28,15 @@ allowplaintext: 1
 #
 # Note that quota is specified in kilobytes.
 #
-autocreate_quota: 0
-autocreate_post: 1
+#autocreate_quota: 0
+#autocreate_post: 1
 
 httpmodules: admin caldav carddav freebusy ischedule
 virtdomains: userid
-defaultdomain: %%ORG_DOMAIN%%
 
-# File containing the global certificate used for ALL services (imap,
-# pop3, lmtp).
-#
-tls_server_cert: /etc/ssl/imap.crt.pem
+tls_server_cert: /etc/ssl/mail.crt.pem
+tls_server_key: /etc/ssl/mail.key.pem
 
-# File containing the private key belonging to the global server
-# certificate.
-#
-tls_server_key: /etc/ssl/imap.key.pem
-
-# Unix domain socket that lmtpd listens on, used by deliver(8).
-#
 lmtpsocket: /var/run/cyrusimap/lmtp.sock
-
-# Unix domain socket that idled listens on.
-#
 idlesocket: /var/run/cyrusimap/idle.sock
-
-# Unix domain socket that the new mail notification daemon listens on.
-#
 notifysocket: /var/run/cyrusimap/notify.sock

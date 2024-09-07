@@ -8,7 +8,7 @@ START {
 # UNIX sockets start with a slash and are put into /var/imap/socket
 SERVICES {
   # add or remove based on preferences
-  imap          cmd="imapd -N" listen="imap.home.arpa:143" prefork=0
+  imap          cmd="imapd" listen="mail.home.arpa:143" prefork=0
   imaps         cmd="imapd -s" listen="imaps" prefork=0
 #  pop3          cmd="pop3d" listen="pop3" prefork=0
 #  pop3s         cmd="pop3d -s" listen="pop3s" prefork=0
@@ -23,11 +23,11 @@ SERVICES {
   https         cmd="httpd -s" listen="https" prefork=0
 
   # at least one LMTP is required for delivery
-  lmtp          cmd="lmtpd -a" listen="imap.home.arpa:24" prefork=0
-#  lmtpunix      cmd="lmtpd" listen="/var/run/cyrusimap/lmtp.sock" prefork=0
+#  lmtp          cmd="lmtpd -a" listen="mail.home.arpa:24" prefork=0
+  lmtpunix      cmd="lmtpd" listen="/var/run/cyrusimap/lmtp.sock" prefork=0
 
   # this is requied if using socketmap
-#  smmap         cmd="smmapd" listen="/var/imap/socket/smmap" prefork=0
+  smmap         cmd="smmapd" listen="/var/run/cyrusimap/smmap.sock" prefork=0
 
   # this is required if using notifications
 #  notify        cmd="notifyd" listen="/var/imap/socket/notify" proto="udp" prefork=1

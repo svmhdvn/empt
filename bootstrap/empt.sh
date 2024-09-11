@@ -24,7 +24,7 @@ ULA_PREFIX=fd1a:7e1:6fdd
 REALM=EMPT.SIVA
 
 JAILS='dns kerberos mail cifs irc'
-SERVICE_PRINCIPALS='cifs/cifs smtp/mail imap/mail HTTP/mail irc/irc'
+SERVICE_PRINCIPALS='cifs/cifs smtp/mail imap/mail HTTP/mail host/irc'
 KEYTABS='cifs mail irc'
 
 HELPDESK_UID=1001
@@ -243,7 +243,7 @@ init_jail_mail() {
 
     mount -aF /empt/synced/rw/fstab.d/mail.fstab
 
-    pkg -r /empt/jails/mail install -y postfix mlmmj
+    pkg -r /empt/jails/mail install -y postfix mlmmj cyrus-imapd310 cyrus-sasl-gssapi cyrus-sasl-saslauthd
     service -j mail ldconfig start
 
     _copytree postfix /empt/jails/mail/usr/local/etc/postfix
@@ -278,9 +278,6 @@ init_jail_mail() {
         '/empt/synced/rw/cyrusimap/spool /empt/jails/mail/var/spool/cyrusimap nullfs rw,noatime 0 0' \
         /empt/synced/rw/fstab.d/mail.fstab
     mount -aF /empt/synced/rw/fstab.d/mail.fstab
-
-    pkg -r /empt/jails/mail install -y cyrus-imapd310
-    service -j mail ldconfig start
 
     _copytree cyrus /empt/jails/mail/usr/local/etc
     jexec -l mail /usr/local/cyrus/sbin/mkimap
@@ -318,24 +315,23 @@ init_jail_cifs() {
 }
 
 init_jail_irc() {
-    pkg -r /empt/jails/irc install -y ngircd soju kimchi tlstunnel
+    pkg -r /empt/jails/irc install -y ngircd soju nginx-lite
     service -j irc ldconfig start
 
-    mkdir -p \
-        /empt/synced/rw/sojudb \
-        /empt/jails/irc/var/db/soju
+    soju_uid="$(pw -R /empt/jails/irc usershow soju | cut -d: -f3)"
+    install -d -o "${soju_uid}" -g "${soju_uid}" -m 0755 /empt/synced/rw/sojudb
+    mkdir -p /empt/jails/irc/var/db/soju
     _append_if_missing \
         '/empt/synced/rw/sojudb /empt/jails/irc/var/db/soju nullfs rw,noatime 0 0' \
         /empt/synced/rw/fstab.d/irc.fstab
     mount -aF /empt/synced/rw/fstab.d/irc.fstab
 
-    _copytree soju /empt/jails/irc/usr/local/etc/soju
-    _copytree kimchi /empt/jails/irc/usr/local/etc/kimchi
-    _copytree tlstunnel /empt/jails/irc/usr/local/etc/tlstunnel
-
     # TODO remove the chmod after upstream patch is merged
     _copytree ngircd /empt/jails/irc/usr/local/etc/ngircd
     chmod 0644 /empt/jails/irc/usr/local/etc/ngircd/ngircd.conf
+
+    _copytree soju /empt/jails/irc/usr/local/etc/soju
+    _copytree nginx /empt/jails/irc/usr/local/etc/nginx
 
     # TODO change this to 'soju' when it supports specifying service name
     cat > /empt/jails/irc/etc/pam.d/login <<EOF
@@ -350,11 +346,8 @@ EOF
 
     _truncate_dirs /empt/jails/irc/usr/local/www
     cp -R gamja /empt/jails/irc/usr/local/www/gamja
-    sysrc -j irc \
-        kimchi_user=root kimchi_group=wheel \
-        tlstunnel_user=root tlstunnel_group=wheel
 
-    for s in ngircd soju kimchi tlstunnel; do
+    for s in ngircd soju nginx; do
         service -j irc "${s}" enable
         service -j irc "${s}" start
     done
@@ -436,7 +429,6 @@ hire_humans() {
     while IFS="${TABCHAR}" read -r username fullname uid lists; do
         cifs_userhome="/empt/jails/cifs/home/${username}"
         pw -R /empt/jails/cifs useradd "${username}" -u "${uid}" -c "${fullname}" -d "${cifs_userhome}" -s /usr/sbin/nologin -h -
-        #pw -R /empt/jails/mail useradd "${username}" -u "${uid}" -c "${fullname}" -d /nonexistent -s /usr/sbin/nologin -h -
 
         # TODO change mountpoint into a nullfs mount if needed
         install -d -o "${uid}" -g "${uid}" -m 0700 "${cifs_userhome}"

@@ -243,7 +243,9 @@ init_jail_mail() {
 
     mount -aF /empt/synced/rw/fstab.d/mail.fstab
 
-    pkg -r /empt/jails/mail install -y postfix mlmmj cyrus-imapd310 cyrus-sasl-gssapi cyrus-sasl-saslauthd
+    pkg -r /empt/jails/mail install -y \
+        postfix mlmmj cyrus-imapd310 cyrus-sasl-gssapi cyrus-sasl-saslauthd \
+        rspamd redis
     service -j mail ldconfig start
 
     _copytree postfix /empt/jails/mail/usr/local/etc/postfix
@@ -261,6 +263,9 @@ init_jail_mail() {
     jexec -l mail chown postfix:postfix /etc/krb5.keytab
     echo '* * * * * -n -q /usr/local/bin/mlmmj-maintd -F -d /var/spool/mlmmj' \
         > /empt/jails/mail/var/cron/tabs/mlmmj
+
+    _copytree redis /empt/jails/mail/usr/local/etc
+    _copytree rspamd /empt/jails/mail/usr/local/etc/rspamd/local.d
 
 #===============
 # IMAP STUFF
@@ -297,7 +302,27 @@ EOF
         /var/spool/cyrusimap \
         /var/run/cyrusimap
 
-    for s in saslauthd imapd postfix cron; do
+
+#===============
+# RSPAMD AND DKIM STUFF
+#===============
+    jexec -l mail install -d -o rspamd -g rspamd -m 0700 "/var/db/opendkim/${ORG_DOMAIN}"
+    # TODO change to ed25519 keys once every major provider supports verification
+    jexec -l mail rspamadm dkim_keygen -s key1 -d "${ORG_DOMAIN}" -b 2048 \
+        -k "/var/db/opendkim/${ORG_DOMAIN}/key1.private" \
+        > "/var/db/opendkim/${ORG_DOMAIN}/key1.txt"
+
+    jexec -l mail install -o rspamd -g rspamd -m 0600 /dev/null /var/db/opendkim/dkim.keytable
+    echo "key1._domainkey.${ORG_DOMAIN} ${ORG_DOMAIN}:key1:/var/db/opendkim/${ORG_DOMAIN}/key1.private" \
+        > /var/db/opendkim/dkim.keytable
+
+    jexec -l mail install -o rspamd -g rspamd -m 0600 /dev/null /var/db/opendkim/dkim.signingtable
+    echo "*@${ORG_DOMAIN} key1._domainkey.${ORG_DOMAIN}" \
+        > /var/db/opendkim/dkim.keytable
+
+    sysrc -j mail redis_profiles="rspamd-bayes rspamd-other"
+
+    for s in saslauthd imapd redis rspamd postfix cron; do
         service -j mail "${s}" enable
         service -j mail "${s}" start
     done

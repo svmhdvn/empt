@@ -1,0 +1,19 @@
+include /usr/local/etc/redis.conf
+
+dbfilename rspamd-bayes.rdb
+dir /var/db/redis/
+
+logfile ""
+loglevel info
+syslog-ident redis-rspamd-bayes
+
+maxmemory 400m
+maxmemory-policy volatile-lru
+
+daemonize yes
+pidfile /var/run/redis/rspamd-bayes.pid
+
+port 0
+unixsocket /var/run/rspamd-redis/bayes.sock
+unixsocketperm 770
+requirepass rspamd-bayes

@@ -99,7 +99,7 @@ upgrade_to_poudriere() {
     tar -C /usr/local/poudriere_repos/jail_pkgbase -xf wyse-jail-pkgbase.tar.zst
     tar -C /usr/local/poudriere_repos/ports -xf wyse-ports.tar.zst
 
-    install -m 0700 empt-repos.conf /usr/local/etc/pkg/repos/empt.conf
+    install -m 0700 pkg-repos.conf /usr/local/etc/pkg/repos/empt.conf
 
     ABI="${ABI}" IGNORE_OSVERSION=yes pkg install -y -r host_pkgbase -g 'FreeBSD-*'
     # TODO find a better solution to keep important files
@@ -306,22 +306,26 @@ EOF
 #===============
 # RSPAMD AND DKIM STUFF
 #===============
+    jexec -l mail install -d -o redis -g redis \
+        /var/log/redis \
+        /var/db/redis \
+        /var/run/redis
+    jexec -l mail install -d -o redis -g rspamd -m 0775 /var/run/redis-rspamd
     jexec -l mail install -d -o rspamd -g rspamd -m 0700 "/var/db/opendkim/${ORG_DOMAIN}"
     # TODO change to ed25519 keys once every major provider supports verification
     jexec -l mail rspamadm dkim_keygen -s key1 -d "${ORG_DOMAIN}" -b 2048 \
         -k "/var/db/opendkim/${ORG_DOMAIN}/key1.private" \
-        > "/var/db/opendkim/${ORG_DOMAIN}/key1.txt"
+        > "/empt/jails/mail/var/db/opendkim/${ORG_DOMAIN}/key1.txt"
 
-    jexec -l mail install -o rspamd -g rspamd -m 0600 /dev/null /var/db/opendkim/dkim.keytable
     echo "key1._domainkey.${ORG_DOMAIN} ${ORG_DOMAIN}:key1:/var/db/opendkim/${ORG_DOMAIN}/key1.private" \
-        > /var/db/opendkim/dkim.keytable
-
-    jexec -l mail install -o rspamd -g rspamd -m 0600 /dev/null /var/db/opendkim/dkim.signingtable
+        > /empt/jails/mail/var/db/opendkim/dkim.keytable
     echo "*@${ORG_DOMAIN} key1._domainkey.${ORG_DOMAIN}" \
-        > /var/db/opendkim/dkim.keytable
+        > /empt/jails/mail/var/db/opendkim/dkim.signingtable
+    jexec -l mail chown rspamd:rspamd \
+        /var/db/opendkim/dkim.keytable \
+        /var/db/opendkim/dkim.signingtable
 
     sysrc -j mail redis_profiles="rspamd-bayes rspamd-other"
-
     for s in saslauthd imapd redis rspamd postfix cron; do
         service -j mail "${s}" enable
         service -j mail "${s}" start

@@ -4,7 +4,7 @@ dbfilename rspamd-bayes.rdb
 dir /var/db/redis/
 
 logfile ""
-loglevel info
+loglevel notice
 syslog-ident redis-rspamd-bayes
 
 maxmemory 400m
@@ -14,6 +14,6 @@ daemonize yes
 pidfile /var/run/redis/rspamd-bayes.pid
 
 port 0
-unixsocket /var/run/rspamd-redis/bayes.sock
+unixsocket /var/run/redis-rspamd/bayes.sock
 unixsocketperm 770
 requirepass rspamd-bayes

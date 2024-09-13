@@ -2,8 +2,8 @@
 # service type  private unpriv  chroot  wakeup  maxproc command + args
 #               (yes)   (yes)   (no)    (never) (100)
 # ==========================================================================
-smtp      inet  n       -       n       -       -       smtpd
- -o syslog_name=postfix/smtp
+mail.home.arpa:smtp      inet  n       -       n       -       -       smtpd
+ -o syslog_name=postfix/smtp-local
  -o smtpd_client_restrictions=permit_mynetworks,reject
 #smtp      inet  n       -       n       -       1       postscreen
 #smtpd     pass  -       -       n       -       -       smtpd
@@ -17,6 +17,7 @@ smtp      inet  n       -       n       -       -       smtpd
 #127.0.0.1:submissions inet n  -       n       -       -       smtpd
 smtps     inet  n       -       n       -       -       smtpd
   -o syslog_name=postfix/smtps
+  -o smtpd_milters=unix:/var/run/rspamd/milter.sock
   -o smtpd_tls_security_level=encrypt
   -o smtpd_tls_wrappermode=yes
   -o smtpd_sasl_auth_enable=yes

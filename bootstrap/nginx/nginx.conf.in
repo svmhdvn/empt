@@ -28,23 +28,38 @@ http {
 
     #gzip  on;
 
+    ssl_certificate      /etc/ssl/%%ORG_DOMAIN%%.crt.pem;
+    ssl_certificate_key  /etc/ssl/%%ORG_DOMAIN%%.key.pem;
+    ssl_session_cache    shared:SSL:1m;
+    ssl_session_timeout  5m;
+    ssl_ciphers  HIGH:!aNULL:!MD5;
+    ssl_prefer_server_ciphers  on;
+
     server {
+        server_name  mail.%%ORG_DOMAIN%%;
         listen       [::]:443 ipv6only=off ssl;
+
+        location / {
+            proxy_pass http://mail.home.arpa:8000;
+            proxy_read_timeout 600s;
+            proxy_http_version 1.1;
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection "Upgrade";
+            proxy_set_header Host $host;
+            proxy_set_header X-Forwarded-For $remote_addr;
+            proxy_set_header X-Forwarded-Proto $scheme;
+        }
+    }
+
+    server {
         server_name  irc.%%ORG_DOMAIN%%;
-
-        ssl_certificate      /etc/ssl/irc.crt.pem;
-        ssl_certificate_key  /etc/ssl/irc.key.pem;
-
-        ssl_session_cache    shared:SSL:1m;
-        ssl_session_timeout  5m;
-
-        ssl_ciphers  HIGH:!aNULL:!MD5;
-        ssl_prefer_server_ciphers  on;
+        listen       [::]:443 ipv6only=off ssl;
 
         location / {
             root   /usr/local/www/gamja;
             index  index.html;
         }
+
         location /socket {
             proxy_pass http://irc.home.arpa:8000;
             proxy_read_timeout 600s;

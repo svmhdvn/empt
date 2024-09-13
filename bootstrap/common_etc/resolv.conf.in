@@ -1,1 +1,1 @@
-nameserver %%IPV4_PREFIX%%.201
+nameserver 127.1.1.1

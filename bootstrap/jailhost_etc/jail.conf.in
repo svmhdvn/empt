@@ -34,8 +34,7 @@ exec.stop = "/bin/sh /etc/rc.shutdown";
 # Common fstab to share /usr/ports at a minimum
 mount.fstab = "/empt/synced/rw/fstab.d/${name}.fstab";
 
-# TODO fix the implied upper limit of 10 jails in the 20<jid>
-ip4.addr = "re0|%%IPV4_PREFIX%%.20${jid}/32";
+ip4.addr = "lo0|127.1.1.${jid}/32";
 # TODO programmatically query name of network interface instead of 're0'
 ip6.addr = "re0|%%ULA_PREFIX%%::eeee:${jid}/128";
 

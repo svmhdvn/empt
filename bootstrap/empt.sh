@@ -17,13 +17,12 @@ ORG_DOMAIN=empt.siva
 RESPONSIBILITY=primary
 
 # TODO query this programmatically
-IPV4_PREFIX=10.66.199
 ULA_PREFIX=fd1a:7e1:6fdd
 
 # TODO generate from ORG_DOMAIN
 REALM=EMPT.SIVA
 
-JAILS='dns kerberos mail cifs irc'
+JAILS='dns kerberos mail cifs irc www acme'
 SERVICE_PRINCIPALS='cifs/cifs smtp/mail imap/mail HTTP/mail host/irc'
 KEYTABS='cifs mail irc'
 
@@ -55,7 +54,6 @@ _template() {
         -e "s,%%ORG_DOMAIN%%,${ORG_DOMAIN},g" \
         -e "s,%%REALM%%,${REALM},g" \
         -e "s,%%RESPONSIBILITY%%,${RESPONSIBILITY},g" \
-        -e "s,%%IPV4_PREFIX%%,${IPV4_PREFIX},g" \
         -e "s,%%ULA_PREFIX%%,${ULA_PREFIX},g" \
         "$1" > "$2"
 }
@@ -360,7 +358,6 @@ init_jail_irc() {
     chmod 0644 /empt/jails/irc/usr/local/etc/ngircd/ngircd.conf
 
     _copytree soju /empt/jails/irc/usr/local/etc/soju
-    _copytree nginx /empt/jails/irc/usr/local/etc/nginx
 
     # TODO change this to 'soju' when it supports specifying service name
     cat > /empt/jails/irc/etc/pam.d/login <<EOF
@@ -373,13 +370,33 @@ EOF
         /etc/ssl/irc.crt.pem \
         /etc/ssl/irc.key.pem
 
-    _truncate_dirs /empt/jails/irc/usr/local/www
-    cp -R gamja /empt/jails/irc/usr/local/www/gamja
-
     for s in ngircd soju nginx; do
         service -j irc "${s}" enable
         service -j irc "${s}" start
     done
+}
+
+init_jail_www() {
+    pkg -r /empt/jails/www install -y nginx-lite
+    service -j www ldconfig start
+
+    _copytree nginx /empt/jails/irc/usr/local/etc/nginx
+
+    _truncate_dirs /empt/jails/irc/usr/local/www
+    cp -R gamja /empt/jails/irc/usr/local/www/gamja
+
+    service -j www nginx enable
+    service -j www nginx start
+}
+
+init_jail_acme() {
+    pkg -r /empt/jails/acme install -y acme.sh
+    service -j acme ldconfig start
+
+    _copytree nginx /empt/jails/irc/usr/local/etc/nginx
+
+    service -j acme cron enable
+    service -j acme cron start
 }
 
 create_mailing_lists() {
@@ -500,6 +517,8 @@ case "$1" in
         init_jail_mail
         init_jail_cifs
         init_jail_irc
+        init_jail_www
+        init_jail_acme
         create_mailing_lists
         open_helpdesk
         start_monitor

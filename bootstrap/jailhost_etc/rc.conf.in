@@ -3,14 +3,18 @@ hostname="jailhost-%%RESPONSIBILITY%%.%%ORG_DOMAIN%%"
 ifconfig_re0="DHCP"
 ifconfig_re0_ipv6="inet6 accept_rtadv"
 
+firewall_enable="YES"
+firewall_nat_enable="YES"
+firewall_logging="YES"
+gateway_enable="YES"
+firewall_script="/etc/ipfw.rules"
+
 ntpd_enable="YES"
 ntpdate_enable="YES"
 powerd_enable="YES"
 sshd_enable="YES"
 zfs_enable="YES"
 microcode_update_enable="YES"
-
-dumpdev="AUTO"
 
 syslogd_enable="YES"
 syslogd_flags="-8HNnss -O rfc5424"
@@ -20,7 +24,11 @@ syslogd_flags="${syslogd_flags} -l /empt/jails/kerberos/var/run/log"
 syslogd_flags="${syslogd_flags} -l /empt/jails/mail/var/run/log"
 syslogd_flags="${syslogd_flags} -l /empt/jails/cifs/var/run/log"
 syslogd_flags="${syslogd_flags} -l /empt/jails/irc/var/run/log"
+syslogd_flags="${syslogd_flags} -l /empt/jails/www/var/run/log"
+syslogd_flags="${syslogd_flags} -l /empt/jails/acme/var/run/log"
 
 cron_flags="-m it@%%ORG_DOMAIN%%"
 # TODO do we need cron task jitter?
 # cron_flags="-j 15 -J 15"
+
+dumpdev="AUTO"

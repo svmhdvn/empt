@@ -28,8 +28,8 @@ http {
 
     #gzip  on;
 
-    ssl_certificate      /etc/ssl/%%ORG_DOMAIN%%.crt.pem;
-    ssl_certificate_key  /etc/ssl/%%ORG_DOMAIN%%.key.pem;
+    ssl_certificate      /var/db/acme/fullchain.cer;
+    ssl_certificate_key  /var/db/acme/%%ORG_DOMAIN%%.key;
     ssl_session_cache    shared:SSL:1m;
     ssl_session_timeout  5m;
     ssl_ciphers  HIGH:!aNULL:!MD5;
@@ -37,7 +37,8 @@ http {
 
     server {
         server_name  mail.%%ORG_DOMAIN%%;
-        listen       [::]:443 ipv6only=off ssl;
+        listen       443 ssl;
+        listen       [::]:443 ssl;
 
         location / {
             proxy_pass http://mail.home.arpa:8000;
@@ -53,7 +54,8 @@ http {
 
     server {
         server_name  irc.%%ORG_DOMAIN%%;
-        listen       [::]:443 ipv6only=off ssl;
+        listen       443 ssl;
+        listen       [::]:443 ssl;
 
         location / {
             root   /usr/local/www/gamja;

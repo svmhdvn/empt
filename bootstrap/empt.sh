@@ -13,14 +13,13 @@ set -eux
 TABCHAR='	'
 
 ABI=FreeBSD:15:amd64
-ORG_DOMAIN=empt.siva
+ORG_DOMAIN=katcheri.org
 RESPONSIBILITY=primary
 
 # TODO query this programmatically
 ULA_PREFIX=fd1a:7e1:6fdd
 
-# TODO generate from ORG_DOMAIN
-REALM=EMPT.SIVA
+REALM="$(echo "${ORG_DOMAIN}" | tr '[:lower:]' '[:upper:]')"
 
 JAILS='dns kerberos mail cifs irc www acme'
 SERVICE_PRINCIPALS='cifs/cifs smtp/mail imap/mail HTTP/mail host/irc'
@@ -121,6 +120,7 @@ prep_jailhost() {
         cpu_microcode_name=/boot/firmware/amd-ucode.bin
 
     _copytree jailhost_etc /etc
+    service ipfw restart
 
     mkdir -p /tmp/base_jail
     pkg -r /tmp/base_jail install -y -r jail_pkgbase -g 'FreeBSD-*'
@@ -140,7 +140,8 @@ prep_jailhost() {
         /empt/synced/rw/fstab.d \
         /empt/synced/rw/groups \
         /empt/synced/rw/humans \
-        /empt/synced/rw/logs
+        /empt/synced/rw/logs \
+        "/empt/synced/rw/acme/${ORG_DOMAIN}_ecc"
 
     for j in ${JAILS}; do
         cp -a /tmp/base_jail/etc "/empt/synced/etc/${j}"
@@ -155,29 +156,6 @@ prep_jailhost() {
     rm -rf /tmp/base_jail
 
     mount -al
-
-    ca_key_path="/empt/synced/rw/${ORG_DOMAIN}_PRIVATE_CA.key.pem"
-    ca_crt_path="/usr/local/etc/ssl/certs/${ORG_DOMAIN}_PRIVATE_CA.crt.pem"
-    _truncate_dirs /usr/local/etc/ssl/certs
-    openssl req -x509 -newkey ec -pkeyopt ec_paramgen_curve:prime256v1 \
-        -days 3650 -nodes \
-        -keyout "${ca_key_path}" \
-        -out "${ca_crt_path}" \
-        -subj "/CN=${ORG_DOMAIN}" \
-        -addext "subjectAltName=DNS:${ORG_DOMAIN}" \
-        -addext "keyUsage=keyCertSign,cRLSign"
-    certctl rehash
-
-    for j in ${JAILS}; do
-        openssl req -x509 -newkey ec -pkeyopt ec_paramgen_curve:prime256v1 \
-            -CAkey "${ca_key_path}" -CA "${ca_crt_path}" \
-            -days 90 -nodes \
-            -keyout "/empt/jails/${j}/etc/ssl/${j}.key.pem" \
-            -out "/empt/jails/${j}/etc/ssl/${j}.crt.pem" \
-            -subj "/CN=${j}.${ORG_DOMAIN}" \
-            -addext "basicConstraints=critical,CA:false" \
-            -addext "subjectAltName=DNS:${j}.${ORG_DOMAIN}"
-    done
     service jail onerestart
 }
 
@@ -220,6 +198,11 @@ init_jail_kerberos() {
 }
 
 init_jail_mail() {
+    _truncate_dirs /empt/jails/mail/var/db/acme
+    _append_if_missing \
+        "/empt/synced/rw/acme/${ORG_DOMAIN}_ecc /empt/jails/mail/var/db/acme nullfs ro,noatime 0 0" \
+        /empt/synced/rw/fstab.d/mail.fstab
+
 #===============
 # SMTP STUFF
 #===============
@@ -238,8 +221,6 @@ init_jail_mail() {
     _append_if_missing \
         '/empt/synced/rw/mlmmj_spool /empt/jails/mail/var/spool/mlmmj nullfs rw,noatime 0 0' \
         /empt/synced/rw/fstab.d/mail.fstab
-
-    mount -aF /empt/synced/rw/fstab.d/mail.fstab
 
     pkg -r /empt/jails/mail install -y \
         postfix mlmmj cyrus-imapd310 cyrus-sasl-gssapi cyrus-sasl-saslauthd \
@@ -294,8 +275,6 @@ EOF
 
     jexec -l mail chown -R cyrus:mail \
         /etc/krb5.keytab \
-        /etc/ssl/mail.crt.pem \
-        /etc/ssl/mail.key.pem \
         /var/db/cyrusimap \
         /var/spool/cyrusimap \
         /var/run/cyrusimap
@@ -347,9 +326,14 @@ init_jail_irc() {
 
     soju_uid="$(pw -R /empt/jails/irc usershow soju | cut -d: -f3)"
     install -d -o "${soju_uid}" -g "${soju_uid}" -m 0755 /empt/synced/rw/sojudb
-    mkdir -p /empt/jails/irc/var/db/soju
+    _truncate_dirs \
+        /empt/jails/irc/var/db/soju \
+        /empt/jails/irc/var/db/acme
     _append_if_missing \
         '/empt/synced/rw/sojudb /empt/jails/irc/var/db/soju nullfs rw,noatime 0 0' \
+        /empt/synced/rw/fstab.d/irc.fstab
+    _append_if_missing \
+        "/empt/synced/rw/acme/${ORG_DOMAIN}_ecc /empt/jails/irc/var/db/acme nullfs ro,noatime 0 0" \
         /empt/synced/rw/fstab.d/irc.fstab
     mount -aF /empt/synced/rw/fstab.d/irc.fstab
 
@@ -365,10 +349,7 @@ auth required pam_krb5.so no_user_check
 account sufficient pam_permit.so
 EOF
 
-    jexec -l irc chown soju:soju \
-        /etc/krb5.keytab \
-        /etc/ssl/irc.crt.pem \
-        /etc/ssl/irc.key.pem
+    jexec -l irc chown soju:soju /etc/krb5.keytab
 
     for s in ngircd soju nginx; do
         service -j irc "${s}" enable
@@ -380,10 +361,16 @@ init_jail_www() {
     pkg -r /empt/jails/www install -y nginx-lite
     service -j www ldconfig start
 
-    _copytree nginx /empt/jails/irc/usr/local/etc/nginx
+    _truncate_dirs /empt/jails/www/var/db/acme
+    _append_if_missing \
+        "/empt/synced/rw/acme/${ORG_DOMAIN}_ecc /empt/jails/www/var/db/acme nullfs ro,noatime 0 0" \
+        /empt/synced/rw/fstab.d/www.fstab
+    mount -aF /empt/synced/rw/fstab.d/www.fstab
 
-    _truncate_dirs /empt/jails/irc/usr/local/www
-    cp -R gamja /empt/jails/irc/usr/local/www/gamja
+    _copytree nginx /empt/jails/www/usr/local/etc/nginx
+
+    _truncate_dirs /empt/jails/www/usr/local/www
+    cp -R gamja /empt/jails/www/usr/local/www/gamja
 
     service -j www nginx enable
     service -j www nginx start
@@ -393,7 +380,23 @@ init_jail_acme() {
     pkg -r /empt/jails/acme install -y acme.sh
     service -j acme ldconfig start
 
-    _copytree nginx /empt/jails/irc/usr/local/etc/nginx
+    _truncate_dirs /empt/jails/www/var/db/acme
+    _append_if_missing \
+        "/empt/synced/rw/acme/${ORG_DOMAIN}_ecc /empt/jails/acme/var/db/acme nullfs rw,noatime 0 0" \
+        /empt/synced/rw/fstab.d/acme.fstab
+
+    # TODO replace with production once working
+    jexec -l acme acme.sh --home /var/db/acme --set-default-ca --server letsencrypt_test
+    jexec -l acme acme.sh --home /var/db/acme --issue --standalone \
+        -d "${ORG_DOMAIN}" \
+        -d "mail.${ORG_DOMAIN}" \
+        -d "www.${ORG_DOMAIN}" \
+        -d "irc.${ORG_DOMAIN}"
+    chmod 0644 "/empt/synced/rw/acme/${ORG_DOMAIN}_ecc/${ORG_DOMAIN}.key"
+
+    _append_if_missing \
+        '35 4 * * * root -n -q acme.sh --home /var/db/acme --renew' \
+        /etc/crontab
 
     service -j acme cron enable
     service -j acme cron start
@@ -514,11 +517,11 @@ case "$1" in
         prep_jailhost
         init_jail_dns
         init_jail_kerberos
+        init_jail_acme
         init_jail_mail
         init_jail_cifs
         init_jail_irc
         init_jail_www
-        init_jail_acme
         create_mailing_lists
         open_helpdesk
         start_monitor

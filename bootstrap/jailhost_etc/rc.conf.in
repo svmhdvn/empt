@@ -4,10 +4,10 @@ ifconfig_re0="DHCP"
 ifconfig_re0_ipv6="inet6 accept_rtadv"
 
 firewall_enable="YES"
-firewall_nat_enable="YES"
 firewall_logging="YES"
-gateway_enable="YES"
 firewall_script="/etc/ipfw.rules"
+firewall_nat_enable="YES"
+gateway_enable="YES"
 
 ntpd_enable="YES"
 ntpdate_enable="YES"

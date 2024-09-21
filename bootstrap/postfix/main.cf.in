@@ -17,8 +17,8 @@ strict_rfc821_envelopes = yes
 
 smtpd_tls_auth_only = yes
 smtpd_tls_received_header = yes
-smtpd_tls_cert_file = /etc/ssl/mail.crt.pem
-smtpd_tls_key_file = /etc/ssl/mail.key.pem
+smtpd_tls_cert_file = /var/db/acme/fullchain.cer
+smtpd_tls_key_file = /var/db/acme/%%ORG_DOMAIN%%.key
 smtpd_tls_received_header = yes
 
 # TODO change if some desired TLS implementations don't support 1.3

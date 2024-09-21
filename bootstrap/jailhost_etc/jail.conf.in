@@ -67,3 +67,11 @@ irc {
     jid = 5;
     depend = "kerberos";
 }
+www {
+    jid = 6;
+    depend = "kerberos";
+}
+acme {
+    jid = 7;
+    depend = "dns";
+}

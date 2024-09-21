@@ -34,8 +34,8 @@ allowplaintext: 1
 httpmodules: admin caldav carddav freebusy ischedule
 virtdomains: userid
 
-tls_server_cert: /etc/ssl/mail.crt.pem
-tls_server_key: /etc/ssl/mail.key.pem
+tls_server_cert: /var/db/acme/fullchain.cer
+tls_server_key: /var/db/acme/%%ORG_DOMAIN%%.key
 
 lmtpsocket: /var/run/cyrusimap/lmtp.sock
 idlesocket: /var/run/cyrusimap/idle.sock

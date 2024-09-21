@@ -5,4 +5,4 @@ listen unix+admin:///var/run/soju/admin
 listen ws+insecure://irc.home.arpa:8000
 auth pam
 enable-user-on-auth true
-tls /etc/ssl/irc.crt.pem /etc/ssl/irc.key.pem
+tls /var/db/acme/fullchain.cer /var/db/acme/%%ORG_DOMAIN%%.key

@@ -1,8 +1,7 @@
 .POSIX:
 .SUFFIXES:
 
-USER = root
-
+# relies on ~/.ssh/config for ssh aliases
 copy_bootstrap:
-	ssh $(USER)@jailhost-primary.home.arpa rm -rf *
-	scp -r . $(USER)@jailhost-primary.home.arpa:
+	ssh wyse rm -rf *
+	scp -r . wyse:

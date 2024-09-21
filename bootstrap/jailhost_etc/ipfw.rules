@@ -5,7 +5,7 @@ pif=re0
 ipfw -f flush
 
 ipfw disable one_pass
-ipfw nat 1 config if "${pif}" same_ports unreg_only reset \
+ipfw nat 1 config if "${pif}" same_ports reset \
   redirect_port tcp 127.1.1.3:25 25 \
   redirect_port tcp 127.1.1.3:465 465 \
   redirect_port tcp 127.1.1.3:993 993 \

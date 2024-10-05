@@ -33,6 +33,7 @@ allowplaintext: 1
 
 httpmodules: admin caldav carddav freebusy ischedule
 virtdomains: userid
+defaultdomain: %%ORG_DOMAIN%%
 
 tls_server_cert: /var/db/acme/fullchain.cer
 tls_server_key: /var/db/acme/%%ORG_DOMAIN%%.key

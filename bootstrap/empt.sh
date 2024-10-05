@@ -141,7 +141,7 @@ prep_jailhost() {
         /empt/synced/rw/groups \
         /empt/synced/rw/humans \
         /empt/synced/rw/logs \
-        "/empt/synced/rw/acme/${ORG_DOMAIN}_ecc"
+        /empt/synced/rw/acme
 
     for j in ${JAILS}; do
         cp -a /tmp/base_jail/etc "/empt/synced/etc/${j}"
@@ -337,10 +337,7 @@ init_jail_irc() {
         /empt/synced/rw/fstab.d/irc.fstab
     mount -aF /empt/synced/rw/fstab.d/irc.fstab
 
-    # TODO remove the chmod after upstream patch is merged
     _copytree ngircd /empt/jails/irc/usr/local/etc/ngircd
-    chmod 0644 /empt/jails/irc/usr/local/etc/ngircd/ngircd.conf
-
     _copytree soju /empt/jails/irc/usr/local/etc/soju
 
     # TODO change this to 'soju' when it supports specifying service name
@@ -382,8 +379,9 @@ init_jail_acme() {
 
     _truncate_dirs /empt/jails/www/var/db/acme
     _append_if_missing \
-        "/empt/synced/rw/acme/${ORG_DOMAIN}_ecc /empt/jails/acme/var/db/acme nullfs rw,noatime 0 0" \
+        "/empt/synced/rw/acme /empt/jails/acme/var/db/acme nullfs rw,noatime 0 0" \
         /empt/synced/rw/fstab.d/acme.fstab
+    mount -aF /empt/synced/rw/fstab.d/acme.fstab
 
     # TODO replace with production once working
     jexec -l acme acme.sh --home /var/db/acme --set-default-ca --server letsencrypt_test
@@ -429,7 +427,7 @@ open_helpdesk() {
     echo cm INBOX | jexec -l mail cyradm \
         --server mail.home.arpa \
         --port 143 \
-        --user "empthelper@${ORG_DOMAIN}" \
+        --user empthelper \
         --auth PLAIN \
         --password empthelper
 
@@ -492,7 +490,7 @@ hire_humans() {
         echo cm INBOX | jexec -l mail cyradm \
             --server mail.home.arpa \
             --port 143 \
-            --user "${username}@${ORG_DOMAIN}" \
+            --user "${username}" \
             --auth PLAIN \
             --password "${username}"
 

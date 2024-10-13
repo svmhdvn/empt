@@ -111,7 +111,7 @@ upgrade_to_poudriere() {
 
 prep_jailhost() {
     pkg install -y \
-        tmux htop tree curl \
+        tmux htop tree curl dhcpcd \
         cpu-microcode fdm empt-scripts
     cp tmux.conf ~/.tmux.conf
 
@@ -120,6 +120,7 @@ prep_jailhost() {
         cpu_microcode_name=/boot/firmware/amd-ucode.bin
 
     _copytree jailhost_etc /etc
+    _template dhcpcd.conf /usr/local/etc/dhcpcd.conf
     service ipfw restart
 
     mkdir -p /tmp/base_jail
@@ -288,19 +289,23 @@ EOF
         /var/db/redis \
         /var/run/redis
     jexec -l mail install -d -o redis -g rspamd -m 0775 /var/run/redis-rspamd
-    jexec -l mail install -d -o rspamd -g rspamd -m 0700 "/var/db/opendkim/${ORG_DOMAIN}"
-    # TODO change to ed25519 keys once every major provider supports verification
-    jexec -l mail rspamadm dkim_keygen -s key1 -d "${ORG_DOMAIN}" -b 2048 \
-        -k "/var/db/opendkim/${ORG_DOMAIN}/key1.private" \
-        > "/empt/jails/mail/var/db/opendkim/${ORG_DOMAIN}/key1.txt"
+    jexec -l mail install -d -o rspamd -g rspamd -m 0700 /var/db/opendkim
 
     echo "key1._domainkey.${ORG_DOMAIN} ${ORG_DOMAIN}:key1:/var/db/opendkim/${ORG_DOMAIN}/key1.private" \
         > /empt/jails/mail/var/db/opendkim/dkim.keytable
     echo "*@${ORG_DOMAIN} key1._domainkey.${ORG_DOMAIN}" \
         > /empt/jails/mail/var/db/opendkim/dkim.signingtable
-    jexec -l mail chown rspamd:rspamd \
-        /var/db/opendkim/dkim.keytable \
-        /var/db/opendkim/dkim.signingtable
+
+    # TODO reenable once testing is done with FreeDNS DKIM keys
+    # =========================================================
+    # TODO change to ed25519 keys once every major provider supports verification
+    #jexec -l mail rspamadm dkim_keygen -s key1 -d "${ORG_DOMAIN}" -b 2048 \
+    #    -k "/var/db/opendkim/${ORG_DOMAIN}/key1.private" \
+    #    > "/empt/jails/mail/var/db/opendkim/${ORG_DOMAIN}/key1.txt"
+    _copytree testing_dkim "/empt/jails/mail/var/db/opendkim/${ORG_DOMAIN}"
+    # =========================================================
+
+    jexec -l mail chown -R rspamd:rspamd /var/db/opendkim
 
     sysrc -j mail redis_profiles="rspamd-bayes rspamd-other"
     for s in saslauthd imapd redis rspamd postfix cron; do

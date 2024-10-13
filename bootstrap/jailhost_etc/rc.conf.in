@@ -1,7 +1,8 @@
 hostname="jailhost-%%RESPONSIBILITY%%.%%ORG_DOMAIN%%"
 
-ifconfig_re0="DHCP"
-ifconfig_re0_ipv6="inet6 accept_rtadv"
+#ifconfig_re0="DHCP"
+#ifconfig_re0_ipv6="inet6 accept_rtadv"
+dhcpcd_enable=YES
 
 firewall_enable="YES"
 firewall_logging="YES"
@@ -18,7 +19,6 @@ microcode_update_enable="YES"
 
 syslogd_enable="YES"
 syslogd_flags="-8HNnss -O rfc5424"
-
 syslogd_flags="${syslogd_flags} -l /empt/jails/dns/var/run/log"
 syslogd_flags="${syslogd_flags} -l /empt/jails/kerberos/var/run/log"
 syslogd_flags="${syslogd_flags} -l /empt/jails/mail/var/run/log"

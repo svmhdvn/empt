@@ -4,20 +4,21 @@
 SHELL=/bin/sh
 PATH=/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/sbin:/usr/local/bin
 #
-#minute	hour	mday	month	wday	who	command
+#minute hour    mday    month   wday    who     command
 #
 # Save some entropy so that /dev/random can re-seed on boot.
-*/11	*	*	*	*	operator -n -q /usr/libexec/save-entropy
+*/11    *       *       *       *       operator /usr/libexec/save-entropy
 #
 # Rotate log files every hour, if necessary.
-0	*	*	*	*	root	-n -q /usr/sbin/newsyslog
+0       *       *       *       *       root    newsyslog
 #
-# TODO enable back once we figure out which periodic scripts we want
 # Perform daily/weekly/monthly maintenance.
-#1	3	*	*	*	root	-n -q /usr/sbin/periodic daily
-#15	4	*	*	6	root	-n -q /usr/sbin/periodic weekly
-#30	5	1	*	*	root	-n -q /usr/sbin/periodic monthly
+*       *       *       *       *       root    periodic minutely
+8       *       *       *       *       root    periodic hourly
+1       3       *       *       *       root    periodic daily
+15      4       *       *       6       root    periodic weekly
+30      5       1       *       *       root    periodic monthly
 #
 # Adjust the time zone if the CMOS clock keeps local time, as opposed to
 # UTC time.  See adjkerntz(8) for details.
-1,31	0-5	*	*	*	root	-n -q /sbin/adjkerntz -a
+1,31    0-5     *       *       *       root    adjkerntz -a

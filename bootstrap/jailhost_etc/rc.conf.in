@@ -16,6 +16,7 @@ powerd_enable="YES"
 sshd_enable="YES"
 zfs_enable="YES"
 microcode_update_enable="YES"
+dumpdev="NO"
 
 syslogd_enable="YES"
 syslogd_flags="-8HNnss -O rfc5424"
@@ -30,5 +31,3 @@ syslogd_flags="${syslogd_flags} -l /empt/jails/acme/var/run/log"
 cron_flags="-m it@%%ORG_DOMAIN%%"
 # TODO do we need cron task jitter?
 # cron_flags="-j 15 -J 15"
-
-dumpdev="AUTO"

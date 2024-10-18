@@ -9,6 +9,7 @@ set -eux
 
 # TODO:
 # * add validation to every service's config files
+# * move monitoring to its own user for security reasons
 
 TABCHAR='	'
 
@@ -449,32 +450,9 @@ moderate
 EOF
     jexec -l -U mlmmj mail \
         /usr/local/bin/mlmmj-sub -L /var/spool/mlmmj/helpdesk -a "empthelper@${ORG_DOMAIN}" -fqs
-    _append_if_missing \
-        'permit nopass empthelper cmd /usr/local/libexec/empt/helpdesk' \
-        /usr/local/etc/doas.conf
-
-    _template fdm.conf.in /empt/synced/rw/helpdesk/.fdm.conf
-    chmod 0600 /empt/synced/rw/helpdesk/.fdm.conf
-    chown empthelper:empthelper /empt/synced/rw/helpdesk/.fdm.conf
-    _append_if_missing \
-        '* * * * * -q fdm -q fetch' \
-        /var/cron/tabs/empthelper
-}
-
-start_monitor() {
-    pw useradd emptmonitor -c 'EMPT monitoring agent' -d /nonexistent -s /usr/sbin/nologin -h -
-    _append_if_missing \
-        'permit nopass emptmonitor cmd /usr/local/libexec/empt/monitor' \
-        /usr/local/etc/doas.conf
-    _append_if_missing \
-        '* * * * * -n -q /usr/local/libexec/empt/monitor every_minute' \
-        /var/cron/tabs/emptmonitor
-    _append_if_missing \
-        '0 * * * * -n -q /usr/local/libexec/empt/monitor every_hour' \
-        /var/cron/tabs/emptmonitor
-    _append_if_missing \
-        '0 0 * * * -n -q /usr/local/libexec/empt/monitor every_day' \
-        /var/cron/tabs/emptmonitor
+    _template fdm.conf.in /usr/local/etc/fdm.conf
+    chmod 0600 /usr/local/etc/fdm.conf
+    chown empthelper:empthelper /usr/local/etc/fdm.conf
 }
 
 hire_humans() {
@@ -527,7 +505,6 @@ case "$1" in
         init_jail_www
         create_mailing_lists
         open_helpdesk
-        start_monitor
         hire_humans
         ;;
     *)

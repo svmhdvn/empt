@@ -1,6 +1,6 @@
+set default-user empthelper
 set strip-characters ""
 set unmatched-mail drop
-set lock-file "/tmp/fdm-empthelper.lock"
 set ignore-errors
 
 # TODO secure password

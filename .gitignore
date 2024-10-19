@@ -6,3 +6,4 @@
 ansible/org_vars.yml
 ansible/remote_inventory.ini
 playground/
+.direnv

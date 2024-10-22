@@ -4,10 +4,10 @@ set unmatched-mail drop
 set ignore-errors
 
 # TODO secure password
-account 'helpdesk' imap server 'mail.%%ORG_DOMAIN%%' user 'empthelper@%%ORG_DOMAIN%%' pass 'empthelper'
+account 'helpdesk' imap server 'mail.home.arpa' user 'empthelper' pass 'empthelper'
 
 match '^from:\s*(\S.*)' in headers action tag 'my_from' value '%1' continue
-match string '%[my_from]' to '\bempthelper@%%ORG_DOMAIN%%\b' action drop
+match string '%[my_from]' to '\bempthelper@' action drop
 
 match '^cc:\s*(\S.*)' in headers action tag 'my_cc' value '%1' continue
 match '^subject:\s*(\S.*)' in headers action tag 'my_subject' value '%1' continue

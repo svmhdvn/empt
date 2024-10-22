@@ -110,21 +110,8 @@ upgrade_to_poudriere() {
 }
 
 prep_jailhost() {
-    pkg install -y \
-        tmux htop tree curl dhcpcd \
-        cpu-microcode fdm empt-scripts
-    cp tmux.conf ~/.tmux.conf
-
-    sysrc -f /boot/loader.conf \
-        cpu_microcode_load=YES \
-        cpu_microcode_name=/boot/firmware/amd-ucode.bin
-
     _copytree jailhost_etc /etc
-    _template dhcpcd.conf /usr/local/etc/dhcpcd.conf
     service ipfw restart
-
-    mkdir -p /tmp/base_jail
-    pkg -r /tmp/base_jail install -y -r jail_pkgbase -g 'FreeBSD-*'
 
     # TODO replace common_etc with these actions for each jail:
     # * generate hosts file
@@ -132,29 +119,8 @@ prep_jailhost() {
     # * disable (at least) dumpdev, syslogd, and cron
     # * point the DNS resolver at the DNS jail
 
-    zfs create -o mountpoint=/empt zroot/empt
-    zfs create zroot/empt/synced
-    zfs create \
-        -o exec=off \
-        -o setuid=off \
-        -o compression=zstd \
-        zroot/empt/synced/rw
-
-    _truncate_dirs \
-        /empt/jails \
-        /empt/synced/rw/fstab.d \
-        /empt/synced/rw/groups \
-        /empt/synced/rw/humans \
-        /empt/synced/rw/logs \
-        /empt/synced/rw/acme
-
-    echo "${JAILS}" | xargs -J% -n1 -P0 cp -a /tmp/base_jail /empt/jails/%
+    # TODO create fstab for every jail that needs it
     echo "${JAILS}" | xargs -J% -n1 touch /empt/synced/rw/fstab.d/%.fstab
-    chflags -R 0 /tmp/base_jail
-    rm -rf /tmp/base_jail
-
-    mount -al
-    service jail onerestart
 }
 
 init_jail_dns() {
@@ -164,35 +130,6 @@ init_jail_dns() {
     _copytree unbound /empt/jails/dns/usr/local/etc/unbound
     service -j dns unbound enable
     service -j dns unbound start
-}
-
-init_jail_kerberos() {
-    _copytree kerberos_etc /empt/jails/kerberos/etc
-    _truncate_dirs \
-        /empt/jails/kerberos/var/heimdal \
-        /empt/synced/rw/krb5data
-    _append_if_missing \
-        '/empt/synced/rw/krb5data /empt/jails/kerberos/var/heimdal nullfs rw,noatime 0 0' \
-        /empt/synced/rw/fstab.d/kerberos.fstab
-    mount -aF /empt/synced/rw/fstab.d/kerberos.fstab
-
-    jexec -l kerberos kstash --random-key
-    jexec -l kerberos kadmin -l init \
-        --realm-max-renewable-life=1w \
-        --realm-max-ticket-life=1w \
-        "${REALM}"
-
-    for p in ${SERVICE_PRINCIPALS}; do
-        jexec -l kerberos kadmin -l add --random-key --use-defaults "${p}.${ORG_DOMAIN}"
-    done
-    for k in ${KEYTABS}; do
-        jexec -l kerberos kadmin -l ext_keytab --keytab="/tmp/${k}.keytab" "*/${k}.${ORG_DOMAIN}"
-        mv "/empt/jails/kerberos/tmp/${k}.keytab" "/empt/jails/${k}/etc/krb5.keytab"
-    done
-    for s in kdc kpasswdd; do
-        service -j kerberos "${s}" enable
-        service -j kerberos "${s}" start
-    done
 }
 
 init_jail_mail() {
@@ -311,97 +248,6 @@ EOF
     done
 }
 
-init_jail_cifs() {
-    pkg -r /empt/jails/cifs install -y samba419
-    service -j cifs ldconfig start
-
-    install -d -o root -g wheel -m 1755 /empt/jails/cifs/groups
-    _template smb4.conf.in /empt/jails/cifs/usr/local/etc/smb4.conf
-    sysrc -j cifs nmbd_enable=NO
-    service -j cifs samba_server enable
-    service -j cifs samba_server start
-}
-
-init_jail_irc() {
-    pkg -r /empt/jails/irc install -y ngircd soju nginx-lite
-    service -j irc ldconfig start
-
-    soju_uid="$(pw -R /empt/jails/irc usershow soju | cut -d: -f3)"
-    install -d -o "${soju_uid}" -g "${soju_uid}" -m 0755 /empt/synced/rw/sojudb
-    _truncate_dirs \
-        /empt/jails/irc/var/db/soju \
-        /empt/jails/irc/var/db/acme
-    _append_if_missing \
-        '/empt/synced/rw/sojudb /empt/jails/irc/var/db/soju nullfs rw,noatime 0 0' \
-        /empt/synced/rw/fstab.d/irc.fstab
-    _append_if_missing \
-        "/empt/synced/rw/acme/${ORG_DOMAIN}_ecc /empt/jails/irc/var/db/acme nullfs ro,noatime 0 0" \
-        /empt/synced/rw/fstab.d/irc.fstab
-    mount -aF /empt/synced/rw/fstab.d/irc.fstab
-
-    _copytree ngircd /empt/jails/irc/usr/local/etc/ngircd
-    _copytree soju /empt/jails/irc/usr/local/etc/soju
-
-    # TODO change this to 'soju' when it supports specifying service name
-    cat > /empt/jails/irc/etc/pam.d/login <<EOF
-auth required pam_krb5.so no_user_check
-account sufficient pam_permit.so
-EOF
-
-    jexec -l irc chown soju:soju /etc/krb5.keytab
-
-    for s in ngircd soju nginx; do
-        service -j irc "${s}" enable
-        service -j irc "${s}" start
-    done
-}
-
-init_jail_www() {
-    pkg -r /empt/jails/www install -y nginx-lite
-    service -j www ldconfig start
-
-    _truncate_dirs /empt/jails/www/var/db/acme
-    _append_if_missing \
-        "/empt/synced/rw/acme/${ORG_DOMAIN}_ecc /empt/jails/www/var/db/acme nullfs ro,noatime 0 0" \
-        /empt/synced/rw/fstab.d/www.fstab
-    mount -aF /empt/synced/rw/fstab.d/www.fstab
-
-    _copytree nginx /empt/jails/www/usr/local/etc/nginx
-
-    _truncate_dirs /empt/jails/www/usr/local/www
-    cp -R gamja /empt/jails/www/usr/local/www/gamja
-
-    service -j www nginx enable
-    service -j www nginx start
-}
-
-init_jail_acme() {
-    pkg -r /empt/jails/acme install -y acme.sh
-    service -j acme ldconfig start
-
-    _truncate_dirs /empt/jails/www/var/db/acme
-    _append_if_missing \
-        "/empt/synced/rw/acme /empt/jails/acme/var/db/acme nullfs rw,noatime 0 0" \
-        /empt/synced/rw/fstab.d/acme.fstab
-    mount -aF /empt/synced/rw/fstab.d/acme.fstab
-
-    # TODO replace with production once working
-    jexec -l acme acme.sh --home /var/db/acme --set-default-ca --server letsencrypt_test
-    jexec -l acme acme.sh --home /var/db/acme --issue --standalone \
-        -d "${ORG_DOMAIN}" \
-        -d "mail.${ORG_DOMAIN}" \
-        -d "www.${ORG_DOMAIN}" \
-        -d "irc.${ORG_DOMAIN}"
-    chmod 0644 "/empt/synced/rw/acme/${ORG_DOMAIN}_ecc/${ORG_DOMAIN}.key"
-
-    _append_if_missing \
-        '35 4 * * * root -n -q acme.sh --home /var/db/acme --renew' \
-        /etc/crontab
-
-    service -j acme cron enable
-    service -j acme cron start
-}
-
 create_mailing_lists() {
     while read -r m; do
         sed \
@@ -462,12 +308,13 @@ case "$1" in
     3)
         prep_jailhost
         pkg -r /empt/jails/dns install -y empt-jail-dns
-        init_jail_kerberos
-        init_jail_acme
+        pkg -r /empt/jails/kerberos install -y empt-jail-kerberos
+        # TODO run ACME in host and place certs for each jail in their own /var/db/tls directories
+        # pkg -r /empt/jails/acme install -y empt-jail-acme
         init_jail_mail
-        init_jail_cifs
-        init_jail_irc
-        init_jail_www
+        pkg -r /empt/jails/cifs install -y empt-jail-cifs
+        pkg -r /empt/jails/irc install -y empt-jail-irc
+        pkg -r /empt/jails/www install -y empt-jail-www
         create_mailing_lists
         hire_humans
 

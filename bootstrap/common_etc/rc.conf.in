@@ -1,6 +1,0 @@
-dumpdev="NO"
-syslogd_enable="NO"
-cron_enable="NO"
-cron_flags="-m it@%%ORG_DOMAIN%%"
-# TODO do we need cron jitter?
-#cron_flags="-j 15 -J 15"

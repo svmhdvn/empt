@@ -26,7 +26,6 @@ JAILS='dns kerberos mail cifs irc www acme'
 SERVICE_PRINCIPALS='cifs/cifs smtp/mail imap/mail HTTP/mail host/irc'
 KEYTABS='cifs mail irc'
 
-HELPDESK_UID=1001
 MLMMJ_UID=1002
 
 _random_password() {
@@ -126,7 +125,12 @@ prep_jailhost() {
 
     mkdir -p /tmp/base_jail
     pkg -r /tmp/base_jail install -y -r jail_pkgbase -g 'FreeBSD-*'
-    _copytree common_etc /tmp/base_jail/etc
+
+    # TODO replace common_etc with these actions for each jail:
+    # * generate hosts file
+    # * generate krb5.conf
+    # * disable (at least) dumpdev, syslogd, and cron
+    # * point the DNS resolver at the DNS jail
 
     zfs create -o mountpoint=/empt zroot/empt
     zfs create zroot/empt/synced
@@ -138,22 +142,14 @@ prep_jailhost() {
 
     _truncate_dirs \
         /empt/jails \
-        /empt/synced/etc \
         /empt/synced/rw/fstab.d \
         /empt/synced/rw/groups \
         /empt/synced/rw/humans \
         /empt/synced/rw/logs \
         /empt/synced/rw/acme
 
-    for j in ${JAILS}; do
-        cp -a /tmp/base_jail/etc "/empt/synced/etc/${j}"
-    done
-    _truncate_dirs /tmp/base_jail/etc
-
-    for j in ${JAILS}; do
-        cp -a /tmp/base_jail "/empt/jails/${j}"
-        touch "/empt/synced/rw/fstab.d/${j}.fstab"
-    done
+    echo "${JAILS}" | xargs -J% -n1 -P0 cp -a /tmp/base_jail /empt/jails/%
+    echo "${JAILS}" | xargs -J% -n1 touch /empt/synced/rw/fstab.d/%.fstab
     chflags -R 0 /tmp/base_jail
     rm -rf /tmp/base_jail
 
@@ -424,37 +420,6 @@ create_mailing_lists() {
     jexec -l mail postmap /usr/local/etc/postfix/mlmmj_transport
 }
 
-open_helpdesk() {
-    pw useradd empthelper -u "${HELPDESK_UID}" -c 'EMPT helpdesk agent' -d /empt/synced/rw/helpdesk -s /usr/sbin/nologin -h -
-    pw -R /empt/jails/mail useradd empthelper -u "${HELPDESK_UID}" -c 'EMPT helpdesk agent' -d /nonexistent -s /usr/sbin/nologin -h -
-
-    # TODO secure
-    jexec -l kerberos kadmin -l add --use-defaults --password=empthelper empthelper
-    echo cm INBOX | jexec -l mail cyradm \
-        --server mail.home.arpa \
-        --port 143 \
-        --user empthelper \
-        --auth PLAIN \
-        --password empthelper
-
-    touch \
-        /empt/jails/mail/var/spool/mlmmj/helpdesk/control/closedlist \
-        /empt/jails/mail/var/spool/mlmmj/helpdesk/control/noget \
-        /empt/jails/mail/var/spool/mlmmj/helpdesk/control/notifymod \
-        /empt/jails/mail/var/spool/mlmmj/helpdesk/control/notmetoo
-    echo "it@${ORG_DOMAIN}" > /empt/jails/mail/var/spool/mlmmj/helpdesk/control/moderators
-    cat > /empt/jails/mail/var/spool/mlmmj/helpdesk/control/access <<EOF
-allow ^subject:[ \t]*(list|show)[ \t]*group
-allow ^subject:[ \t]*(show|display|my)[ \t]*(dashboard|summary)
-moderate
-EOF
-    jexec -l -U mlmmj mail \
-        /usr/local/bin/mlmmj-sub -L /var/spool/mlmmj/helpdesk -a "empthelper@${ORG_DOMAIN}" -fqs
-    _template fdm.conf.in /usr/local/etc/fdm.conf
-    chmod 0600 /usr/local/etc/fdm.conf
-    chown empthelper:empthelper /usr/local/etc/fdm.conf
-}
-
 hire_humans() {
     while IFS="${TABCHAR}" read -r username fullname uid lists; do
         cifs_userhome="/empt/jails/cifs/home/${username}"
@@ -496,7 +461,7 @@ case "$1" in
         ;;
     3)
         prep_jailhost
-        init_jail_dns
+        pkg -r /empt/jails/dns install -y empt-jail-dns
         init_jail_kerberos
         init_jail_acme
         init_jail_mail
@@ -504,8 +469,10 @@ case "$1" in
         init_jail_irc
         init_jail_www
         create_mailing_lists
-        open_helpdesk
         hire_humans
+
+        # open the helpdesk
+        pkg install -y empt-helpdesk
         ;;
     *)
         echo "ERROR: Unrecognized boot sequence number '$1'" >&2

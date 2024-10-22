@@ -6,9 +6,11 @@
 
         server role = standalone
 
+        client use kerberos = required
+        dedicated keytab file = /etc/krb5.keytab
         kerberos encryption types = strong
         kerberos method = dedicated keytab
-        dedicated keytab file = /etc/krb5.keytab
+        ntlm auth = disabled
 
         realm = %%REALM%%
         # TODO see if a different workgroup name is necessary
@@ -16,9 +18,6 @@
 
         disable netbios = yes
 	smb ports = 445
-
-        client use kerberos = required
-        ntlm auth = disabled
 
         vfs objects = zfsacl
         read only = no

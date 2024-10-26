@@ -110,142 +110,34 @@ upgrade_to_poudriere() {
 }
 
 prep_jailhost() {
-    _copytree jailhost_etc /etc
-    service ipfw restart
-
     # TODO replace common_etc with these actions for each jail:
     # * generate hosts file
     # * generate krb5.conf
     # * disable (at least) dumpdev, syslogd, and cron
     # * point the DNS resolver at the DNS jail
-
-    # TODO create fstab for every jail that needs it
-    echo "${JAILS}" | xargs -J% -n1 touch /empt/synced/rw/fstab.d/%.fstab
-}
-
-init_jail_dns() {
-    pkg -r /empt/jails/dns install -y unbound
-    service -j dns ldconfig start
-
-    _copytree unbound /empt/jails/dns/usr/local/etc/unbound
-    service -j dns unbound enable
-    service -j dns unbound start
 }
 
 init_jail_mail() {
+    # TODO
     _truncate_dirs /empt/jails/mail/var/db/acme
     _append_if_missing \
         "/empt/synced/rw/acme/${ORG_DOMAIN}_ecc /empt/jails/mail/var/db/acme nullfs ro,noatime 0 0" \
         /empt/synced/rw/fstab.d/mail.fstab
 
-#===============
-# SMTP STUFF
-#===============
-    mkdir -p \
-        /empt/synced/postfix_spool \
-        /empt/jails/mail/var/spool/postfix
-    _append_if_missing \
-        '/empt/synced/postfix_spool /empt/jails/mail/var/spool/postfix nullfs rw,noatime 0 0' \
-        /empt/synced/rw/fstab.d/mail.fstab
-
-    pw -R /empt/jails/mail \
-        useradd mlmmj -u "${MLMMJ_UID}" -c 'mlmmj manager' -d /var/spool/mlmmj -s /usr/sbin/nologin -h -
-    install -d -o "${MLMMJ_UID}" -g "${MLMMJ_UID}" \
-        /empt/synced/rw/mlmmj_spool \
-        /empt/jails/mail/var/spool/mlmmj
-    _append_if_missing \
-        '/empt/synced/rw/mlmmj_spool /empt/jails/mail/var/spool/mlmmj nullfs rw,noatime 0 0' \
-        /empt/synced/rw/fstab.d/mail.fstab
-
-    pkg -r /empt/jails/mail install -y \
-        postfix mlmmj cyrus-imapd310 cyrus-sasl-gssapi cyrus-sasl-saslauthd \
-        rspamd redis
-    service -j mail ldconfig start
-
-    _copytree postfix /empt/jails/mail/usr/local/etc/postfix
-    touch \
-        /empt/jails/mail/usr/local/etc/postfix/mlmmj_aliases \
-        /empt/jails/mail/usr/local/etc/postfix/mlmmj_transport
-    jexec -l mail postmap /usr/local/etc/postfix/mlmmj_aliases
-    jexec -l mail postmap /usr/local/etc/postfix/mlmmj_transport
-    jexec -l mail postalias cdb:/etc/mail/aliases
-    jexec -l mail postfix set-permissions
-
-    mkdir -p /empt/jails/mail/usr/local/etc/sasl2
-    echo 'pwcheck_method: auxprop saslauthd' \
-        > /empt/jails/mail/usr/local/etc/sasl2/smtpd.conf
-    jexec -l mail chown postfix:postfix /etc/krb5.keytab
+    #===============
+    # SMTP STUFF
+    #===============
+    # TODO
     echo '* * * * * -n -q /usr/local/bin/mlmmj-maintd -F -d /var/spool/mlmmj' \
         > /empt/jails/mail/var/cron/tabs/mlmmj
 
-    _copytree redis /empt/jails/mail/usr/local/etc
-    _copytree rspamd /empt/jails/mail/usr/local/etc/rspamd/local.d
+    #===============
+    # IMAP STUFF
+    #===============
 
-#===============
-# IMAP STUFF
-#===============
-    mkdir -p \
-        /empt/synced/rw/cyrusimap/db \
-        /empt/synced/rw/cyrusimap/spool \
-        /empt/jails/mail/var/db/cyrusimap \
-        /empt/jails/mail/var/spool/cyrusimap \
-        /empt/jails/mail/var/run/cyrusimap
-    _append_if_missing \
-        '/empt/synced/rw/cyrusimap/db /empt/jails/mail/var/db/cyrusimap nullfs rw,noatime 0 0' \
-        /empt/synced/rw/fstab.d/mail.fstab
-    _append_if_missing \
-        '/empt/synced/rw/cyrusimap/spool /empt/jails/mail/var/spool/cyrusimap nullfs rw,noatime 0 0' \
-        /empt/synced/rw/fstab.d/mail.fstab
-    mount -aF /empt/synced/rw/fstab.d/mail.fstab
-
-    _copytree cyrus /empt/jails/mail/usr/local/etc
-    jexec -l mail /usr/local/cyrus/sbin/mkimap
-
-    for s in smtp imap HTTP; do
-        cat > "/empt/jails/mail/etc/pam.d/${s}" <<EOF
-auth required pam_krb5.so no_user_check
-account sufficient pam_permit.so
-EOF
-    done
-
-    jexec -l mail chown -R cyrus:mail \
-        /etc/krb5.keytab \
-        /var/db/cyrusimap \
-        /var/spool/cyrusimap \
-        /var/run/cyrusimap
-
-
-#===============
-# RSPAMD AND DKIM STUFF
-#===============
-    jexec -l mail install -d -o redis -g redis \
-        /var/log/redis \
-        /var/db/redis \
-        /var/run/redis
-    jexec -l mail install -d -o redis -g rspamd -m 0775 /var/run/redis-rspamd
-    jexec -l mail install -d -o rspamd -g rspamd -m 0700 /var/db/opendkim
-
-    echo "key1._domainkey.${ORG_DOMAIN} ${ORG_DOMAIN}:key1:/var/db/opendkim/${ORG_DOMAIN}/key1.private" \
-        > /empt/jails/mail/var/db/opendkim/dkim.keytable
-    echo "*@${ORG_DOMAIN} key1._domainkey.${ORG_DOMAIN}" \
-        > /empt/jails/mail/var/db/opendkim/dkim.signingtable
-
-    # TODO reenable once testing is done with FreeDNS DKIM keys
-    # =========================================================
-    # TODO change to ed25519 keys once every major provider supports verification
-    #jexec -l mail rspamadm dkim_keygen -s key1 -d "${ORG_DOMAIN}" -b 2048 \
-    #    -k "/var/db/opendkim/${ORG_DOMAIN}/key1.private" \
-    #    > "/empt/jails/mail/var/db/opendkim/${ORG_DOMAIN}/key1.txt"
-    _copytree testing_dkim "/empt/jails/mail/var/db/opendkim/${ORG_DOMAIN}"
-    # =========================================================
-
-    jexec -l mail chown -R rspamd:rspamd /var/db/opendkim
-
-    sysrc -j mail redis_profiles="rspamd-bayes rspamd-other"
-    for s in saslauthd imapd redis rspamd postfix cron; do
-        service -j mail "${s}" enable
-        service -j mail "${s}" start
-    done
+    #===============
+    # RSPAMD AND DKIM STUFF
+    #===============
 }
 
 create_mailing_lists() {
@@ -311,7 +203,7 @@ case "$1" in
         pkg -r /empt/jails/kerberos install -y empt-jail-kerberos
         # TODO run ACME in host and place certs for each jail in their own /var/db/tls directories
         # pkg -r /empt/jails/acme install -y empt-jail-acme
-        init_jail_mail
+        pkg -r /empt/jails/mail install -y empt-jail-mail
         pkg -r /empt/jails/cifs install -y empt-jail-cifs
         pkg -r /empt/jails/irc install -y empt-jail-irc
         pkg -r /empt/jails/www install -y empt-jail-www

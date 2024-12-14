@@ -107,37 +107,11 @@ upgrade_to_poudriere() {
     find / -type f -name '*.pkgsave' -delete || true
 
     pkg upgrade -y -r ports
-}
 
-prep_jailhost() {
-    # TODO replace common_etc with these actions for each jail:
-    # * generate hosts file
-    # * generate krb5.conf
-    # * disable (at least) dumpdev, syslogd, and cron
-    # * point the DNS resolver at the DNS jail
-}
-
-init_jail_mail() {
-    # TODO
-    _truncate_dirs /empt/jails/mail/var/db/acme
-    _append_if_missing \
-        "/empt/synced/rw/acme/${ORG_DOMAIN}_ecc /empt/jails/mail/var/db/acme nullfs ro,noatime 0 0" \
-        /empt/synced/rw/fstab.d/mail.fstab
-
-    #===============
-    # SMTP STUFF
-    #===============
-    # TODO
-    echo '* * * * * -n -q /usr/local/bin/mlmmj-maintd -F -d /var/spool/mlmmj' \
-        > /empt/jails/mail/var/cron/tabs/mlmmj
-
-    #===============
-    # IMAP STUFF
-    #===============
-
-    #===============
-    # RSPAMD AND DKIM STUFF
-    #===============
+    # TODO Set user-provided details here
+    sysrc \
+        hostname="jailhost.${ORG_DOMAIN}" \
+        cron_flags="-m it@${ORG_DOMAIN}"
 }
 
 create_mailing_lists() {
@@ -198,20 +172,20 @@ case "$1" in
         upgrade_to_poudriere
         ;;
     3)
-        prep_jailhost
-        pkg -r /empt/jails/dns install -y empt-jail-dns
-        pkg -r /empt/jails/kerberos install -y empt-jail-kerberos
-        # TODO run ACME in host and place certs for each jail in their own /var/db/tls directories
-        # pkg -r /empt/jails/acme install -y empt-jail-acme
-        pkg -r /empt/jails/mail install -y empt-jail-mail
-        pkg -r /empt/jails/cifs install -y empt-jail-cifs
-        pkg -r /empt/jails/irc install -y empt-jail-irc
-        pkg -r /empt/jails/www install -y empt-jail-www
+        pkg install -y \
+            empt-host-dns \
+            empt-host-kerberos \
+            empt-host-mail \
+            empt-host-cifs \
+            empt-host-irc \
+            empt-host-www \
+            empt-acme
+
         create_mailing_lists
         hire_humans
 
-        # open the helpdesk
-        pkg install -y empt-helpdesk
+        # TODO open the helpdesk
+        #pkg install -y empt-helpdesk
         ;;
     *)
         echo "ERROR: Unrecognized boot sequence number '$1'" >&2
